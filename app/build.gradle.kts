@@ -36,6 +36,10 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":domain"))
 
+    // Реализации доменных контрактов подключает сборочный модуль: feature-модули
+    // знают только интерфейсы, а Hilt собирает граф из того, что есть в :app.
+    implementation(project(":core:database"))
+
     implementation(project(":feature:profiles"))
     implementation(project(":feature:editor"))
     implementation(project(":feature:timer"))

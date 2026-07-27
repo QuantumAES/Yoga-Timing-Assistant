@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profiles_title">Profiles</string>
+    <string name="profiles_create">New profile</string>
+    <string name="profiles_settings">Settings</string>
+    <string name="profiles_start">Start session</string>
+    <string name="profiles_favorite_add">Add to favorites</string>
+    <string name="profiles_favorite_remove">Remove from favorites</string>
+    <string name="profiles_empty_title">No profiles yet</string>
+    <string name="profiles_empty_hint">Create a profile to start timing your classes.</string>
+    <string name="profiles_no_stages">no stages</string>
+    <!-- Общее время, когда в профиле есть этап без плановой длительности. -->
+    <string name="profiles_duration_at_least">≥ %1$s</string>
+    <string name="profiles_duration_minutes">%1$d min</string>
+    <plurals name="profiles_stage_count">
+        <item quantity="one">%1$d stage</item>
+        <item quantity="other">%1$d stages</item>
+    </plurals>
+    <string name="profiles_category_general">General</string>
+    <string name="profiles_category_hatha">Hatha</string>
+    <string name="profiles_category_vinyasa">Vinyasa</string>
+    <string name="profiles_category_yin">Yin</string>
+    <string name="profiles_category_meditation">Meditation</string>
+    <string name="profiles_category_stretching">Stretching</string>
+    <string name="profiles_category_breathing">Breathing</string>
+</resources>

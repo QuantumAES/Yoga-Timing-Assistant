@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profiles_title">Профили</string>
+    <string name="profiles_create">Новый профиль</string>
+    <string name="profiles_settings">Настройки</string>
+    <string name="profiles_start">Начать занятие</string>
+    <string name="profiles_favorite_add">В избранное</string>
+    <string name="profiles_favorite_remove">Убрать из избранного</string>
+    <string name="profiles_empty_title">Профилей пока нет</string>
+    <string name="profiles_empty_hint">Создайте профиль, чтобы вести по нему занятие.</string>
+    <string name="profiles_no_stages">нет этапов</string>
+    <string name="profiles_duration_at_least">≥ %1$s</string>
+    <string name="profiles_duration_minutes">%1$d мин</string>
+    <plurals name="profiles_stage_count">
+        <item quantity="one">%1$d этап</item>
+        <item quantity="few">%1$d этапа</item>
+        <item quantity="many">%1$d этапов</item>
+        <item quantity="other">%1$d этапа</item>
+    </plurals>
+    <string name="profiles_category_general">Общая</string>
+    <string name="profiles_category_hatha">Хатха</string>
+    <string name="profiles_category_vinyasa">Виньяса</string>
+    <string name="profiles_category_yin">Инь</string>
+    <string name="profiles_category_meditation">Медитация</string>
+    <string name="profiles_category_stretching">Растяжка</string>
+    <string name="profiles_category_breathing">Дыхание</string>
+</resources>

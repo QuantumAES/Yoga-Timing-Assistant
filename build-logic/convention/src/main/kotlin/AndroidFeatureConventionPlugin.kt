@@ -24,6 +24,7 @@ class AndroidFeatureConventionPlugin : Plugin<Project> {
                 add("implementation", libs.library("androidx-lifecycle-viewmodel-compose"))
                 add("implementation", libs.library("androidx-navigation-compose"))
                 add("implementation", libs.library("androidx-hilt-navigation-compose"))
+                add("implementation", libs.library("androidx-hilt-lifecycle-viewmodel-compose"))
                 add("implementation", libs.library("kotlinx-serialization-json"))
 
                 add("testImplementation", libs.library("turbine"))
