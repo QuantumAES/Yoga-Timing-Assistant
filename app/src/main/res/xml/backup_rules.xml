@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup для Android 11 и ниже.
+  Профили (Room) и настройки (DataStore) бэкапим, состояние активной сессии —
+  нет: на другом устройстве оно бессмысленно. Уточняется в Фазе 7 (P1-11).
+-->
+<full-backup-content>
+    <include domain="database" path="." />
+    <include domain="sharedpref" path="." />
+    <include domain="file" path="datastore" />
+    <exclude domain="file" path="datastore/session_state.preferences_pb" />
+</full-backup-content>

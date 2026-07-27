@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Совпадает с background тёмной схемы YtaTheme: без вспышки при старте. -->
+    <color name="splash_background">#0F1511</color>
+    <color name="ic_launcher_background">#0F1511</color>
+</resources>

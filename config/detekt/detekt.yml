@@ -1,0 +1,26 @@
+# Поверх дефолтного набора правил detekt (buildUponDefaultConfig = true).
+# Здесь только осознанные отклонения — всё остальное берётся из умолчаний.
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+
+naming:
+  # @Composable-функции по соглашению именуются с заглавной буквы.
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    ignoreAnnotated: ['Composable']
+  # Файлы *Navigation.kt намеренно держат маршрут и его NavGraphBuilder-расширение
+  # рядом: это единица публичного API feature-модуля.
+  MatchingDeclarationName:
+    excludes: ['**/*Navigation.kt']
+
+complexity:
+  # У Composable-функций много параметров — это норма для слотов и колбэков.
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true

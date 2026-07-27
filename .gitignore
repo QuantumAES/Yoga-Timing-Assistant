@@ -1,0 +1,42 @@
+### Gradle ###
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!build-logic/**/build.gradle.kts
+
+### Android ###
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+.cxx/
+
+### Signing (никогда не коммитим) ###
+*.jks
+*.keystore
+keystore.properties
+
+### IDE ###
+.idea/
+!.idea/icon.png
+*.iml
+.kotlin/
+captures/
+.externalNativeBuild/
+.claude/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Отчёты инструментов ###
+**/build/reports/
+lint-results*.html
+lint-results*.xml
