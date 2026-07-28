@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Уведомление активного занятия -->
+    <string name="timer_channel_session_name">Идёт занятие</string>
+    <string name="timer_channel_session_description">Показывает текущий этап и кнопки управления, пока идёт занятие.</string>
+    <string name="timer_channel_notices_name">Сообщения о занятии</string>
+    <string name="timer_channel_notices_description">Разовые сообщения: занятие завершено или прервано.</string>
+
+    <string name="timer_notification_stage">Этап %1$d из %2$d</string>
+    <string name="timer_notification_remaining">осталось %1$s</string>
+    <string name="timer_notification_paused">Пауза</string>
+    <string name="timer_notification_separator"> · </string>
+
+    <string name="timer_action_pause">Пауза</string>
+    <string name="timer_action_resume">Продолжить</string>
+    <string name="timer_action_next">Далее</string>
+    <string name="timer_action_stop">Стоп</string>
+
+    <string name="timer_notice_finished_title">Занятие завершено</string>
+    <string name="timer_notice_finished_text">%1$s · всего %2$s</string>
+    <string name="timer_notice_reboot_title">Занятие было прервано</string>
+    <string name="timer_notice_reboot_text">Устройство перезагрузилось, продолжить сессию не удалось.</string>
+</resources>

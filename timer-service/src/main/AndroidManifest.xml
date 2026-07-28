@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!--
+        Разделение по версиям — не косметика (docs/02-TIMER-CORE-DESIGN.md §9.5).
+        USE_EXACT_ALARM существует только с API 33 и выдаётся при установке;
+        на API 31–32 та же роль у SCHEDULE_EXACT_ALARM. Обоснование для ревью
+        Play — docs/05-PLAY-DECLARATIONS.md.
+    -->
+    <uses-permission
+        android:name="android.permission.USE_EXACT_ALARM"
+        android:minSdkVersion="33" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
+    <application>
+        <service
+            android:name=".TimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <!--
+                Формулировка уходит на ревью Google Play дословно. Она описывает
+                механику, которую ни один типовой тип FGS не покрывает: отсчёт
+                этапов и звуковые подсказки при заблокированном экране, пока
+                телефон лежит на коврике.
+            -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Interval timing for live yoga classes: the app must keep counting stages and deliver audio cues while the screen is locked and the phone lies on the mat." />
+        </service>
+
+        <receiver
+            android:name=".watchdog.WatchdogReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.quantumaes.yogatiming.action.WATCHDOG" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

@@ -55,19 +55,21 @@ JDK 21 распаковывается в пользовательский кат
 | `:core:common` | pure JVM: форматтеры времени, утилиты |
 | `:core:designsystem` | тема M3, токены, компоненты |
 | `:core:database` | Room: сущности, DAO, репозиторий, демо-данные |
-| `:core:datastore` | настройки и персист сессии *(Фазы 3, 7)* |
+| `:core:datastore` | персист сессии; настройки *(Фаза 7)* |
 | `:core:audio` | AlertPlayer, TTS, вибрация *(Фаза 4)* |
 | `:domain` | pure JVM: модели, use cases, резолвер оповещений |
 | `:timer-engine` | pure JVM: машина состояний отсчёта — **ключевой модуль** |
-| `:timer-service` | Android: FGS, WakeLock, watchdog-аларм *(Фаза 3)* |
+| `:timer-service` | Android: FGS, WakeLock, watchdog-аларм, персист сессии |
 | `:feature:profiles` | список профилей |
 | `:feature:editor` | редакторы профиля / этапа / оповещений |
 | `:feature:timer` | рабочий экран занятия |
 | `:feature:settings` | настройки и онбординг |
 
-Правило зависимостей: `feature:*` → `domain` → ничего.
+Правило зависимостей: `feature:*` → `domain` → `timer-engine` → ничего.
 `:timer-engine` не зависит ни от чего, кроме stdlib, coroutines и сериализации —
 это позволяет проверять 90-минутную сессию юнит-тестом за миллисекунды.
+Порог покрытия движка — 85% строк (критерий N-4), проверяется задачей
+`koverVerify` в составе `./gradlew build`.
 
 Общие настройки модулей вынесены в конвенционные плагины `build-logic`
 (`yta.android.application`, `yta.android.feature`, `yta.jvm.library` и др.),

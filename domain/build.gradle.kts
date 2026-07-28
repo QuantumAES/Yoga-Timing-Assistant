@@ -8,5 +8,7 @@ plugins {
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.json)
-    implementation(project(":timer-engine"))
+    // api: доменный Alert реализует AlertPayload движка, а SessionPlanFactory
+    // возвращает его SessionPlan — типы ядра видны в публичном контракте домена.
+    api(project(":timer-engine"))
 }

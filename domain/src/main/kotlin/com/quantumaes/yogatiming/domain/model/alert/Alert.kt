@@ -1,5 +1,6 @@
 package com.quantumaes.yogatiming.domain.model.alert
 
+import com.quantumaes.yogatiming.timer.engine.model.AlertPayload
 import kotlinx.serialization.Serializable
 
 /** Звук-пресет. Реальные ассеты подбираются в Фазе 4 (лицензии — P1-8). */
@@ -56,6 +57,10 @@ enum class VoicePhrase {
  * различаются местом в [AlertConfig]. Это исключает невалидные состояния —
  * два START или END с ненулевым смещением (ADR-002).
  *
+ * Реализует [AlertPayload]: движок таймера переносит оповещение от расписания
+ * к проигрывателю, ни разу не заглянув внутрь. Каналы, звуки и фразы остаются
+ * делом домена и меняются, не задевая ядро отсчёта.
+ *
  * @param offsetSec за сколько секунд до конца этапа сработать. Осмысленно
  *   только для предупреждений; для START и END игнорируется.
  * @param volumePercent 0..100, `null` — наследовать [AlertConfig.masterVolumePercent].
@@ -70,7 +75,7 @@ data class Alert(
     val customVoiceText: String? = null,
     val vibration: VibrationPattern = VibrationPattern.SINGLE,
     val volumePercent: Int? = null,
-) {
+) : AlertPayload {
     /** Оповещение, которое ничего не сделает: выключено или без единого канала. */
     val isSilent: Boolean get() = !enabled || channels.isEmpty()
 

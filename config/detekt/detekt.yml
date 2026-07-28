@@ -20,6 +20,12 @@ style:
       - '**/androidUnitTest/**'
       - '**/androidInstrumentedTest/**'
 
+  # Ранний выход из функции по неподходящему состоянию — основной приём
+  # редьюсера таймера: «команда неприменима — молча ничего не делаем».
+  # Считать такие проверки за возвраты значит поощрять вложенные if-else.
+  ReturnCount:
+    excludeGuardClauses: true
+
 naming:
   # @Composable-функции по соглашению именуются с заглавной буквы.
   FunctionNaming:
@@ -35,6 +41,11 @@ complexity:
   # У Composable-функций много параметров — это норма для слотов и колбэков.
   LongParameterList:
     ignoreAnnotated: ['Composable']
+  # Тест-класс — это набор независимых сценариев, а не объект с поведением.
+  # Дробить его ради порога «не больше одиннадцати функций» значит разносить
+  # связанные проверки по файлам и терять таблицу тест-плана целиком.
+  TooManyFunctions:
+    ignoreAnnotatedFunctions: ['Test', 'Preview']
 
 exceptions:
   TooGenericExceptionCaught:
