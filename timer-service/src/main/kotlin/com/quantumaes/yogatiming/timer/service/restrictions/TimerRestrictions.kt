@@ -16,24 +16,60 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Системные ограничения, способные испортить занятие.
+ * Насколько ограничение опасно для занятия.
+ *
+ * Разделение появилось после полевой проверки Фазы 3: единый красный баннер
+ * «оповещения могут запаздывать» висел в том числе там, где ничего не
+ * запаздывает, и приучал не читать предупреждения вовсе.
+ */
+enum class RestrictionSeverity {
+    /**
+     * Занятие пройдёт молча или без управления из шторки. Чинить нужно сейчас,
+     * иначе продукт не выполнит свою единственную задачу.
+     */
+    WARNING,
+
+    /**
+     * Штатному ходу занятия ничто не мешает: пока процесс жив, отсчёт идёт по
+     * монотонным меткам и сигналы звучат вовремя. Под угрозой только
+     * *восстановление* — возврат к занятию, если система выгрузит приложение из
+     * памяти (риск R-1).
+     */
+    ADVICE,
+}
+
+/**
+ * Системное ограничение, способное испортить занятие.
  *
  * Критерий T-4 сформулирован как требование **наблюдаемости**: победить
  * агрессивную оптимизацию батареи мы не можем, но обязаны обнаружить её и
- * честно предупредить пользователя, объяснив, как починить.
+ * честно сказать пользователю, что именно она значит.
  */
-data class TimerRestrictions(
-    /** Приложение не в списке исключений энергосбережения. */
-    val batteryOptimized: Boolean = false,
-    /** Точные алармы запрещены — watchdog деградировал до неточного. */
-    val exactAlarmsUnavailable: Boolean = false,
-    /** Уведомления выключены: управление из шторки недоступно. */
-    val notificationsDisabled: Boolean = false,
-    /** Режим «Полная тишина» глушит в том числе будильники, а с ними и сигналы (ADR-003). */
-    val alarmsSilencedByDnd: Boolean = false,
+enum class TimerRestriction(
+    val severity: RestrictionSeverity,
 ) {
-    val hasAny: Boolean
-        get() = batteryOptimized || exactAlarmsUnavailable || notificationsDisabled || alarmsSilencedByDnd
+    /** Уведомления выключены: FGS-уведомление не видно, управление из шторки недоступно. */
+    NOTIFICATIONS_DISABLED(RestrictionSeverity.WARNING),
+
+    /** Режим «Полная тишина» глушит в том числе будильники, а с ними и сигналы (ADR-003). */
+    ALARMS_SILENCED_BY_DND(RestrictionSeverity.WARNING),
+
+    /** Приложение не в системном списке исключений энергосбережения. */
+    BATTERY_OPTIMIZED(RestrictionSeverity.ADVICE),
+
+    /** Точные алармы запрещены — watchdog деградировал до неточного. */
+    EXACT_ALARMS_UNAVAILABLE(RestrictionSeverity.ADVICE),
+}
+
+/** Ограничения, действующие прямо сейчас. */
+@JvmInline
+value class TimerRestrictions(
+    val active: Set<TimerRestriction> = emptySet(),
+) {
+    operator fun contains(restriction: TimerRestriction): Boolean = restriction in active
+
+    fun of(severity: RestrictionSeverity): List<TimerRestriction> =
+        TimerRestriction.entries.filter { it in active && it.severity == severity }
 }
 
 /**
@@ -60,12 +96,26 @@ class TimerRestrictionsDetector
 
         private fun detect(): TimerRestrictions =
             TimerRestrictions(
-                batteryOptimized = !isIgnoringBatteryOptimizations(),
-                exactAlarmsUnavailable = !canScheduleExactAlarms(),
-                notificationsDisabled = !NotificationManagerCompat.from(context).areNotificationsEnabled(),
-                alarmsSilencedByDnd = areAlarmsSilenced(),
+                buildSet {
+                    if (!isIgnoringBatteryOptimizations()) add(TimerRestriction.BATTERY_OPTIMIZED)
+                    if (!canScheduleExactAlarms()) add(TimerRestriction.EXACT_ALARMS_UNAVAILABLE)
+                    if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+                        add(TimerRestriction.NOTIFICATIONS_DISABLED)
+                    }
+                    if (areAlarmsSilenced()) add(TimerRestriction.ALARMS_SILENCED_BY_DND)
+                },
             )
 
+        /**
+         * Читается **только** системный белый список Doze — тот самый, что стоит
+         * за `Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`. Фирменные
+         * переключатели оболочек (MIUI «Нет ограничений», Samsung «Не
+         * ограничено» и подобные) ведут в собственные списки вендора и на этот
+         * флаг не влияют: пользователь может выключить у себя всё, что видит, а
+         * флаг останется прежним. Отсюда правило: подсказку про батарею
+         * показываем один раз и рядом даём переход именно в тот системный
+         * список, который её снимает.
+         */
         private fun isIgnoringBatteryOptimizations(): Boolean {
             val power = context.getSystemService<PowerManager>() ?: return true
             return power.isIgnoringBatteryOptimizations(context.packageName)

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!--
+        С Android 11 приложение не видит чужие пакеты без объявления. Без этого
+        блока TextToSpeech не находит ни одного движка и голосовой канал молча
+        отключается на всех современных устройствах (P0-10).
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
+</manifest>

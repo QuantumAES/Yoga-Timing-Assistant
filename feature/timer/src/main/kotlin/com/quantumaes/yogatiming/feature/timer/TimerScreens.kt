@@ -12,6 +12,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,14 +20,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.quantumaes.yogatiming.core.common.time.TimeFormatter
+import com.quantumaes.yogatiming.core.designsystem.component.KeepScreenOn
 import com.quantumaes.yogatiming.core.designsystem.component.PlaceholderAction
 import com.quantumaes.yogatiming.core.designsystem.component.PlaceholderScreen
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
-import com.quantumaes.yogatiming.timer.service.restrictions.TimerRestrictions
+import com.quantumaes.yogatiming.timer.service.restrictions.RestrictionSeverity
+import com.quantumaes.yogatiming.timer.service.restrictions.TimerRestriction
 
 /**
  * Экран 4 «Занятие» — временная проверочная версия Фазы 3.
@@ -44,12 +49,20 @@ internal fun TimerScreen(
 ) {
     val viewModel: TimerViewModel = hiltViewModel()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
-    val restrictions by viewModel.restrictions.collectAsStateWithLifecycle()
+    val notices by viewModel.notices.collectAsStateWithLifecycle()
 
-    LaunchedEffect(profileId) {
-        viewModel.ensureSession(profileId)
-        viewModel.refreshRestrictions()
-    }
+    // Экран не гаснет и не приглушается, пока идёт занятие: инструктор смотрит
+    // на таймер издалека и не может тянуться к телефону, чтобы его разбудить.
+    // Процессор при этом держит сервис (SessionWakeLock), а экран — только этот
+    // флаг и только пока рабочий экран на переднем плане.
+    KeepScreenOn()
+
+    LaunchedEffect(profileId) { viewModel.ensureSession(profileId) }
+
+    // Ограничения перечитываются на каждом возвращении на экран: пользователь
+    // уходит их чинить в системные настройки и возвращается сюда — другого
+    // сигнала об изменении система не присылает.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshRestrictions() }
 
     LaunchedEffect(snapshot?.runState) {
         if (snapshot?.runState == RunState.FINISHED) onFinish()
@@ -57,7 +70,9 @@ internal fun TimerScreen(
 
     SessionContent(
         snapshot = snapshot,
-        restrictions = restrictions,
+        notices = notices,
+        onNoticeAction = viewModel::openSettings,
+        onNoticeDismiss = viewModel::dismiss,
         onTogglePause = viewModel::togglePause,
         onNext = viewModel::next,
         onPrevious = viewModel::previous,
@@ -73,7 +88,9 @@ internal fun TimerScreen(
 @Composable
 private fun SessionContent(
     snapshot: SessionSnapshot?,
-    restrictions: TimerRestrictions,
+    notices: List<TimerRestriction>,
+    onNoticeAction: (TimerRestriction) -> Unit,
+    onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -86,8 +103,12 @@ private fun SessionContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        if (restrictions.hasAny) {
-            RestrictionsBanner(restrictions)
+        notices.forEach { restriction ->
+            RestrictionNotice(
+                restriction = restriction,
+                onAction = { onNoticeAction(restriction) },
+                onDismiss = { onNoticeDismiss(restriction) },
+            )
         }
 
         Text(
@@ -125,32 +146,89 @@ private fun SessionContent(
     }
 }
 
+/**
+ * Сообщение об ограничении системы.
+ *
+ * Красным — только то, из-за чего занятие пройдёт молча или без управления.
+ * Совет про энергосбережение красным не бывает: он описывает риск, а не
+ * поломку, закрывается навсегда и не имеет права мозолить глаза каждый раз
+ * (docs/05-PLAY-DECLARATIONS.md §5). Полноценные баннеры рабочего экрана —
+ * Фаза 6.
+ */
 @Composable
-private fun RestrictionsBanner(restrictions: TimerRestrictions) {
+private fun RestrictionNotice(
+    restriction: TimerRestriction,
+    onAction: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val warning = restriction.severity == RestrictionSeverity.WARNING
+    val container =
+        if (warning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
+    val content =
+        if (warning) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val accent = if (warning) content else MaterialTheme.colorScheme.primary
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.m),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        colors = CardDefaults.cardColors(containerColor = container),
     ) {
-        Text(
-            text = restrictionsText(restrictions),
-            modifier = Modifier.padding(Spacing.m),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-        )
+        Column(modifier = Modifier.padding(Spacing.m)) {
+            Text(
+                text = restrictionText(restriction),
+                style = MaterialTheme.typography.bodyMedium,
+                color = content,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(if (warning) "Скрыть" else "Понятно", color = content)
+                }
+                TextButton(onClick = onAction) {
+                    Text(restriction.actionLabel, color = accent)
+                }
+            }
+        }
     }
 }
 
 /**
- * Критерий T-4 требует не победы над ограничениями, а честного о них
- * сообщения. Полноценные баннеры с переходом в системные настройки — Фаза 6.
+ * Формулировки честные до цифр: пользователю важно знать не то, что «что-то
+ * может пойти не так», а что именно и насколько это плохо.
  */
-private fun restrictionsText(restrictions: TimerRestrictions): String =
-    buildList {
-        if (restrictions.batteryOptimized) add("включена оптимизация батареи")
-        if (restrictions.exactAlarmsUnavailable) add("запрещены точные будильники")
-        if (restrictions.notificationsDisabled) add("выключены уведомления")
-        if (restrictions.alarmsSilencedByDnd) add("режим «Полная тишина» глушит сигналы")
-    }.joinToString(prefix = "Оповещения могут запаздывать: ", separator = ", ")
+private fun restrictionText(restriction: TimerRestriction): String =
+    when (restriction) {
+        TimerRestriction.NOTIFICATIONS_DISABLED -> {
+            "Уведомления выключены: управлять занятием из шторки нельзя, " +
+                "а система охотнее останавливает сервис без видимого уведомления."
+        }
+
+        TimerRestriction.ALARMS_SILENCED_BY_DND -> {
+            "Режим «Полная тишина» глушит канал будильника — сигналов занятия слышно не будет."
+        }
+
+        TimerRestriction.BATTERY_OPTIMIZED -> {
+            "Пока приложение живо, отсчёт идёт по монотонным часам и сигналы звучат вовремя. " +
+                "Но система вправе выгрузить его из памяти, и тогда возврат к занятию " +
+                "займёт до нескольких минут. Список «без ограничений» это снимает — " +
+                "фирменные энергосберегайки оболочки на него не влияют."
+        }
+
+        TimerRestriction.EXACT_ALARMS_UNAVAILABLE -> {
+            "Точные будильники запрещены. Отсчёт это не затрагивает, но если система выгрузит " +
+                "приложение, страховочное пробуждение сработает с задержкой."
+        }
+    }
+
+private val TimerRestriction.actionLabel: String
+    get() =
+        when (this) {
+            TimerRestriction.NOTIFICATIONS_DISABLED -> "Включить"
+            TimerRestriction.ALARMS_SILENCED_BY_DND -> "Настроить"
+            TimerRestriction.BATTERY_OPTIMIZED -> "Снять ограничения"
+            TimerRestriction.EXACT_ALARMS_UNAVAILABLE -> "Разрешить"
+        }
 
 private fun remainingText(snapshot: SessionSnapshot?): String {
     val remaining = snapshot?.stageRemainingMs

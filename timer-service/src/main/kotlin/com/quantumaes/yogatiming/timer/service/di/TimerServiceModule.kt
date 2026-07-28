@@ -1,9 +1,7 @@
 package com.quantumaes.yogatiming.timer.service.di
 
-import com.quantumaes.yogatiming.domain.alert.AlertPlayer
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.service.AndroidTimeSource
-import com.quantumaes.yogatiming.timer.service.alert.SilentAlertPlayer
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
 import com.quantumaes.yogatiming.timer.service.watchdog.WatchdogAlarm
 import dagger.Binds
@@ -38,13 +36,8 @@ abstract class TimerServiceModule {
     @Singleton
     abstract fun bindWatchdog(impl: WatchdogAlarm): Watchdog
 
-    /**
-     * Фаза 4 заменит привязку на реализацию из `:core:audio` — остальной граф
-     * при этом не меняется, потому что контракт объявлен в домене.
-     */
-    @Binds
-    @Singleton
-    abstract fun bindAlertPlayer(impl: SilentAlertPlayer): AlertPlayer
+    // Реализация AlertPlayer живёт в `:core:audio` и привязывается там же
+    // (Фаза 4): контракт объявлен в домене, поэтому остальной граф не изменился.
 
     companion object {
         @Provides

@@ -62,6 +62,9 @@ class TimerService : Service() {
         super.onCreate()
         notifications.ensureChannels()
         wakeLock.acquire()
+        // Сэмплы и движок TTS готовятся заранее: START первого этапа звучит
+        // сразу за командой запуска, а обе инициализации асинхронны.
+        alertPlayer.prepare()
         scope.launch { controller.events.collect(::onEvent) }
         scope.launch {
             controller.snapshot

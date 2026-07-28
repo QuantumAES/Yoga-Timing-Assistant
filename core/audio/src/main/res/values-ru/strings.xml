@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alert_voice_next_stage">Далее: %1$s</string>
+    <string name="alert_voice_session_finished">Занятие завершено</string>
+
+    <!--
+        Число оставлено подстановкой во всех формах намеренно: в русском
+        «одна» относится и к 21, и к 31 минуте, поэтому написанное словом
+        «одна» здесь было бы ошибкой на длинных этапах.
+    -->
+    <plurals name="alert_voice_minutes_left">
+        <item quantity="one">Осталась %1$d минута</item>
+        <item quantity="few">Осталось %1$d минуты</item>
+        <item quantity="many">Осталось %1$d минут</item>
+        <item quantity="other">Осталось %1$d минуты</item>
+    </plurals>
+
+    <plurals name="alert_voice_seconds_left">
+        <item quantity="one">Осталась %1$d секунда</item>
+        <item quantity="few">Осталось %1$d секунды</item>
+        <item quantity="many">Осталось %1$d секунд</item>
+        <item quantity="other">Осталось %1$d секунды</item>
+    </plurals>
+</resources>

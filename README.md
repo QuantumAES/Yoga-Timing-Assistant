@@ -55,8 +55,8 @@ JDK 21 распаковывается в пользовательский кат
 | `:core:common` | pure JVM: форматтеры времени, утилиты |
 | `:core:designsystem` | тема M3, токены, компоненты |
 | `:core:database` | Room: сущности, DAO, репозиторий, демо-данные |
-| `:core:datastore` | персист сессии; настройки *(Фаза 7)* |
-| `:core:audio` | AlertPlayer, TTS, вибрация *(Фаза 4)* |
+| `:core:datastore` | персист сессии, разовые подсказки; настройки *(Фаза 7)* |
+| `:core:audio` | AlertPlayer: звук, TTS, вибрация, audio focus |
 | `:domain` | pure JVM: модели, use cases, резолвер оповещений |
 | `:timer-engine` | pure JVM: машина состояний отсчёта — **ключевой модуль** |
 | `:timer-service` | Android: FGS, WakeLock, watchdog-аларм, персист сессии |
@@ -99,4 +99,5 @@ KSP 2.3.10 · Compose BOM 2026.06.01 · Hilt 2.60.1 · Room 2.8.4 ·
 | [`docs/04-DEVICE-MATRIX.md`](docs/04-DEVICE-MATRIX.md) | матрица устройств для приёмки |
 | [`docs/05-PLAY-DECLARATIONS.md`](docs/05-PLAY-DECLARATIONS.md) | декларации для Google Play |
 | [`docs/06-MVP-SCOPE.md`](docs/06-MVP-SCOPE.md) | scope v1.0 и критерии приёмки |
+| [`docs/07-AUDIO-ASSETS.md`](docs/07-AUDIO-ASSETS.md) | звуковые пресеты: синтез, лицензии, громкость |
 | [`docs/adr/`](docs/adr) | архитектурные решения |
