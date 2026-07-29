@@ -24,4 +24,19 @@
     <string name="profiles_category_meditation">Медитация</string>
     <string name="profiles_category_stretching">Растяжка</string>
     <string name="profiles_category_breathing">Дыхание</string>
+
+    <string name="profiles_search">Поиск профилей</string>
+    <string name="profiles_search_clear">Очистить поиск</string>
+    <string name="profiles_filter_favorites">Избранные</string>
+    <string name="profiles_filter_reset">Сбросить фильтры</string>
+    <string name="profiles_nothing_found_title">Ничего не найдено</string>
+    <string name="profiles_nothing_found_hint">Измените запрос или сбросьте фильтры.</string>
+
+    <string name="profiles_menu">Действия с профилем</string>
+    <string name="profiles_menu_edit">Изменить</string>
+    <string name="profiles_menu_duplicate">Дублировать</string>
+    <string name="profiles_menu_delete">Удалить</string>
+    <string name="profiles_copy_name">%1$s — копия</string>
+    <string name="profiles_deleted">Профиль «%1$s» удалён</string>
+    <string name="profiles_undo">Отменить</string>
 </resources>

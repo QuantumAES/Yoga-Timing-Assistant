@@ -79,5 +79,15 @@ data class Alert(
     /** Оповещение, которое ничего не сделает: выключено или без единого канала. */
     val isSilent: Boolean get() = !enabled || channels.isEmpty()
 
+    /**
+     * Произнесёт ли это оповещение название своего этапа.
+     *
+     * Нужно на границе этапов: END уходящего этапа и START приходящего
+     * срабатывают в один и тот же момент, и если START объявит этап сам,
+     * то «далее: X» перед ним превращает подсказку в эхо (см. `voiceTextOf`).
+     */
+    val announcesStageName: Boolean
+        get() = hasChannel(AlertChannel.VOICE) && voice == VoicePhrase.STAGE_NAME
+
     fun hasChannel(channel: AlertChannel): Boolean = enabled && channel in channels
 }

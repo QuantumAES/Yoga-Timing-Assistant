@@ -55,15 +55,15 @@ JDK 21 распаковывается в пользовательский кат
 | `:core:common` | pure JVM: форматтеры времени, утилиты |
 | `:core:designsystem` | тема M3, токены, компоненты |
 | `:core:database` | Room: сущности, DAO, репозиторий, демо-данные |
-| `:core:datastore` | персист сессии, разовые подсказки; настройки *(Фаза 7)* |
+| `:core:datastore` | персист сессии, разовые подсказки, настройки оформления |
 | `:core:audio` | AlertPlayer: звук, TTS, вибрация, audio focus |
 | `:domain` | pure JVM: модели, use cases, резолвер оповещений |
 | `:timer-engine` | pure JVM: машина состояний отсчёта — **ключевой модуль** |
 | `:timer-service` | Android: FGS, WakeLock, watchdog-аларм, персист сессии |
-| `:feature:profiles` | список профилей |
+| `:feature:profiles` | список профилей: поиск, фильтры, избранное, удаление с отменой |
 | `:feature:editor` | редакторы профиля / этапа / оповещений |
-| `:feature:timer` | рабочий экран занятия |
-| `:feature:settings` | настройки и онбординг |
+| `:feature:timer` | рабочий экран занятия *(проверочная версия, Фаза 6)* |
+| `:feature:settings` | настройки оформления; онбординг — *Фаза 7* |
 
 Правило зависимостей: `feature:*` → `domain` → `timer-engine` → ничего.
 `:timer-engine` не зависит ни от чего, кроме stdlib, coroutines и сериализации —

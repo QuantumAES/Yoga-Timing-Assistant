@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_back">Назад</string>
+
+    <string name="settings_section_appearance">Оформление</string>
+    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_dynamic_color">Цвета из обоев</string>
+    <string name="settings_dynamic_color_hint">Палитра Material You. К рабочему экрану занятия не применяется никогда — она не гарантирует контраст.</string>
+
+    <string name="settings_section_hints">Подсказки</string>
+    <string name="settings_restore_hints">Показывать подсказки снова</string>
+    <string name="settings_restore_hints_hint">Разовые советы об энергосбережении и точных будильниках показываются один раз и больше не возвращаются.</string>
+    <string name="settings_hints_restored">Подсказки снова будут показаны</string>
+
+    <string name="settings_onboarding_title">Знакомство</string>
+    <string name="settings_onboarding_description">Экран 7: онбординг. Заглушка Фазы 1.</string>
+    <string name="settings_onboarding_start">Начать</string>
+</resources>

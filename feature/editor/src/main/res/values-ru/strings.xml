@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_save">Сохранить</string>
+    <string name="editor_back">Назад</string>
+    <string name="editor_color">Цветовая метка</string>
+
+    <!-- Экран 2: редактор профиля -->
+    <string name="editor_profile_title">Профиль</string>
+    <string name="editor_profile_new">Новый профиль</string>
+    <string name="editor_profile_name">Название профиля</string>
+    <string name="editor_profile_name_required">Дайте профилю название — по нему вы будете искать его в списке.</string>
+    <string name="editor_profile_category">Категория</string>
+    <string name="editor_profile_favorite">В избранном</string>
+    <string name="editor_profile_alerts">Оповещения</string>
+    <string name="editor_profile_stages">Этапы</string>
+    <string name="editor_profile_add_stage">Добавить этап</string>
+    <string name="editor_profile_no_stages">Профиль без этапов запустить нельзя. Добавьте хотя бы один.</string>
+    <string name="editor_profile_total_minutes">%1$d мин</string>
+    <string name="editor_profile_total_at_least">≥ %1$s</string>
+
+    <!-- Экран 3: редактор этапа -->
+    <string name="editor_stage_title">Этап</string>
+    <string name="editor_stage_new">Новый этап</string>
+    <string name="editor_stage_name">Название этапа</string>
+    <string name="editor_stage_name_required">Название произносится вслух в начале этапа — пустым оно быть не может.</string>
+    <string name="editor_stage_type">Тип</string>
+    <string name="editor_stage_duration">Длительность</string>
+    <string name="editor_stage_duration_invalid">Длительность — от 5 секунд до 4 часов.</string>
+    <string name="editor_stage_note">Заметка</string>
+    <string name="editor_stage_note_label">Заметка инструктору</string>
+    <string name="editor_stage_note_hint">Показывается на рабочем экране. Вслух не произносится.</string>
+    <string name="editor_stage_alerts">Оповещения</string>
+    <string name="editor_stage_own_alerts">Свои оповещения</string>
+    <string name="editor_stage_own_alerts_hint">Выключено — этап наследует оповещения профиля.</string>
+    <string name="editor_stage_open_alerts">Настроить оповещения этапа</string>
+    <string name="editor_stage_rest_preset">Этап отдыха: применён пресет «Тихий» — поющая чаша на границах и никаких предупреждений.</string>
+    <string name="editor_stage_rest_preset_decline">Наследовать оповещения профиля</string>
+    <string name="editor_stage_reorder">Перетащите, чтобы изменить порядок</string>
+    <string name="editor_stage_move_up">Выше</string>
+    <string name="editor_stage_move_down">Ниже</string>
+    <string name="editor_stage_duplicate">Дублировать этап</string>
+    <string name="editor_stage_remove">Удалить этап</string>
+    <string name="editor_stage_free_duration">до ручного перехода</string>
+    <string name="editor_stage_alerts_inherited">оповещения профиля</string>
+    <string name="editor_stage_alerts_own">свои оповещения</string>
+
+    <string name="editor_stage_type_normal">Обычный</string>
+    <string name="editor_stage_type_transition">Переход</string>
+    <string name="editor_stage_type_rest">Отдых</string>
+    <string name="editor_stage_type_free">Свободный</string>
+    <string name="editor_stage_type_normal_hint">Обычный этап с фиксированной длительностью.</string>
+    <string name="editor_stage_type_transition_hint">Короткая связка между блоками.</string>
+    <string name="editor_stage_type_rest_hint">Шавасана, релаксация: резкие сигналы здесь недопустимы.</string>
+    <string name="editor_stage_type_free_hint">Плановой длительности нет: счёт идёт вверх до ручного перехода. Предупреждения и сигнал конца не применяются.</string>
+
+    <!-- Экран 5: редактор оповещений -->
+    <string name="editor_alerts_profile_title">Оповещения профиля</string>
+    <string name="editor_alerts_stage_title">Оповещения этапа</string>
+    <string name="editor_alerts_owner">Действуют для «%1$s»</string>
+    <string name="editor_alerts_preset">Пресет</string>
+    <string name="editor_alerts_volume">Громкость</string>
+    <string name="editor_alerts_volume_value">%1$d%%</string>
+    <string name="editor_alerts_volume_hint">Множитель поверх системной громкости будильника. Системные настройки приложение не трогает.</string>
+    <string name="editor_alerts_enabled">Проигрывать сигнал</string>
+    <string name="editor_alerts_start">Начало этапа</string>
+    <string name="editor_alerts_warnings">Предупреждения</string>
+    <string name="editor_alerts_end">Конец этапа</string>
+    <string name="editor_alerts_add_warning">Добавить предупреждение</string>
+    <string name="editor_alerts_remove_warning">Удалить предупреждение</string>
+    <string name="editor_alerts_warning_at">За %1$s до конца</string>
+    <string name="editor_alerts_warning_unreachable">Этап короче этого смещения — предупреждение будет пропущено молча.</string>
+    <string name="editor_alerts_offset_minutes">%1$d мин</string>
+    <string name="editor_alerts_custom_text">Произносимый текст</string>
+    <string name="editor_alerts_preview">Прослушать</string>
+    <string name="editor_alerts_free_stage">У свободного этапа нет конца, поэтому предупреждения и сигнал конца сработают только при ручном переходе.</string>
+
+    <string name="editor_preset_standard">Стандарт</string>
+    <string name="editor_preset_silent">Тихий</string>
+    <string name="editor_preset_vibro">Только вибро</string>
+    <string name="editor_preset_max">Максимум</string>
+    <string name="editor_preset_custom">Свой</string>
+
+    <string name="editor_channel_sound">Звук</string>
+    <string name="editor_channel_voice">Голос</string>
+    <string name="editor_channel_vibration">Вибрация</string>
+
+    <string name="editor_sound_none">Без звука</string>
+    <string name="editor_sound_soft_gong">Мягкий гонг</string>
+    <string name="editor_sound_singing_bowl">Поющая чаша</string>
+    <string name="editor_sound_bell">Колокольчик</string>
+    <string name="editor_sound_tone">Тон</string>
+    <string name="editor_sound_tick">Тик</string>
+
+    <string name="editor_vibration_single">Одиночная</string>
+    <string name="editor_vibration_double">Двойная</string>
+    <string name="editor_vibration_long">Длинная</string>
+
+    <string name="editor_voice_none">Без голоса</string>
+    <string name="editor_voice_stage_name">Название этапа</string>
+    <string name="editor_voice_next_stage">Следующий этап</string>
+    <string name="editor_voice_time_remaining">Сколько осталось</string>
+    <string name="editor_voice_session_finished">Занятие завершено</string>
+    <string name="editor_voice_custom">Свой текст</string>
+
+    <string name="editor_duration_minutes">Минуты</string>
+    <string name="editor_duration_seconds">Секунды</string>
+    <string name="editor_duration_preset">%1$d мин</string>
+
+    <string name="editor_category_general">Общая</string>
+    <string name="editor_category_hatha">Хатха</string>
+    <string name="editor_category_vinyasa">Виньяса</string>
+    <string name="editor_category_yin">Инь</string>
+    <string name="editor_category_meditation">Медитация</string>
+    <string name="editor_category_stretching">Растяжка</string>
+    <string name="editor_category_breathing">Дыхание</string>
+</resources>

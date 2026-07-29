@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_save">Save</string>
+    <string name="editor_back">Back</string>
+    <string name="editor_color">Colour tag</string>
+
+    <!-- Экран 2: редактор профиля -->
+    <string name="editor_profile_title">Edit profile</string>
+    <string name="editor_profile_new">New profile</string>
+    <string name="editor_profile_name">Profile name</string>
+    <string name="editor_profile_name_required">Give the profile a name — you will look for it by name in the list.</string>
+    <string name="editor_profile_category">Category</string>
+    <string name="editor_profile_favorite">Favorite</string>
+    <string name="editor_profile_alerts">Alerts</string>
+    <string name="editor_profile_stages">Stages</string>
+    <string name="editor_profile_add_stage">Add stage</string>
+    <string name="editor_profile_no_stages">A profile with no stages cannot be started. Add at least one.</string>
+    <string name="editor_profile_total_minutes">%1$d min</string>
+    <string name="editor_profile_total_at_least">≥ %1$s</string>
+
+    <!-- Экран 3: редактор этапа -->
+    <string name="editor_stage_title">Edit stage</string>
+    <string name="editor_stage_new">New stage</string>
+    <string name="editor_stage_name">Stage name</string>
+    <string name="editor_stage_name_required">The name is spoken aloud at the start of the stage — it cannot be empty.</string>
+    <string name="editor_stage_type">Type</string>
+    <string name="editor_stage_duration">Duration</string>
+    <string name="editor_stage_duration_invalid">Duration must be between 5 seconds and 4 hours.</string>
+    <string name="editor_stage_note">Note</string>
+    <string name="editor_stage_note_label">Note for the instructor</string>
+    <string name="editor_stage_note_hint">Shown on the session screen. Not spoken aloud.</string>
+    <string name="editor_stage_alerts">Alerts</string>
+    <string name="editor_stage_own_alerts">Own alerts</string>
+    <string name="editor_stage_own_alerts_hint">Off — the stage inherits the profile alerts.</string>
+    <string name="editor_stage_open_alerts">Configure stage alerts</string>
+    <string name="editor_stage_rest_preset">Rest stage: the “Silent” preset has been applied — a singing bowl at the edges and no warnings.</string>
+    <string name="editor_stage_rest_preset_decline">Inherit profile alerts instead</string>
+    <string name="editor_stage_reorder">Drag to reorder</string>
+    <string name="editor_stage_move_up">Move up</string>
+    <string name="editor_stage_move_down">Move down</string>
+    <string name="editor_stage_duplicate">Duplicate stage</string>
+    <string name="editor_stage_remove">Remove stage</string>
+    <string name="editor_stage_free_duration">until you move on</string>
+    <string name="editor_stage_alerts_inherited">profile alerts</string>
+    <string name="editor_stage_alerts_own">own alerts</string>
+
+    <string name="editor_stage_type_normal">Normal</string>
+    <string name="editor_stage_type_transition">Transition</string>
+    <string name="editor_stage_type_rest">Rest</string>
+    <string name="editor_stage_type_free">Free</string>
+    <string name="editor_stage_type_normal_hint">A regular stage with a fixed duration.</string>
+    <string name="editor_stage_type_transition_hint">A short link between blocks.</string>
+    <string name="editor_stage_type_rest_hint">Savasana, relaxation: harsh cues are not acceptable here.</string>
+    <string name="editor_stage_type_free_hint">No planned duration: the count runs up until you move on. Warnings and the end cue do not apply.</string>
+
+    <!-- Экран 5: редактор оповещений -->
+    <string name="editor_alerts_profile_title">Profile alerts</string>
+    <string name="editor_alerts_stage_title">Stage alerts</string>
+    <string name="editor_alerts_owner">Applies to “%1$s”</string>
+    <string name="editor_alerts_preset">Preset</string>
+    <string name="editor_alerts_volume">Volume</string>
+    <string name="editor_alerts_volume_value">%1$d%%</string>
+    <string name="editor_alerts_volume_hint">A multiplier on top of the system alarm volume. The app never changes your system settings.</string>
+    <string name="editor_alerts_enabled">Play this cue</string>
+    <string name="editor_alerts_start">Stage start</string>
+    <string name="editor_alerts_warnings">Warnings</string>
+    <string name="editor_alerts_end">Stage end</string>
+    <string name="editor_alerts_add_warning">Add warning</string>
+    <string name="editor_alerts_remove_warning">Remove warning</string>
+    <string name="editor_alerts_warning_at">%1$s before the end</string>
+    <string name="editor_alerts_warning_unreachable">The stage is shorter than this offset — the warning will be skipped silently.</string>
+    <string name="editor_alerts_offset_minutes">%1$d min</string>
+    <string name="editor_alerts_custom_text">Text to speak</string>
+    <string name="editor_alerts_preview">Preview</string>
+    <string name="editor_alerts_free_stage">A free stage has no end, so warnings and the end cue only fire when you move on manually.</string>
+
+    <string name="editor_preset_standard">Standard</string>
+    <string name="editor_preset_silent">Silent</string>
+    <string name="editor_preset_vibro">Vibration only</string>
+    <string name="editor_preset_max">Maximum</string>
+    <string name="editor_preset_custom">Custom</string>
+
+    <string name="editor_channel_sound">Sound</string>
+    <string name="editor_channel_voice">Voice</string>
+    <string name="editor_channel_vibration">Vibration</string>
+
+    <string name="editor_sound_none">No sound</string>
+    <string name="editor_sound_soft_gong">Soft gong</string>
+    <string name="editor_sound_singing_bowl">Singing bowl</string>
+    <string name="editor_sound_bell">Bell</string>
+    <string name="editor_sound_tone">Tone</string>
+    <string name="editor_sound_tick">Tick</string>
+
+    <string name="editor_vibration_single">Single</string>
+    <string name="editor_vibration_double">Double</string>
+    <string name="editor_vibration_long">Long</string>
+
+    <string name="editor_voice_none">No voice</string>
+    <string name="editor_voice_stage_name">Stage name</string>
+    <string name="editor_voice_next_stage">Next stage</string>
+    <string name="editor_voice_time_remaining">Time remaining</string>
+    <string name="editor_voice_session_finished">Class complete</string>
+    <string name="editor_voice_custom">Custom text</string>
+
+    <string name="editor_duration_minutes">Minutes</string>
+    <string name="editor_duration_seconds">Seconds</string>
+    <string name="editor_duration_preset">%1$d min</string>
+
+    <!--
+      Категории продублированы из :feature:profiles: модули экранов друг от
+      друга не зависят, а общий модуль ради семи подписей избыточен.
+    -->
+    <string name="editor_category_general">General</string>
+    <string name="editor_category_hatha">Hatha</string>
+    <string name="editor_category_vinyasa">Vinyasa</string>
+    <string name="editor_category_yin">Yin</string>
+    <string name="editor_category_meditation">Meditation</string>
+    <string name="editor_category_stretching">Stretching</string>
+    <string name="editor_category_breathing">Breathing</string>
+</resources>

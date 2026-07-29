@@ -61,11 +61,7 @@ fun voiceTextOf(request: AlertRequest): VoiceText? {
         // У последнего этапа следующего нет — вместо неловкой паузы занятие
         // честно объявляется завершённым.
         VoicePhrase.NEXT_STAGE -> {
-            request.nextStageName
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-                ?.let(VoiceText::NextStage)
-                ?: VoiceText.SessionFinished
+            nextStageText(request)
         }
 
         VoicePhrase.TIME_REMAINING -> {
@@ -83,6 +79,28 @@ fun voiceTextOf(request: AlertRequest): VoiceText? {
                 ?.let(VoiceText::Raw)
         }
     }
+}
+
+/**
+ * «Далее: X» на границе этапов.
+ *
+ * END уходящего этапа и START приходящего срабатывают в одну и ту же
+ * миллисекунду, а очередь TTS проговаривает обе фразы подряд. Если приходящий
+ * этап объявит себя сам — а в стандартной схеме ТЗ §5.2 он именно это и делает,
+ * — то «далее: асаны» перед «асаны» превращает подсказку в эхо. Поэтому здесь
+ * молчание: этап назовёт себя в момент, когда он действительно начнётся.
+ *
+ * У последнего этапа следующего нет — вместо неловкой паузы занятие честно
+ * объявляется завершённым.
+ */
+private fun nextStageText(request: AlertRequest): VoiceText? {
+    val next =
+        request.nextStageName
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: return VoiceText.SessionFinished
+
+    return if (request.nextStageAnnouncesItself) null else VoiceText.NextStage(next)
 }
 
 /**

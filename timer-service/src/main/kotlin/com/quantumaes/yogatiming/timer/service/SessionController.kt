@@ -8,6 +8,8 @@ import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerEngine
 import com.quantumaes.yogatiming.timer.engine.TimerEvent
+import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
+import com.quantumaes.yogatiming.timer.engine.model.PlannedStage
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.engine.model.SessionState
@@ -132,11 +134,13 @@ class SessionController
         fun alertRequest(event: TimerEvent.PlayAlert): AlertRequest? {
             val plan = engine.currentState?.plan ?: return null
             val stage = plan.stages.getOrNull(event.stageIndex) ?: return null
+            val next = plan.stages.getOrNull(event.stageIndex + 1)
             return AlertRequest(
                 alert = event.alert.domainAlert(),
                 trigger = event.alert.trigger,
                 stageName = stage.name,
-                nextStageName = plan.stages.getOrNull(event.stageIndex + 1)?.name,
+                nextStageName = next?.name,
+                nextStageAnnouncesItself = event.alert.trigger == AlertTrigger.END && next.announcesItself(),
             )
         }
 
@@ -181,3 +185,17 @@ class SessionController
             sessionStore.clear()
         }
     }
+
+/**
+ * Назовёт ли этап своё имя, входя в занятие.
+ *
+ * Проверяется только на границе: END уходящего этапа и START приходящего
+ * срабатывают одновременно, и оба объявления одного и того же этапа подряд —
+ * это эхо, а не подсказка (см. `voiceTextOf`).
+ */
+private fun PlannedStage?.announcesItself(): Boolean {
+    val stage = this ?: return false
+    if (stage.name.isBlank()) return false
+    val start = stage.alerts.start ?: return false
+    return start.domainAlert().announcesStageName
+}

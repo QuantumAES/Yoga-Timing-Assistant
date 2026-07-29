@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Совпадает с background тёмной схемы YtaTheme: без вспышки при старте. -->
-    <color name="splash_background">#0F1511</color>
+    <!--
+      Фон окна до первого кадра Compose. Совпадает с background светлой схемы
+      YtaTheme; тёмный вариант — в values-night. Без квалификатора окно осталось
+      бы тёмным в светлой теме и просвечивало сквозь любой экран, который не
+      рисует собственный фон.
+    -->
+    <color name="splash_background">#FBFDF7</color>
+    <!-- Фон адаптивной иконки от темы не зависит: система рисует её на своём фоне. -->
     <color name="ic_launcher_background">#0F1511</color>
 </resources>

@@ -1,6 +1,10 @@
 package com.quantumaes.yogatiming.timer.service
 
 import com.google.common.truth.Truth.assertThat
+import com.quantumaes.yogatiming.domain.alert.AlertRequest
+import com.quantumaes.yogatiming.domain.session.SessionPlanFactory
+import com.quantumaes.yogatiming.timer.engine.TimerEvent
+import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.persist.PersistedSession
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -129,6 +133,79 @@ class SessionControllerTest {
             assertThat(watchdog.armedAt).isNull()
             assertThat(watchdog.cancelled).isTrue()
         }
+
+    /**
+     * Граница этапов: END уходящего и START приходящего срабатывают в один и
+     * тот же момент. Если приходящий этап объявит себя сам — а стандартная
+     * схема ТЗ §5.2 именно так и настроена, — то «далее: асаны» перед «асаны»
+     * звучит как эхо. Контроллер обязан сообщить об этом проигрывателю.
+     */
+    @Test
+    fun `на границе этапов END помечается как избыточное объявление`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            val end = playAlert(controller, AlertTrigger.END, stageIndex = 0)
+
+            assertThat(end.nextStageName).isEqualTo("Асаны")
+            assertThat(end.nextStageAnnouncesItself).isTrue()
+        }
+
+    @Test
+    fun `у последнего этапа объявлять нечего`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            val end = playAlert(controller, AlertTrigger.END, stageIndex = 2)
+
+            assertThat(end.nextStageName).isNull()
+            assertThat(end.nextStageAnnouncesItself).isFalse()
+        }
+
+    /**
+     * START соседа не заглушается: между стартом этапа и стартом следующего
+     * лежит целый этап, а не мгновение.
+     */
+    @Test
+    fun `START соседним объявлением не подавляется`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            val start = playAlert(controller, AlertTrigger.START, stageIndex = 0)
+
+            assertThat(start.nextStageAnnouncesItself).isFalse()
+        }
+
+    /**
+     * План собирается тем же способом, что и внутри контроллера, — из профиля.
+     * Событие движка подделывается, потому что дожидаться настоящей границы
+     * этапа значило бы гонять десять минут виртуального времени ради одного поля.
+     */
+    private fun playAlert(
+        controller: SessionController,
+        trigger: AlertTrigger,
+        stageIndex: Int,
+    ): AlertRequest {
+        val plan = requireNotNull(SessionPlanFactory.create(demoProfile(PROFILE_ID)))
+        val alerts = plan.stages[stageIndex].alerts
+        val planned = if (trigger == AlertTrigger.END) alerts.end else alerts.start
+        val event =
+            TimerEvent.PlayAlert(
+                alert = requireNotNull(planned) { "У этапа $stageIndex нет оповещения $trigger" },
+                stageIndex = stageIndex,
+                scheduledAtMs = time.elapsedMs,
+            )
+        return requireNotNull(controller.alertRequest(event))
+    }
 
     @Test
     fun `профиль без этапов запустить нельзя`() =

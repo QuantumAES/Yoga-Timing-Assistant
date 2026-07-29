@@ -13,12 +13,18 @@ import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
  * У [alert] к этому моменту заполнена и громкость: наследование от
  * `masterVolumePercent` разрешено при сборке плана, как и всё остальное
  * наследование (см. `SessionPlanFactory`).
+ *
+ * @param nextStageAnnouncesItself следующий этап объявит своё название сам,
+ *   своим START-оповещением. Флаг заполняет владелец плана: только он видит
+ *   оповещения соседнего этапа. Нужен, чтобы «далее: X» и «X» не прозвучали
+ *   подряд на одной и той же границе.
  */
 data class AlertRequest(
     val alert: Alert,
     val trigger: AlertTrigger,
     val stageName: String,
     val nextStageName: String?,
+    val nextStageAnnouncesItself: Boolean = false,
 )
 
 /**

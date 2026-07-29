@@ -16,6 +16,7 @@ class VoiceTextTest {
         customText: String? = null,
         nextStageName: String? = "Шавасана",
         trigger: AlertTrigger = AlertTrigger.START,
+        nextStageAnnouncesItself: Boolean = false,
     ) = AlertRequest(
         alert =
             Alert(
@@ -27,6 +28,7 @@ class VoiceTextTest {
         trigger = trigger,
         stageName = "Разминка",
         nextStageName = nextStageName,
+        nextStageAnnouncesItself = nextStageAnnouncesItself,
     )
 
     @Test
@@ -46,6 +48,27 @@ class VoiceTextTest {
         val request = request(VoicePhrase.NEXT_STAGE, trigger = AlertTrigger.END)
 
         assertThat(voiceTextOf(request)).isEqualTo(VoiceText.NextStage("Шавасана"))
+    }
+
+    @Test
+    fun `этап, который назовёт себя сам, вторым объявлением не дублируется`() {
+        val request =
+            request(VoicePhrase.NEXT_STAGE, trigger = AlertTrigger.END, nextStageAnnouncesItself = true)
+
+        assertThat(voiceTextOf(request)).isNull()
+    }
+
+    @Test
+    fun `конец занятия объявляется, даже если следующий этап объявил бы себя сам`() {
+        val request =
+            request(
+                VoicePhrase.NEXT_STAGE,
+                nextStageName = null,
+                trigger = AlertTrigger.END,
+                nextStageAnnouncesItself = true,
+            )
+
+        assertThat(voiceTextOf(request)).isEqualTo(VoiceText.SessionFinished)
     }
 
     @Test

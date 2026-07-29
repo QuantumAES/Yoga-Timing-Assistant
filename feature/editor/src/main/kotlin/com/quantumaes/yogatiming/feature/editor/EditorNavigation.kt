@@ -2,7 +2,9 @@ package com.quantumaes.yogatiming.feature.editor
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
+import com.quantumaes.yogatiming.feature.editor.alert.AlertConfigScreen
+import com.quantumaes.yogatiming.feature.editor.profile.ProfileEditorScreen
+import com.quantumaes.yogatiming.feature.editor.stage.StageEditorScreen
 import kotlinx.serialization.Serializable
 
 /**
@@ -33,38 +35,43 @@ data class AlertConfigRoute(
     val stageId: Long = NEW_ENTITY_ID,
 )
 
+/**
+ * Имена аргументов маршрутов.
+ *
+ * Модели читают их из `SavedStateHandle` по имени, а не через `toRoute`:
+ * `toRoute` умеет разбирать только тот `SavedStateHandle`, который собрала сама
+ * навигация, и модель с ним невозможно поднять в юнит-тесте. Имена совпадают
+ * с именами свойств маршрутов — именно так их туда и кладёт навигация, — и
+ * живут рядом с ними, чтобы переименование было видно в одном файле.
+ */
+internal object RouteArgs {
+    const val PROFILE_ID = "profileId"
+    const val STAGE_ID = "stageId"
+}
+
+/**
+ * Переходы принимают идентификатор от экрана, а не берут его из маршрута:
+ * новый профиль получает идентификатор только тогда, когда он понадобился, —
+ * при первом переходе к этапам или к оповещениям.
+ */
 fun NavGraphBuilder.editorScreens(
-    onAddStage: (profileId: Long) -> Unit,
-    onEditStage: (profileId: Long, stageId: Long) -> Unit,
-    onEditProfileAlerts: (profileId: Long) -> Unit,
-    onEditStageAlerts: (profileId: Long, stageId: Long) -> Unit,
+    onOpenStage: (profileId: Long, stageId: Long) -> Unit,
+    onOpenAlerts: (profileId: Long, stageId: Long) -> Unit,
     onBack: () -> Unit,
 ) {
-    composable<ProfileEditorRoute> { entry ->
-        val route = entry.toRoute<ProfileEditorRoute>()
+    composable<ProfileEditorRoute> {
         ProfileEditorScreen(
-            profileId = route.profileId,
-            onAddStage = { onAddStage(route.profileId) },
-            onEditStage = { stageId -> onEditStage(route.profileId, stageId) },
-            onEditAlerts = { onEditProfileAlerts(route.profileId) },
+            onOpenStage = onOpenStage,
+            onOpenAlerts = { profileId -> onOpenAlerts(profileId, NEW_ENTITY_ID) },
             onBack = onBack,
         )
     }
 
-    composable<StageEditorRoute> { entry ->
-        val route = entry.toRoute<StageEditorRoute>()
-        StageEditorScreen(
-            stageId = route.stageId,
-            onEditAlerts = { onEditStageAlerts(route.profileId, route.stageId) },
-            onBack = onBack,
-        )
+    composable<StageEditorRoute> {
+        StageEditorScreen(onOpenAlerts = onOpenAlerts, onBack = onBack)
     }
 
-    composable<AlertConfigRoute> { entry ->
-        val route = entry.toRoute<AlertConfigRoute>()
-        AlertConfigScreen(
-            isStageScope = route.stageId != NEW_ENTITY_ID,
-            onBack = onBack,
-        )
+    composable<AlertConfigRoute> {
+        AlertConfigScreen(onBack = onBack)
     }
 }

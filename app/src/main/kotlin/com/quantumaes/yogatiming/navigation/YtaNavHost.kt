@@ -45,12 +45,10 @@ fun YtaNavHost(navController: NavHostController = rememberNavController()) {
         )
 
         editorScreens(
-            onAddStage = { profileId -> navController.navigate(StageEditorRoute(profileId)) },
-            onEditStage = { profileId, stageId ->
+            onOpenStage = { profileId, stageId ->
                 navController.navigate(StageEditorRoute(profileId, stageId))
             },
-            onEditProfileAlerts = { profileId -> navController.navigate(AlertConfigRoute(profileId)) },
-            onEditStageAlerts = { profileId, stageId ->
+            onOpenAlerts = { profileId, stageId ->
                 navController.navigate(AlertConfigRoute(profileId, stageId))
             },
             onBack = { navController.popBackStack() },

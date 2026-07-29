@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="timer_idle">Занятие не запущено</string>
+    <string name="timer_no_time">--:--</string>
+    <string name="timer_previous">Пред.</string>
+    <string name="timer_next">След.</string>
+    <string name="timer_pause">Пауза</string>
+    <string name="timer_resume">Продолжить</string>
+    <string name="timer_stop">Стоп</string>
+    <string name="timer_add_30">+30 с</string>
+    <string name="timer_subtract_30">−30 с</string>
+    <string name="timer_stage_position">Этап %1$d/%2$d</string>
+    <string name="timer_total_remaining">осталось %1$s</string>
+    <string name="timer_total_at_least">≥ %1$s</string>
+
+    <string name="timer_finished_title">Занятие завершено</string>
+    <string name="timer_finished_repeat">Повторить</string>
+    <string name="timer_finished_exit">К списку профилей</string>
+
+    <string name="timer_notice_dismiss">Скрыть</string>
+    <string name="timer_notice_understood">Понятно</string>
+    <string name="timer_notice_notifications">Уведомления выключены: управлять занятием из шторки нельзя, а система охотнее останавливает сервис без видимого уведомления.</string>
+    <string name="timer_notice_dnd">Режим «Полная тишина» глушит канал будильника — сигналов занятия слышно не будет.</string>
+    <string name="timer_notice_battery">Пока приложение живо, отсчёт идёт по монотонным часам и сигналы звучат вовремя. Но система вправе выгрузить его из памяти, и тогда возврат к занятию займёт до нескольких минут. Список «без ограничений» это снимает — фирменные энергосберегайки оболочки на него не влияют.</string>
+    <string name="timer_notice_exact_alarms">Точные будильники запрещены. Отсчёт это не затрагивает, но если система выгрузит приложение, страховочное пробуждение сработает с задержкой.</string>
+    <string name="timer_notice_action_notifications">Включить</string>
+    <string name="timer_notice_action_dnd">Настроить</string>
+    <string name="timer_notice_action_battery">Снять ограничения</string>
+    <string name="timer_notice_action_exact_alarms">Разрешить</string>
+</resources>

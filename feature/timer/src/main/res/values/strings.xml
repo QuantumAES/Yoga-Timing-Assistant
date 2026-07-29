@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="timer_idle">Session not started</string>
+    <string name="timer_no_time">--:--</string>
+    <string name="timer_previous">Prev</string>
+    <string name="timer_next">Next</string>
+    <string name="timer_pause">Pause</string>
+    <string name="timer_resume">Resume</string>
+    <string name="timer_stop">Stop</string>
+    <string name="timer_add_30">+30 s</string>
+    <string name="timer_subtract_30">−30 s</string>
+    <!-- «Этап 3/6 · осталось 42:10 · +0:30» -->
+    <string name="timer_stage_position">Stage %1$d/%2$d</string>
+    <string name="timer_total_remaining">remaining %1$s</string>
+    <string name="timer_total_at_least">≥ %1$s</string>
+
+    <string name="timer_finished_title">Class complete</string>
+    <string name="timer_finished_repeat">Repeat</string>
+    <string name="timer_finished_exit">Back to profiles</string>
+
+    <string name="timer_notice_dismiss">Hide</string>
+    <string name="timer_notice_understood">Got it</string>
+    <string name="timer_notice_notifications">Notifications are off: the session cannot be controlled from the shade, and the system is quicker to stop a service with no visible notification.</string>
+    <string name="timer_notice_dnd">Total silence mutes the alarm channel — you will not hear the session cues.</string>
+    <string name="timer_notice_battery">While the app is alive the countdown runs on monotonic clocks and cues sound on time. But the system may evict it from memory, and getting back to the session can then take minutes. The unrestricted list removes that; vendor battery savers do not affect it.</string>
+    <string name="timer_notice_exact_alarms">Exact alarms are not allowed. The countdown is unaffected, but if the system evicts the app, the safety wake-up will be late.</string>
+    <string name="timer_notice_action_notifications">Turn on</string>
+    <string name="timer_notice_action_dnd">Configure</string>
+    <string name="timer_notice_action_battery">Remove limits</string>
+    <string name="timer_notice_action_exact_alarms">Allow</string>
+</resources>

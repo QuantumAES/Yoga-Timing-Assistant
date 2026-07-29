@@ -6,30 +6,48 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+
+/**
+ * Тёмная ли сейчас тема.
+ *
+ * Нужен там, где цвет не берётся из `colorScheme`: рабочий экран занятия ходит
+ * мимо схемы Material в [TimerPalette], но обязан переключаться вместе с ней.
+ * Вычислять «тёмность» по яркости `colorScheme.background` было бы гаданием.
+ */
+val LocalYtaDarkTheme = staticCompositionLocalOf { false }
+
+/**
+ * Палитра рабочего экрана, соответствующая текущей теме.
+ *
+ * Динамические цвета сюда не попадают ни при каких настройках
+ * (docs/06-MVP-SCOPE.md §4).
+ */
+val timerPalette: TimerPalette
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalYtaDarkTheme.current) TimerPalette.Dark else TimerPalette.Light
 
 /**
  * Тема приложения.
  *
- * Приоритет (docs/06-MVP-SCOPE.md, решение C-4):
- * явный выбор пользователя → системная тема → тёмная.
+ * Разрешение выбора пользователя (светлая / тёмная / системная) остаётся выше,
+ * в `:app`: тема принимает уже готовый ответ. Так `:core:designsystem` не знает
+ * ни про хранилище настроек, ни про домен, а превью в feature-модулях
+ * продолжают работать без единого параметра.
  *
  * Динамические цвета применяются на всех экранах, **кроме рабочего**:
- * тот использует [TimerPalette] напрямую.
+ * тот использует [TimerPalette] через [timerPalette].
  */
 @Composable
 fun YtaTheme(
-    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val darkTheme =
-        when (themeMode) {
-            ThemeMode.LIGHT -> false
-            ThemeMode.DARK -> true
-            ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        }
-
     val dynamicAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val colorScheme =
         when {
@@ -47,9 +65,11 @@ fun YtaTheme(
             }
         }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = YtaTypography,
-        content = content,
-    )
+    CompositionLocalProvider(LocalYtaDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = YtaTypography,
+            content = content,
+        )
+    }
 }
