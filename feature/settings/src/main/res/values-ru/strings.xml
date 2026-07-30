@@ -2,6 +2,30 @@
 <resources>
     <string name="settings_title">Настройки</string>
     <string name="settings_back">Назад</string>
+    <string name="settings_percent_value">%1$d%%</string>
+
+    <string name="settings_section_sound">Звук</string>
+    <string name="settings_volume">Громкость сигналов</string>
+    <string name="settings_volume_hint">Множитель поверх громкости, заданной в профиле. Системную громкость приложение не меняет никогда — ползунок будильника остаётся вашим.</string>
+    <string name="settings_test_sound">Проверить звук</string>
+    <string name="settings_duck">Понижать музыку при сигнале</string>
+    <string name="settings_duck_hint">Фоновая музыка приглушается на время сигнала и возвращается сама. Выключено — сигнал звучит поверх музыки, не трогая её.</string>
+
+    <string name="settings_section_voice">Голос (TTS)</string>
+    <string name="settings_voice">Голосовые оповещения</string>
+    <string name="settings_voice_hint">По умолчанию выключены: синтезатор ставит ударения в санскритских названиях асан по-своему. Поправьте поле «Произношение» у этапа и включите.</string>
+    <string name="settings_speech_rate">Скорость речи</string>
+    <string name="settings_speech_rate_hint">100% — обычная скорость движка. Язык голоса следует языку приложения.</string>
+    <string name="settings_test_voice">Проверить голос</string>
+    <string name="settings_voice_missing_data">Голосовые данные для этого языка не установлены — оповещения промолчат.</string>
+    <string name="settings_voice_install">Установить голосовые данные</string>
+    <string name="settings_voice_unavailable">На устройстве нет голоса для языка приложения. Оповещения с голосом заменяются мягким гонгом.</string>
+
+    <string name="settings_section_screen">Экран</string>
+    <string name="settings_keep_screen_on">Не гасить экран</string>
+    <string name="settings_keep_screen_on_hint">Только на время занятия. Отсчёт от этого не зависит: он идёт и при выключенном экране.</string>
+    <string name="settings_auto_dim">Затемнять в режиме фокуса</string>
+    <string name="settings_auto_dim_hint">Через 15 секунд без касаний экран приглушается, но остаётся читаемым. Любое касание и смена этапа возвращают яркость.</string>
 
     <string name="settings_section_appearance">Оформление</string>
     <string name="settings_theme_system">Как в системе</string>
@@ -10,16 +34,24 @@
     <string name="settings_dynamic_color">Цвета из обоев</string>
     <string name="settings_dynamic_color_hint">Палитра Material You. К рабочему экрану занятия не применяется никогда — она не гарантирует контраст.</string>
 
-    <string name="settings_section_alerts">Оповещения</string>
-    <string name="settings_voice">Голосовые оповещения</string>
-    <string name="settings_voice_hint">По умолчанию выключены: синтезатор ставит ударения в санскритских названиях асан по-своему. Поправьте поле «Произношение» у этапа и включите.</string>
-
     <string name="settings_section_hints">Подсказки</string>
     <string name="settings_restore_hints">Показывать подсказки снова</string>
     <string name="settings_restore_hints_hint">Разовые советы об энергосбережении и точных будильниках показываются один раз и больше не возвращаются.</string>
     <string name="settings_hints_restored">Подсказки снова будут показаны</string>
+    <string name="settings_replay_onboarding">Показать знакомство заново</string>
 
-    <string name="settings_onboarding_title">Знакомство</string>
-    <string name="settings_onboarding_description">Экран 7: онбординг. Заглушка Фазы 1.</string>
-    <string name="settings_onboarding_start">Начать</string>
+    <string name="settings_section_about">О программе</string>
+    <string name="settings_about_version">Версия %1$s</string>
+    <string name="settings_about_donate_hint">Приложение бесплатное и без рекламы. Если оно помогает вам вести занятия, разработку можно поддержать.</string>
+    <string name="settings_about_donate">Поддержать разработчика</string>
+
+    <string name="onboarding_profiles_title">Соберите занятие</string>
+    <string name="onboarding_profiles_text">Профиль — это занятие, разбитое на этапы. Настройте длительности один раз и запускайте каждую неделю.</string>
+    <string name="onboarding_session_title">Ведите занятие, не глядя на экран</string>
+    <string name="onboarding_session_text">Крупные цифры, читаемые с другого конца зала, и отсчёт, который продолжается при заблокированном экране и свёрнутом приложении.</string>
+    <string name="onboarding_alerts_title">Оповещения под этап</string>
+    <string name="onboarding_alerts_text">Звук, вибрация и голос в начале, в конце и за минуту до него. Шавасана остаётся тихой.</string>
+    <string name="onboarding_next">Далее</string>
+    <string name="onboarding_skip">Пропустить</string>
+    <string name="onboarding_start">Начать</string>
 </resources>

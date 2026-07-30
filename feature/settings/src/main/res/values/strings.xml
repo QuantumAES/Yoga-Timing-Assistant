@@ -2,6 +2,30 @@
 <resources>
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
+    <string name="settings_percent_value">%1$d%%</string>
+
+    <string name="settings_section_sound">Sound</string>
+    <string name="settings_volume">Cue volume</string>
+    <string name="settings_volume_hint">A multiplier on top of the volume set in the profile. The app never changes your system volume — the alarm slider stays yours.</string>
+    <string name="settings_test_sound">Test the sound</string>
+    <string name="settings_duck">Duck music during a cue</string>
+    <string name="settings_duck_hint">Background music dips for the length of the cue and comes back on its own. Off — the cue plays over the music without touching it.</string>
+
+    <string name="settings_section_voice">Voice (TTS)</string>
+    <string name="settings_voice">Voice cues</string>
+    <string name="settings_voice_hint">Off by default: the synthesiser stresses Sanskrit asana names its own way. Set “Pronunciation” on a stage to fix it, then turn this on.</string>
+    <string name="settings_speech_rate">Speech rate</string>
+    <string name="settings_speech_rate_hint">100% is the engine default. The language follows the app language.</string>
+    <string name="settings_test_voice">Test the voice</string>
+    <string name="settings_voice_missing_data">The voice data for this language is not installed — cues will stay silent.</string>
+    <string name="settings_voice_install">Install the voice data</string>
+    <string name="settings_voice_unavailable">This device has no voice for the app language. Cues configured for voice will fall back to a soft gong.</string>
+
+    <string name="settings_section_screen">Screen</string>
+    <string name="settings_keep_screen_on">Keep the screen on</string>
+    <string name="settings_keep_screen_on_hint">During a session only. The countdown does not depend on it: it keeps running with the screen off.</string>
+    <string name="settings_auto_dim">Dim in focus mode</string>
+    <string name="settings_auto_dim_hint">After 15 seconds without a touch the screen dims but stays readable. Any touch or a stage change brings the brightness back.</string>
 
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_theme_system">Follow system</string>
@@ -10,16 +34,29 @@
     <string name="settings_dynamic_color">Wallpaper colors</string>
     <string name="settings_dynamic_color_hint">Material You palette. Never applied to the session screen — it does not guarantee contrast.</string>
 
-    <string name="settings_section_alerts">Alerts</string>
-    <string name="settings_voice">Voice cues</string>
-    <string name="settings_voice_hint">Off by default: the synthesiser stresses Sanskrit asana names its own way. Set “Pronunciation” on a stage to fix it, then turn this on.</string>
-
     <string name="settings_section_hints">Hints</string>
     <string name="settings_restore_hints">Show hints again</string>
     <string name="settings_restore_hints_hint">One-off advice about battery optimisation and exact alarms is shown once and then hidden for good.</string>
     <string name="settings_hints_restored">Hints will be shown again</string>
+    <string name="settings_replay_onboarding">Show the intro again</string>
 
-    <string name="settings_onboarding_title">Welcome</string>
-    <string name="settings_onboarding_description">Screen 7: onboarding. Phase 1 placeholder.</string>
-    <string name="settings_onboarding_start">Start</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_about_donate_hint">The app is free and has no ads. If it helps you teach, you can support its development.</string>
+    <string name="settings_about_donate">Support the developer</string>
+    <!--
+      Единственное место, где меняется адрес страницы поддержки. Пустая строка
+      убирает кнопку целиком — сборка без ссылки остаётся честной.
+    -->
+    <string name="settings_about_donate_url" translatable="false">https://boosty.to/quantumaes</string>
+
+    <string name="onboarding_profiles_title">Build your class</string>
+    <string name="onboarding_profiles_text">A profile is a class split into stages. Set the duration once and reuse it every week.</string>
+    <string name="onboarding_session_title">Teach without watching the screen</string>
+    <string name="onboarding_session_text">Huge digits readable from across the room, and a countdown that keeps running with the screen locked and the app in the background.</string>
+    <string name="onboarding_alerts_title">Cues that fit the stage</string>
+    <string name="onboarding_alerts_text">Sound, vibration and voice at the start, the end and a minute before it. Savasana stays quiet.</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_start">Get started</string>
 </resources>

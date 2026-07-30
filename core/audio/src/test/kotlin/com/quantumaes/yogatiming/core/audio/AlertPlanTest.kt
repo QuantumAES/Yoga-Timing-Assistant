@@ -181,6 +181,27 @@ class AlertPlanTest {
 
         assertThat(plan.sound).isEqualTo(AlertSound.CUSTOM)
         assertThat(plan.customSoundUri).isEqualTo("content://media/audio/42")
+        assertThat(plan.customSoundLimitMs).isEqualTo(Alert.DEFAULT_CUSTOM_SOUND_SEC * 1_000L)
+    }
+
+    @Test
+    fun `длительность своего звука приезжает в план и не выходит за границы`() {
+        val alert =
+            Alert(
+                channels = setOf(AlertChannel.SOUND),
+                sound = AlertSound.CUSTOM,
+                customSoundUri = "content://media/audio/42",
+                customSoundDurationSec = 30,
+            )
+
+        assertThat(alertPlanOf(request(alert), speechReady = true).customSoundLimitMs).isEqualTo(30_000L)
+
+        // Профиль мог приехать из экспорта или из будущей версии — граница
+        // проверяется здесь, а не только в редакторе.
+        val absurd = alert.copy(customSoundDurationSec = 3_600)
+
+        assertThat(alertPlanOf(request(absurd), speechReady = true).customSoundLimitMs)
+            .isEqualTo(Alert.MAX_CUSTOM_SOUND_SEC * 1_000L)
     }
 
     @Test

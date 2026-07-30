@@ -8,9 +8,9 @@
     <string name="timer_stop">Stop</string>
     <string name="timer_add_30">+30 s</string>
     <string name="timer_subtract_30">−30 s</string>
-    <!-- «Этап 3/6 · осталось 42:10 · +0:30» -->
+    <!-- Две строки под таймером: «Этап 3/6» и «Осталось 42:10 · +0:30». -->
     <string name="timer_stage_position">Stage %1$d/%2$d</string>
-    <string name="timer_total_remaining">remaining %1$s</string>
+    <string name="timer_total_remaining">Remaining %1$s</string>
     <string name="timer_total_at_least">≥ %1$s</string>
 
     <string name="timer_finished_title">Class complete</string>

@@ -76,6 +76,11 @@ enum class VoicePhrase {
  * @param customSoundUri `content://`-ссылка на файл пользователя. Осмысленна
  *   только вместе с [AlertSound.CUSTOM]. Хранится строкой, а не `Uri`: домен
  *   про Android не знает, а формат хранения и формат экспорта тут совпадают.
+ * @param customSoundDurationSec сколько секунд играть файл пользователя.
+ *   Оповещение — это сигнал, а не фонограмма: файл может оказаться
+ *   пятиминутной мелодией, и без верхней границы этап прошёл бы под музыку,
+ *   которую нечем остановить. Последние секунды звучат с затуханием
+ *   ([CUSTOM_SOUND_FADE_SEC]) — обрыв на полуноте слышен как сбой.
  */
 @Serializable
 data class Alert(
@@ -88,6 +93,7 @@ data class Alert(
     val vibration: VibrationPattern = VibrationPattern.SINGLE,
     val volumePercent: Int? = null,
     val customSoundUri: String? = null,
+    val customSoundDurationSec: Int = DEFAULT_CUSTOM_SOUND_SEC,
 ) : AlertPayload {
     /** Оповещение, которое ничего не сделает: выключено или без единого канала. */
     val isSilent: Boolean get() = !enabled || channels.isEmpty()
@@ -117,5 +123,34 @@ data class Alert(
     val announcesStageName: Boolean
         get() = hasChannel(AlertChannel.VOICE) && voice == VoicePhrase.STAGE_NAME
 
+    /** Сколько играть файл пользователя, в миллисекундах — уже с проверкой границ. */
+    val customSoundLimitMs: Long
+        get() = customSoundDurationSec.coerceIn(MIN_CUSTOM_SOUND_SEC, MAX_CUSTOM_SOUND_SEC) * MS_IN_SECOND
+
     fun hasChannel(channel: AlertChannel): Boolean = enabled && channel in channels
+
+    companion object {
+        /**
+         * Сколько играть файл пользователя, если он не выбрал иначе.
+         *
+         * Десять секунд — верхняя оценка сигнала: дольше звучит только чаша
+         * (4,5 с) и хвост её затухания. Значение то же, что и у
+         * предпрослушивания в редакторе: пользователь слышит ровно то, что
+         * прозвучит на занятии.
+         */
+        const val DEFAULT_CUSTOM_SOUND_SEC = 10
+
+        const val MIN_CUSTOM_SOUND_SEC = 3
+
+        /**
+         * Минута — предел, после которого сигнал перестаёт быть сигналом.
+         * Фоновая музыка на весь этап — это другая задача (и другой продукт).
+         */
+        const val MAX_CUSTOM_SOUND_SEC = 60
+
+        /** Сколько длится затухание в конце. Входит в [customSoundDurationSec], а не добавляется к нему. */
+        const val CUSTOM_SOUND_FADE_SEC = 2
+
+        private const val MS_IN_SECOND = 1_000L
+    }
 }

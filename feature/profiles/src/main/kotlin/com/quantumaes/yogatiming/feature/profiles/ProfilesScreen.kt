@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.quantumaes.yogatiming.core.designsystem.component.AppBrand
 import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
@@ -158,7 +159,12 @@ internal fun ProfilesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.profiles_title)) },
+                // Логотип и название приложения, а не подпись «Профили»:
+                // это главный экран, и он единственный, где марка продукта
+                // вообще может быть видна (полевая проверка 2026-07-30).
+                // Что перед пользователем список профилей, видно по самому
+                // списку, поиску и фильтрам.
+                title = { AppBrand() },
                 actions = {
                     IconButton(onClick = onOpenSettings) {
                         Icon(

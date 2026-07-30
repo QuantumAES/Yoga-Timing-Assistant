@@ -5,12 +5,18 @@ import android.util.Log
 import com.quantumaes.yogatiming.core.audio.di.AlertScope
 import com.quantumaes.yogatiming.domain.alert.AlertPlayer
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
+import com.quantumaes.yogatiming.domain.alert.VoiceStatus
 import com.quantumaes.yogatiming.domain.model.alert.AlertSound
+import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
@@ -24,12 +30,6 @@ private const val DEFER_RETRY_MS = 500L
 
 /** Верхняя оценка длительности фразы: движок TTS сообщит точнее, когда дочитает. */
 private const val SPEECH_MAX_MS = 8_000L
-
-/**
- * Верхняя оценка длительности файла пользователя. Реальную сообщит сам
- * проигрыватель, когда файл дозвучит; до тех пор фоновая музыка приглушена.
- */
-private const val CUSTOM_SOUND_MAX_MS = 20_000L
 
 /** Сколько ждать, пока дозвучит последний сигнал, прежде чем освобождать ресурсы. */
 private const val STOP_GRACE_MS = 6_000L
@@ -70,17 +70,24 @@ class AndroidAlertPlayer
         private var stopping: Job? = null
 
         /**
-         * Разрешён ли голос вообще (Экран 6 настроек).
+         * Настройки звукового тракта (Экран 6).
          *
-         * Читается заранее и держится полем: решение нужно в момент сборки
-         * оповещения, а ждать чтения хранилища на границе этапа нельзя.
-         * По умолчанию выключен — до первого значения из хранилища тоже.
+         * Читаются заранее и держатся полем: решение нужно в момент сборки
+         * оповещения, а ждать чтения хранилища на границе этапа нельзя. До
+         * первого значения из хранилища действуют значения по умолчанию —
+         * те же, что увидит пользователь в настройках.
          */
         @Volatile
-        private var voiceEnabled = false
+        private var settings = AppSettings()
+
+        /** Готовность голоса в терминах домена — её читает Экран 6 настроек. */
+        override val voiceStatus: StateFlow<VoiceStatus> =
+            speech.availability
+                .map { it.asVoiceStatus() }
+                .stateIn(scope, SharingStarted.Eagerly, VoiceStatus.UNKNOWN)
 
         init {
-            scope.launch { settingsStore.settings.collect { voiceEnabled = it.voiceEnabled } }
+            scope.launch { settingsStore.settings.collect { settings = it } }
         }
 
         override fun prepare() {
@@ -92,6 +99,13 @@ class AndroidAlertPlayer
         override fun play(request: AlertRequest) {
             stopping?.cancel()
             scope.launch { deliver(request) }
+        }
+
+        override fun stopCustomSound() {
+            customSound.stop()
+            // Фокус отдаётся не здесь: его держит таймер, взведённый при
+            // запуске оповещения, и переносить эту ответственность на
+            // редактор — значит завести второго хозяина у одного ресурса.
         }
 
         override fun stop() {
@@ -110,9 +124,21 @@ class AndroidAlertPlayer
         }
 
         private suspend fun deliver(request: AlertRequest) {
-            val plan = alertPlanOf(request, speech.maySpeak, voiceEnabled)
+            val current = settings
+            val plan =
+                alertPlanOf(
+                    request = request,
+                    speechReady = speech.maySpeak,
+                    voiceEnabled = current.voiceEnabled,
+                    volumeFactor = current.alertVolumeFactor,
+                )
             if (plan.isEmpty) return
-            if (!plan.needsAudioFocus || awaitFocus(request.trigger)) fire(plan)
+            // Выключенный ducking — это «не просить audio focus вовсе»: сам
+            // запрос и есть приглушение. Плата известна и принята вместе
+            // с настройкой: без запроса не узнать и про разговор, поэтому
+            // правило B-8 на такие оповещения не распространяется.
+            val duck = plan.needsAudioFocus && current.duckMusicOnAlert
+            if (!duck || awaitFocus(request.trigger)) fire(plan, duck)
         }
 
         /**
@@ -133,7 +159,10 @@ class AndroidAlertPlayer
             return true
         }
 
-        private fun fire(plan: AlertPlan) {
+        private fun fire(
+            plan: AlertPlan,
+            duck: Boolean,
+        ) {
             var tailMs = 0L
 
             plan.vibration?.let {
@@ -142,11 +171,14 @@ class AndroidAlertPlayer
             }
             plan.sound?.let {
                 if (it == AlertSound.CUSTOM) {
-                    // Длительность чужого файла заранее неизвестна, поэтому
-                    // фокус держится по верхней оценке и отпускается по факту
-                    // окончания — тем же приёмом, что и для голоса.
-                    plan.customSoundUri?.let { uri -> customSound.play(uri, plan.gain, ::onCustomSoundDone) }
-                    tailMs = maxOf(tailMs, CUSTOM_SOUND_MAX_MS)
+                    // Длительность чужого файла заранее неизвестна, но верхняя
+                    // граница есть всегда: дольше отведённого лимита он не
+                    // звучит. Короткий файл кончится раньше и отпустит фокус
+                    // сам — тем же приёмом, что и голос.
+                    plan.customSoundUri?.let { uri ->
+                        customSound.play(uri, plan.gain, plan.customSoundLimitMs, ::onCustomSoundDone)
+                    }
+                    tailMs = maxOf(tailMs, plan.customSoundLimitMs)
                 } else {
                     sound.play(it, plan.gain)
                     tailMs = maxOf(tailMs, sound.durationMs(it))
@@ -156,10 +188,11 @@ class AndroidAlertPlayer
 
             plan.voice?.let {
                 speaking = true
+                speech.setRate(settings.speechRate)
                 speech.speak(phrases.render(it), plan.gain, ::onSpoken)
             }
 
-            if (plan.needsAudioFocus) {
+            if (duck) {
                 focus.releaseAfter(if (plan.voice == null) tailMs else maxOf(tailMs, SPEECH_MAX_MS))
             }
         }
@@ -187,4 +220,18 @@ class AndroidAlertPlayer
         }
 
         private fun remainingSoundMs(): Long = (soundUntilMs - SystemClock.elapsedRealtime()).coerceAtLeast(0)
+    }
+
+/**
+ * Состояние движка TTS в терминах домена.
+ *
+ * `FAILED` и `NOT_SUPPORTED` для пользователя — одно и то же: голоса нет и
+ * доустановить его нечем. Различие между ними имеет смысл только в логе.
+ */
+private fun SpeechAvailability.asVoiceStatus(): VoiceStatus =
+    when (this) {
+        SpeechAvailability.UNKNOWN -> VoiceStatus.UNKNOWN
+        SpeechAvailability.READY -> VoiceStatus.READY
+        SpeechAvailability.MISSING_DATA -> VoiceStatus.MISSING_DATA
+        SpeechAvailability.NOT_SUPPORTED, SpeechAvailability.FAILED -> VoiceStatus.UNAVAILABLE
     }

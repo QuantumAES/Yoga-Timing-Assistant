@@ -8,16 +8,17 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object SettingsRoute
 
-/** Экран 7 ТЗ — онбординг, показывается только при первом запуске. */
+/** Экран 7 ТЗ — онбординг: первый запуск и пересмотр из настроек. */
 @Serializable
 data object OnboardingRoute
 
 fun NavGraphBuilder.settingsScreens(
+    onOpenOnboarding: () -> Unit,
     onOnboardingComplete: () -> Unit,
     onBack: () -> Unit,
 ) {
     composable<SettingsRoute> {
-        SettingsScreen(onBack = onBack)
+        SettingsScreen(onBack = onBack, onReplayOnboarding = onOpenOnboarding)
     }
 
     composable<OnboardingRoute> {

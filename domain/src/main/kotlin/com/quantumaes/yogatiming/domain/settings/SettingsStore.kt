@@ -18,4 +18,16 @@ interface SettingsStore {
     suspend fun setDynamicColor(enabled: Boolean)
 
     suspend fun setVoiceEnabled(enabled: Boolean)
+
+    suspend fun setAlertVolume(percent: Int)
+
+    suspend fun setDuckMusicOnAlert(enabled: Boolean)
+
+    suspend fun setSpeechRate(percent: Int)
+
+    suspend fun setKeepScreenOn(enabled: Boolean)
+
+    suspend fun setAutoDim(enabled: Boolean)
+
+    suspend fun setOnboardingCompleted(completed: Boolean)
 }

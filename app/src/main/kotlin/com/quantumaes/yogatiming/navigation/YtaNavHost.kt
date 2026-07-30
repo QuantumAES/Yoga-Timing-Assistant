@@ -10,6 +10,7 @@ import com.quantumaes.yogatiming.feature.editor.StageEditorRoute
 import com.quantumaes.yogatiming.feature.editor.editorScreens
 import com.quantumaes.yogatiming.feature.profiles.ProfilesRoute
 import com.quantumaes.yogatiming.feature.profiles.profilesScreen
+import com.quantumaes.yogatiming.feature.settings.OnboardingRoute
 import com.quantumaes.yogatiming.feature.settings.SettingsRoute
 import com.quantumaes.yogatiming.feature.settings.settingsScreens
 import com.quantumaes.yogatiming.feature.timer.SessionFinishedRoute
@@ -32,10 +33,15 @@ import com.quantumaes.yogatiming.feature.timer.timerScreens
  * и extension-функции для `NavGraphBuilder`, а :app только связывает переходы.
  */
 @Composable
-fun YtaNavHost(navController: NavHostController = rememberNavController()) {
+fun YtaNavHost(
+    navController: NavHostController = rememberNavController(),
+    showOnboarding: Boolean = false,
+) {
     NavHost(
         navController = navController,
-        startDestination = ProfilesRoute,
+        // Онбординг — стартовый экран первого запуска, а не наложение поверх
+        // списка: иначе ссылка из шторки открывала бы занятие под ним.
+        startDestination = if (showOnboarding) OnboardingRoute else ProfilesRoute,
     ) {
         profilesScreen(
             onCreateProfile = { navController.navigate(ProfileEditorRoute()) },
@@ -81,6 +87,10 @@ fun YtaNavHost(navController: NavHostController = rememberNavController()) {
         )
 
         settingsScreens(
+            onOpenOnboarding = { navController.navigate(OnboardingRoute) },
+            // `popUpTo(0)` вычищает стек целиком: возвращаться из списка
+            // профилей в онбординг незачем ни на первом запуске, ни при
+            // пересмотре из настроек.
             onOnboardingComplete = {
                 navController.navigate(ProfilesRoute) {
                     popUpTo(0) { inclusive = true }

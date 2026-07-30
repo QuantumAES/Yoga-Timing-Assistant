@@ -8,4 +8,7 @@ android {
 
 dependencies {
     implementation(project(":domain"))
+    // Онбординг просит разрешение на уведомления:
+    // rememberLauncherForActivityResult живёт здесь.
+    implementation(libs.androidx.activity.compose)
 }

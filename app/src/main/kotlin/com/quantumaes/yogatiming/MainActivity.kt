@@ -59,7 +59,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    YtaNavHost(navController)
+                    // Граф строится только по прочитанным настройкам:
+                    // `startDestination` учитывается ровно при первом
+                    // построении, и собранный вслепую граф начался бы с
+                    // онбординга у того, кто прошёл его год назад. Пустоту
+                    // в эти миллисекунды закрывает splash.
+                    settings?.let { loaded ->
+                        YtaNavHost(navController, showOnboarding = !loaded.onboardingCompleted)
+                    }
                 }
             }
         }

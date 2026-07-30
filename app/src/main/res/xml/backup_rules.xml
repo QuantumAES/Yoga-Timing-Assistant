@@ -1,12 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Auto Backup для Android 11 и ниже.
-  Профили (Room) и настройки (DataStore) бэкапим, состояние активной сессии —
-  нет: на другом устройстве оно бессмысленно. Уточняется в Фазе 7 (P1-11).
+  Auto Backup для Android 11 и ниже (P1-11, закрыто в Фазе 7).
+
+  Что бэкапится: профили с этапами (Room, `yoga-timing.db`) и пользовательские
+  настройки (`user_prefs`). Это всё, что пользователь создавал руками, и всё,
+  чего он лишится при переезде на новое устройство.
+
+  Что не бэкапится:
+
+  * `active_session` — снимок идущего занятия. Он привязан к `elapsedRealtime`
+    и `bootId` конкретного устройства (P1-4): на другом телефоне из него
+    получилось бы занятие, «начатое» неизвестно когда. Восстановление такого
+    снимка приложение и так отвергнет, но и возить его с собой незачем.
+  * WAL и shm Room — временные файлы журнала. Room восстановит их сам,
+    а из бэкапа они приезжают рассогласованными с основным файлом.
+
+  Пути перечислены поимённо, а не доменом целиком: любой новый файл должен
+  попадать в бэкап осознанно, а не потому, что он оказался в той же папке.
 -->
 <full-backup-content>
-    <include domain="database" path="." />
-    <include domain="sharedpref" path="." />
-    <include domain="file" path="datastore" />
-    <exclude domain="file" path="datastore/session_state.preferences_pb" />
+    <include domain="database" path="yoga-timing.db" />
+    <include domain="file" path="datastore/user_prefs.preferences_pb" />
+
+    <exclude domain="database" path="yoga-timing.db-wal" />
+    <exclude domain="database" path="yoga-timing.db-shm" />
 </full-backup-content>

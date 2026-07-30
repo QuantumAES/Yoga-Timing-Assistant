@@ -22,6 +22,11 @@ private const val TAG = "AlertSpeech"
 /** Насколько долго фраза ждёт инициализации движка, прежде чем потерять смысл. */
 private const val PENDING_TOLERANCE_MS = 3_000L
 
+/** Границы скорости речи: те же, что предлагает Экран 6 настроек. */
+private const val DEFAULT_RATE = 1f
+private const val MIN_RATE = 0.5f
+private const val MAX_RATE = 2f
+
 /** Готовность голосового канала (блокер P0-10, ADR-003). */
 enum class SpeechAvailability {
     /** Движок ещё не ответил. */
@@ -78,10 +83,27 @@ class SpeechChannel
 
         private val isReady: Boolean get() = _availability.value == SpeechAvailability.READY
 
+        /** Скорость речи из настроек (Экран 6). Применяется к следующей фразе. */
+        private var rate = DEFAULT_RATE
+
         /** Инициализация занимает сотни миллисекунд — делается заранее (Фаза 4). */
         fun prepare() {
             if (tts != null) return
             tts = TextToSpeech(context, ::onInit)
+        }
+
+        /**
+         * Скорость запоминается, а не применяется сразу.
+         *
+         * Движок может быть ещё не инициализирован — а фраза, для которой
+         * скорость меняли, прозвучит позже. Хранить настройку здесь дешевле,
+         * чем заводить у канала подписку на хранилище.
+         */
+        fun setRate(value: Float) {
+            val bounded = value.coerceIn(MIN_RATE, MAX_RATE)
+            if (bounded == rate) return
+            rate = bounded
+            tts?.setSpeechRate(bounded)
         }
 
         /**
@@ -160,6 +182,9 @@ class SpeechChannel
                 if (engine != null) {
                     engine.setAudioAttributes(alertAudioAttributes)
                     engine.setOnUtteranceProgressListener(progressListener)
+                    // Скорость могли задать до того, как движок ответил:
+                    // настройки читаются быстрее, чем поднимается TTS.
+                    engine.setSpeechRate(rate)
                     _availability.value = languageState(engine)
                 }
             }

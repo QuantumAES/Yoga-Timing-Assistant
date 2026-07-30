@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.domain.model.Profile
 import com.quantumaes.yogatiming.domain.model.Stage
 import com.quantumaes.yogatiming.domain.model.StageType
+import com.quantumaes.yogatiming.domain.model.alert.Alert
 import com.quantumaes.yogatiming.domain.model.alert.AlertChannel
 import com.quantumaes.yogatiming.domain.model.alert.AlertPreset
 import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
@@ -116,6 +117,34 @@ class AlertConfigViewModelTest {
             val config = viewModel.uiState.value.config
             assertThat(config.preset).isEqualTo(AlertPreset.CUSTOM)
             assertThat(config.start?.sound).isEqualTo(AlertSound.BELL)
+        }
+
+    /**
+     * Полевая проверка 2026-07-30, замечание 2: выбранный файл пользователя
+     * играет секундами, и слушать его, настраивая другой звук, бессмысленно.
+     */
+    @Test
+    fun `правка оповещения обрывает предпрослушивание своего файла`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.updateStart { it.copy(sound = AlertSound.CUSTOM) }
+            viewModel.applyPreset(AlertPreset.SILENT)
+
+            assertThat(player.customSoundStopped).isEqualTo(2)
+        }
+
+    /** Замечание 3: у файла пользователя всегда есть предел длительности. */
+    @Test
+    fun `свой звук получает длительность по умолчанию`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.updateStart { it.copy(sound = AlertSound.CUSTOM, customSoundUri = "content://audio/1") }
+
+            val start = requireNotNull(viewModel.uiState.value.config.start)
+            assertThat(start.customSoundDurationSec).isEqualTo(Alert.DEFAULT_CUSTOM_SOUND_SEC)
+            assertThat(start.customSoundLimitMs).isEqualTo(Alert.DEFAULT_CUSTOM_SOUND_SEC * 1_000L)
         }
 
     @Test

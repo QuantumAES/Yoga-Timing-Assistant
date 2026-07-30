@@ -210,11 +210,21 @@ private fun StageRing(
                     color = snapshot.accent(palette),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                // Две строки, а не одна: «Этап 2/6» и остаток занятия читаются
+                // с трёх метров по отдельности и не ужимаются под ширину кольца.
                 Text(
-                    text = totalText(snapshot),
+                    text = stagePositionText(snapshot),
                     style = MaterialTheme.typography.bodyLarge,
                     color = palette.onBackgroundMuted,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+                Text(
+                    text = totalRemainingText(snapshot),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = palette.onBackgroundMuted,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
                 )
             }
         }

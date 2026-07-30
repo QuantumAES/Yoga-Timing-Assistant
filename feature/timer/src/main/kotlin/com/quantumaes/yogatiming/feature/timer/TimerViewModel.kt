@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quantumaes.yogatiming.domain.hint.Hint
 import com.quantumaes.yogatiming.domain.hint.HintStore
+import com.quantumaes.yogatiming.domain.settings.AppSettings
+import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerLimits
 import com.quantumaes.yogatiming.timer.engine.model.RunState
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,8 +44,42 @@ class TimerViewModel
         private val restrictionsDetector: TimerRestrictionsDetector,
         private val restrictionSettings: RestrictionSettings,
         private val hintStore: HintStore,
+        settingsStore: SettingsStore,
     ) : ViewModel() {
+        /**
+         * Настройки экрана занятия (Экран 6): держать ли экран включённым и
+         * гасить ли яркость в фокусе. Читаются здесь, а не в разметке: экран
+         * не должен знать, откуда они берутся.
+         */
+        val settings: StateFlow<AppSettings> =
+            settingsStore.settings.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(NOTICES_SUBSCRIPTION_TIMEOUT_MS),
+                initialValue = AppSettings(),
+            )
+
         val snapshot: StateFlow<SessionSnapshot?> = controller.snapshot
+
+        /**
+         * Занятие, ради которого открыт экран, действительно началось.
+         *
+         * Движок держит снимок последнего занятия и после его конца: пока не
+         * запущено новое, в `snapshot` лежит `FINISHED` от предыдущего. Без
+         * этого флага экран, открытый следом, немедленно уходил бы на «Занятие
+         * завершено» — по чужому состоянию, пока сервис только поднимает новую
+         * сессию (полевая проверка 2026-07-30, замечание 4).
+         */
+        private val started = MutableStateFlow(false)
+
+        /** Занятие этого экрана дошло до конца. Только по нему открывается экран итогов. */
+        val finished: StateFlow<Boolean> =
+            combine(controller.snapshot, started) { snapshot, started ->
+                started && snapshot?.runState == RunState.FINISHED
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(NOTICES_SUBSCRIPTION_TIMEOUT_MS),
+                initialValue = false,
+            )
 
         /**
          * Закрытые пользователем сообщения: разово — на сессию, подсказки — навсегда.
@@ -78,7 +115,21 @@ class TimerViewModel
                     }
                 dismissed.update { it - unseen.toSet() }
             }
+
+            // Занятие считается начатым по факту, а не по команде запуска:
+            // сервис поднимается асинхронно, и до первого «идёт» снимок
+            // принадлежит ещё прошлой сессии.
+            viewModelScope.launch {
+                controller.snapshot.filterNotNull().collect { snapshot ->
+                    if (snapshot.profileId == sessionProfileId && snapshot.runState.isActive) {
+                        started.value = true
+                    }
+                }
+            }
         }
+
+        /** Профиль, за занятием которого следит экран. */
+        private var sessionProfileId: Long? = null
 
         /**
          * Занятие начинается один раз: повторный вход на экран (поворот, возврат
@@ -88,8 +139,13 @@ class TimerViewModel
          * сервис заново и пересобрать план: профиль мог быть отредактирован.
          */
         fun ensureSession(profileId: Long) {
+            sessionProfileId = profileId
             val current = controller.snapshot.value
-            if (current?.profileId == profileId && current.runState.isActive) return
+            if (current?.profileId == profileId && current.runState.isActive) {
+                started.value = true
+                return
+            }
+            started.value = false
             launcher.start(profileId)
         }
 

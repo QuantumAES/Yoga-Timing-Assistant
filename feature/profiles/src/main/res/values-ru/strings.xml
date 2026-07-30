@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="profiles_title">Профили</string>
     <string name="profiles_create">Новый профиль</string>
     <string name="profiles_settings">Настройки</string>
     <string name="profiles_start">Начать занятие</string>

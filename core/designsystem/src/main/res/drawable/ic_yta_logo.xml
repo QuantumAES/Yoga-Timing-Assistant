@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Логотип для интерфейса: тот же циферблат, что и на иконке запуска
+  (app/src/main/res/drawable/ic_launcher_foreground.xml), но без полей
+  адаптивной маски.
+
+  Одноцветный намеренно: цвет задаётся тинтом на стороне Compose
+  (`YtaLogo`), поэтому логотип живёт в обеих темах и в динамической палитре
+  одним файлом. Двухцветная версия потребовала бы либо `?attr/`-ссылок,
+  которые в Compose разрешаются по теме окна, а не по `MaterialTheme`, либо
+  второго файла для тёмной темы.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <path
+        android:pathData="M4,24 A20,20 0 1,1 44,24 A20,20 0 1,1 4,24"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M24,24 L24,11"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M24,24 L33,29"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round" />
+
+</vector>

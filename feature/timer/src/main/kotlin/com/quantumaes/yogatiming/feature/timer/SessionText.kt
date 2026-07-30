@@ -45,8 +45,24 @@ internal fun nextStageText(snapshot: SessionSnapshot): String {
     }
 }
 
+/**
+ * «Этап 2/6» — первая из двух строк под таймером.
+ *
+ * Строки разделены, а не собраны в одну через разделитель (полевая проверка
+ * 2026-07-30, замечание 5): в одну строку «Этап 2/6 · осталось 45:45» уходит на
+ * ширину экрана целиком, ужимается до нечитаемого кегля на узких экранах и
+ * теряет хвост с поправкой ±30 с. Две короткие строки читаются с трёх метров
+ * обе.
+ */
 @Composable
-internal fun totalText(snapshot: SessionSnapshot?): String {
+internal fun stagePositionText(snapshot: SessionSnapshot?): String {
+    if (snapshot == null) return ""
+    return stringResource(R.string.timer_stage_position, snapshot.currentIndex + 1, snapshot.stageCount)
+}
+
+/** «Осталось 45:45 · +0:30» — вторая строка: остаток занятия и ручная поправка. */
+@Composable
+internal fun totalRemainingText(snapshot: SessionSnapshot?): String {
     if (snapshot == null) return ""
     val clock = TimeFormatter.clock(snapshot.totalRemainingMs)
     val total =
@@ -55,7 +71,6 @@ internal fun totalText(snapshot: SessionSnapshot?): String {
         } else {
             clock
         }
-    val position = stringResource(R.string.timer_stage_position, snapshot.currentIndex + 1, snapshot.stageCount)
     val remaining = stringResource(R.string.timer_total_remaining, total)
     val adjustment =
         if (snapshot.stageAdjustmentMs == 0L) {
@@ -63,5 +78,5 @@ internal fun totalText(snapshot: SessionSnapshot?): String {
         } else {
             " · ${TimeFormatter.signedClock(snapshot.stageAdjustmentMs)}"
         }
-    return "$position · $remaining$adjustment"
+    return "$remaining$adjustment"
 }

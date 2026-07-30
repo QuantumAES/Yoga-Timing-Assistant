@@ -104,6 +104,9 @@
     <string name="editor_sound_custom_replace">Заменить</string>
     <string name="editor_sound_custom_clear">Убрать файл</string>
     <string name="editor_sound_custom_none">Файл не выбран — оповещение промолчит</string>
+    <string name="editor_sound_custom_duration">Сколько играть</string>
+    <string name="editor_sound_custom_duration_value">%1$d с</string>
+    <string name="editor_sound_custom_duration_hint">Оповещение — это сигнал, а не фонограмма: файл обрывается по истечении времени, последние две секунды звучат с затуханием. Предпрослушивание подчиняется тому же пределу.</string>
 
     <string name="editor_vibration_single">Одиночная</string>
     <string name="editor_vibration_double">Двойная</string>

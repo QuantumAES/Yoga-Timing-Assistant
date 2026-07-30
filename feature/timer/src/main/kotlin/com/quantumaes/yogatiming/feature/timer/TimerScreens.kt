@@ -105,12 +105,14 @@ internal fun TimerScreen(
     val viewModel: TimerViewModel = hiltViewModel()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     val notices by viewModel.notices.collectAsStateWithLifecycle()
+    val finished by viewModel.finished.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
 
     // Экран не гаснет и не приглушается системой, пока идёт занятие: инструктор
     // смотрит на таймер издалека и не может тянуться к телефону, чтобы его
     // разбудить. Процессор при этом держит сервис (SessionWakeLock), а экран —
     // только этот флаг и только пока рабочий экран на переднем плане.
-    KeepScreenOn()
+    KeepScreenOn(enabled = settings.keepScreenOn)
 
     LaunchedEffect(profileId) { viewModel.ensureSession(profileId) }
 
@@ -119,8 +121,10 @@ internal fun TimerScreen(
     // сигнала об изменении система не присылает.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshRestrictions() }
 
-    LaunchedEffect(snapshot?.runState) {
-        if (snapshot?.runState == RunState.FINISHED) onFinish()
+    // Только собственное занятие этого экрана: `FINISHED` от предыдущего
+    // отсеивается моделью (см. `TimerViewModel.finished`).
+    LaunchedEffect(finished) {
+        if (finished) onFinish()
     }
 
     var mode by rememberSaveable { mutableStateOf(SessionMode.NORMAL) }
@@ -129,6 +133,7 @@ internal fun TimerScreen(
     SessionScreen(
         snapshot = snapshot,
         notices = notices,
+        autoDimEnabled = settings.autoDimEnabled,
         mode = mode,
         onModeChange = { mode = it },
         onNoticeAction = viewModel::openSettings,
@@ -174,6 +179,7 @@ internal fun TimerScreen(
 private fun SessionScreen(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
+    autoDimEnabled: Boolean,
     mode: SessionMode,
     onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
@@ -193,7 +199,12 @@ private fun SessionScreen(
     val window = LocalWindowInfo.current.containerSize
     val landscape = window.width > window.height
 
-    Dimming(mode = mode, interactions = interactions, stageIndex = snapshot?.currentIndex)
+    Dimming(
+        mode = mode,
+        enabled = autoDimEnabled,
+        interactions = interactions,
+        stageIndex = snapshot?.currentIndex,
+    )
 
     Box(
         modifier =
@@ -276,15 +287,16 @@ private fun SessionScreen(
 @Composable
 private fun Dimming(
     mode: SessionMode,
+    enabled: Boolean,
     interactions: Int,
     stageIndex: Int?,
 ) {
     var idle by remember { mutableStateOf(false) }
     var stageFlash by remember { mutableStateOf(false) }
 
-    LaunchedEffect(mode, interactions) {
+    LaunchedEffect(mode, enabled, interactions) {
         idle = false
-        if (!mode.isFocus) return@LaunchedEffect
+        if (!mode.isFocus || !enabled) return@LaunchedEffect
         delay(IDLE_DIM_MS)
         idle = true
     }
@@ -396,6 +408,7 @@ private fun SessionScreenPreview() {
         SessionScreen(
             snapshot = previewSnapshot(),
             notices = emptyList(),
+            autoDimEnabled = true,
             mode = SessionMode.NORMAL,
             onModeChange = {},
             onNoticeAction = {},

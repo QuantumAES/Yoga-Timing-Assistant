@@ -15,12 +15,16 @@ import androidx.compose.ui.platform.LocalView
  * Отсчёт от этого не зависит: процессорное время сервису даёт partial WakeLock
  * (`SessionWakeLock`), и занятие идёт при выключенном экране. Флаг отвечает
  * ровно за одно — за то, что цифры видно.
+ *
+ * @param enabled настройка «Не гасить экран» (Экран 6). Выключенный флаг
+ *   возвращает экран под системный таймаут — для тех, кто кладёт телефон
+ *   экраном вниз и слушает только сигналы.
  */
 @Composable
-fun KeepScreenOn() {
+fun KeepScreenOn(enabled: Boolean = true) {
     val view = LocalView.current
-    DisposableEffect(view) {
-        view.keepScreenOn = true
+    DisposableEffect(view, enabled) {
+        view.keepScreenOn = enabled
         onDispose { view.keepScreenOn = false }
     }
 }

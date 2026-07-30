@@ -140,6 +140,23 @@ class TimerNotifications
             manager.notify(SESSION_ID, build(content))
         }
 
+        /**
+         * Снять уведомление занятия.
+         *
+         * `stopForeground(STOP_FOREGROUND_REMOVE)` делает то же самое, но
+         * только для живого сервиса. Обновление, успевшее уйти следом за
+         * остановкой, вернуло бы уведомление в шторку — уже как обычное и с
+         * флагом `ongoing`, то есть несмахиваемое (полевая проверка
+         * 2026-07-30, замечание 6).
+         */
+        fun cancelSession() = manager.cancel(SESSION_ID)
+
+        /** Разовые сообщения прошлых занятий: новое занятие делает их неправдой. */
+        fun cancelNotices() {
+            manager.cancel(NOTICE_FINISHED_ID)
+            manager.cancel(NOTICE_REBOOT_ID)
+        }
+
         /** Разовое сообщение по итогам занятия. */
         fun notifyFinished(
             profileName: String,
@@ -166,6 +183,14 @@ class TimerNotifications
             )
         }
 
+        /**
+         * Разовое сообщение живёт минуту и уходит само.
+         *
+         * `setAutoCancel` снимает уведомление только по тапу, а по итогам
+         * занятия тапать некуда: инструктор в этот момент прощается с группой,
+         * а не смотрит в шторку. Сообщение, которое некому закрыть, копится
+         * от занятия к занятию.
+         */
         private fun notice(
             id: Int,
             title: String,
@@ -181,6 +206,7 @@ class TimerNotifications
                     .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                     .setContentIntent(context.launchAppIntent())
                     .setAutoCancel(true)
+                    .setTimeoutAfter(NOTICE_TIMEOUT_MS)
                     .build()
             @Suppress("MissingPermission")
             manager.notify(id, notification)
@@ -201,5 +227,8 @@ class TimerNotifications
             const val SESSION_ID = 1001
             private const val NOTICE_FINISHED_ID = 1002
             private const val NOTICE_REBOOT_ID = 1003
+
+            /** Сколько висит разовое сообщение, если его никто не закрыл. */
+            private const val NOTICE_TIMEOUT_MS = 60_000L
         }
     }

@@ -104,6 +104,9 @@
     <string name="editor_sound_custom_replace">Replace</string>
     <string name="editor_sound_custom_clear">Remove the file</string>
     <string name="editor_sound_custom_none">No file chosen — the cue will stay silent</string>
+    <string name="editor_sound_custom_duration">How long to play it</string>
+    <string name="editor_sound_custom_duration_value">%1$d s</string>
+    <string name="editor_sound_custom_duration_hint">A cue is a signal, not a soundtrack: the file is cut off after this time and fades out over the last two seconds. The preview follows the same limit.</string>
 
     <string name="editor_vibration_single">Single</string>
     <string name="editor_vibration_double">Double</string>

@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -69,6 +70,10 @@ class TimerService : Service() {
         scope.launch {
             controller.snapshot
                 .filterNotNull()
+                // Завершённое и сброшенное занятие уведомлять не о чем: его
+                // уведомление снимается вместе с сервисом, а обновление,
+                // пришедшее следом, вернуло бы его в шторку насовсем.
+                .filter { it.runState.isActive }
                 .map(notifications::contentFor)
                 .distinctUntilChanged()
                 .collect(notifications::update)
@@ -111,6 +116,9 @@ class TimerService : Service() {
     }
 
     private fun startSession(profileId: Long) {
+        // Итоги прошлого занятия новому не нужны: занятие началось, и
+        // сообщение «Занятие завершено» рядом с ним читается как ошибка.
+        notifications.cancelNotices()
         scope.launch {
             if (!controller.startSession(profileId)) stopSession()
         }
@@ -169,13 +177,21 @@ class TimerService : Service() {
             } else {
                 0
             }
-        val content = controller.snapshot.value?.let(notifications::contentFor)
+        // Только идущее занятие: снимок прошлого, ещё не сменившийся новым,
+        // показал бы в шторке чужой этап.
+        val content =
+            controller.snapshot.value
+                ?.takeIf { it.runState.isActive }
+                ?.let(notifications::contentFor)
         ServiceCompat.startForeground(this, TimerNotifications.SESSION_ID, notifications.build(content), type)
     }
 
     private fun stopSession() {
         alertPlayer.stop()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        // Явная отмена вдогонку: `stopForeground` снимает уведомление только
+        // у живого сервиса, а обновление могло уйти из другой корутины.
+        notifications.cancelSession()
         stopSelf()
     }
 

@@ -65,6 +65,15 @@ private const val SECONDS_IN_MINUTE = 60
 private val WARNING_OFFSETS_SEC = listOf(300, 180, 120, 60, 30, 10)
 
 /**
+ * Сколько секунд файла пользователя играть.
+ *
+ * Готовые значения, а не ползунок: разница между 12 и 13 секундами на слух
+ * неразличима, а попасть пальцем в ползунок точнее пяти секунд всё равно
+ * нельзя. Границы — `Alert.MIN_CUSTOM_SOUND_SEC`…`MAX_CUSTOM_SOUND_SEC`.
+ */
+private val CUSTOM_SOUND_SECONDS = listOf(3, 5, 10, 15, 30, 60)
+
+/**
  * Экран 5 «Редактор оповещений».
  *
  * Структура повторяет модель: START, список предупреждений, END. Плоского
@@ -357,6 +366,16 @@ private fun AlertBody(
                 uri = alert.customSoundUri,
                 onPick = { uri -> onUpdate { it.copy(customSoundUri = uri) } },
             )
+            if (alert.customSoundUri != null) {
+                SectionTitle(stringResource(R.string.editor_sound_custom_duration))
+                SingleChoiceChips(
+                    options = CUSTOM_SOUND_SECONDS,
+                    selected = alert.customSoundDurationSec,
+                    label = { stringResource(R.string.editor_sound_custom_duration_value, it) },
+                    onSelect = { seconds -> onUpdate { it.copy(customSoundDurationSec = seconds) } },
+                )
+                FieldHint(stringResource(R.string.editor_sound_custom_duration_hint))
+            }
         }
     }
 

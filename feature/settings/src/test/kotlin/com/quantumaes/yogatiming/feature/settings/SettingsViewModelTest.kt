@@ -2,8 +2,12 @@ package com.quantumaes.yogatiming.feature.settings
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.quantumaes.yogatiming.domain.alert.AlertPlayer
+import com.quantumaes.yogatiming.domain.alert.AlertRequest
+import com.quantumaes.yogatiming.domain.alert.VoiceStatus
 import com.quantumaes.yogatiming.domain.hint.Hint
 import com.quantumaes.yogatiming.domain.hint.HintStore
+import com.quantumaes.yogatiming.domain.model.alert.AlertChannel
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
@@ -11,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -19,7 +24,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/** Хранилище настроек в памяти: весь контракт — один поток и три сеттера. */
+/** Хранилище настроек в памяти: весь контракт — один поток и сеттеры. */
 private class FakeSettingsStore(
     initial: AppSettings = AppSettings(),
 ) : SettingsStore {
@@ -38,6 +43,47 @@ private class FakeSettingsStore(
     override suspend fun setVoiceEnabled(enabled: Boolean) {
         state.value = state.value.copy(voiceEnabled = enabled)
     }
+
+    override suspend fun setAlertVolume(percent: Int) {
+        state.value = state.value.copy(alertVolumePercent = percent)
+    }
+
+    override suspend fun setDuckMusicOnAlert(enabled: Boolean) {
+        state.value = state.value.copy(duckMusicOnAlert = enabled)
+    }
+
+    override suspend fun setSpeechRate(percent: Int) {
+        state.value = state.value.copy(speechRatePercent = percent)
+    }
+
+    override suspend fun setKeepScreenOn(enabled: Boolean) {
+        state.value = state.value.copy(keepScreenOn = enabled)
+    }
+
+    override suspend fun setAutoDim(enabled: Boolean) {
+        state.value = state.value.copy(autoDimEnabled = enabled)
+    }
+
+    override suspend fun setOnboardingCompleted(completed: Boolean) {
+        state.value = state.value.copy(onboardingCompleted = completed)
+    }
+}
+
+/** Проигрыватель, который только считает, сколько раз его просили сыграть. */
+private class FakeAlertPlayer : AlertPlayer {
+    val played = mutableListOf<AlertRequest>()
+
+    override val voiceStatus = MutableStateFlow(VoiceStatus.READY)
+
+    override fun prepare() = Unit
+
+    override fun play(request: AlertRequest) {
+        played += request
+    }
+
+    override fun stopCustomSound() = Unit
+
+    override fun stop() = Unit
 }
 
 private class FakeHintStore : HintStore {
@@ -53,11 +99,15 @@ private class FakeHintStore : HintStore {
     }
 }
 
+/** Допуск сравнения долей единицы: проценты делятся на сто без сюрпризов, но float есть float. */
+private const val TOLERANCE = 0.0001f
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val settingsStore = FakeSettingsStore()
     private val hintStore = FakeHintStore()
+    private val alertPlayer = FakeAlertPlayer()
 
     @Before
     fun setUp() {
@@ -69,7 +119,7 @@ class SettingsViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = SettingsViewModel(settingsStore, hintStore)
+    private fun viewModel() = SettingsViewModel(settingsStore, hintStore, alertPlayer)
 
     @Test
     fun `по умолчанию голос выключен`() =
@@ -133,6 +183,51 @@ class SettingsViewModelTest {
                 assertThat(updated.themeMode).isEqualTo(ThemeMode.SYSTEM)
                 cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    fun `громкость и скорость речи не выходят за границы хранилища`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.settings.test {
+                awaitItem()
+
+                viewModel.setAlertVolume(50)
+                assertThat(awaitItem().alertVolumePercent).isEqualTo(50)
+
+                viewModel.setSpeechRate(80)
+                val updated = awaitItem()
+                assertThat(updated.speechRatePercent).isEqualTo(80)
+                assertThat(updated.speechRate).isWithin(TOLERANCE).of(0.8f)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `проверка голоса играет через тот же тракт, что и занятие`() =
+        runTest(dispatcher) {
+            // Настраивать скорость речи вслепую нельзя: услышать результат
+            // иначе можно только посреди занятия.
+            viewModel().previewVoice()
+
+            val request = alertPlayer.played.single()
+            assertThat(request.alert.channels).containsExactly(AlertChannel.VOICE)
+            assertThat(request.stageName).isNotEmpty()
+        }
+
+    @Test
+    fun `пересмотр онбординга снимает флаг`() =
+        runTest(dispatcher) {
+            // Проверяется хранилище, а не поток состояния: `StateFlow`
+            // схлопывает одинаковые значения, и «было false → стало true →
+            // снова false» подписчику видно не всегда.
+            settingsStore.setOnboardingCompleted(true)
+
+            viewModel().replayOnboarding()
+            testScheduler.runCurrent()
+
+            assertThat(settingsStore.settings.first().onboardingCompleted).isFalse()
         }
 
     @Test

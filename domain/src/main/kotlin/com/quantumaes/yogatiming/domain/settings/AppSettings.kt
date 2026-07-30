@@ -28,11 +28,12 @@ enum class ThemeMode {
 }
 
 /**
- * Пользовательские настройки приложения.
+ * Пользовательские настройки приложения (Экран 6, Фаза 7).
  *
- * В v1.0 здесь оформление и голос: громкость и wake lock приезжают в Фазу 7
- * (docs/01-ROADMAP.md). Класс единый намеренно — экран настроек читает одно
- * состояние, а не десяток независимых потоков, которые обновляются вразнобой.
+ * Класс единый намеренно — экран настроек читает одно состояние, а не десяток
+ * независимых потоков, которые обновляются вразнобой. Значения по умолчанию
+ * описывают приложение сразу после установки: занятие должно быть проводимым
+ * без единого захода в настройки.
  *
  * @param dynamicColor палитра Material You из обоев. На рабочий экран занятия
  *   не распространяется никогда (docs/06-MVP-SCOPE.md §4).
@@ -42,9 +43,55 @@ enum class ThemeMode {
  *   Пресеты при этом не переписываются — канал остаётся в конфигах и оживает
  *   одним переключателем, когда произношение этапов настроено
  *   (`Stage.voiceName`).
+ * @param alertVolumePercent общий множитель громкости поверх той, что задана
+ *   в оповещении (переформулировка P0-6: системную громкость приложение не
+ *   трогает никогда, только собственный программный гейн). 100 — «как
+ *   настроено в профиле», и это значение по умолчанию: настройка, которая
+ *   сразу после установки что-то приглушает, обманывает редактор оповещений.
+ * @param duckMusicOnAlert приглушать ли фоновую музыку на время сигнала
+ *   (ТЗ §5.3). Выключенный ducking означает «не просить audio focus вовсе»:
+ *   сигнал прозвучит поверх музыки, ничего не приглушая. Это осознанный выбор
+ *   тех, кто ведёт занятие под свой плейлист и не хочет провалов в нём.
+ * @param speechRatePercent скорость речи TTS, проценты от нормальной.
+ * @param keepScreenOn держать ли экран включённым на рабочем экране занятия.
+ *   По умолчанию да: инструктор смотрит на цифры с коврика и не может
+ *   дотянуться до телефона, чтобы разбудить экран. Отсчёт от настройки не
+ *   зависит — его держит partial WakeLock сервиса.
+ * @param autoDimEnabled гасить ли яркость в режиме фокуса после 15 секунд
+ *   бездействия (ТЗ, Экран 4).
+ * @param onboardingCompleted показан ли онбординг. Отдельный флаг, а не
+ *   «первый запуск»: онбординг можно пересмотреть из настроек.
  */
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.DEFAULT,
     val dynamicColor: Boolean = false,
     val voiceEnabled: Boolean = false,
-)
+    val alertVolumePercent: Int = DEFAULT_ALERT_VOLUME,
+    val duckMusicOnAlert: Boolean = true,
+    val speechRatePercent: Int = DEFAULT_SPEECH_RATE,
+    val keepScreenOn: Boolean = true,
+    val autoDimEnabled: Boolean = true,
+    val onboardingCompleted: Boolean = false,
+) {
+    /** Множитель громкости в долях единицы — в том виде, в каком его ждёт звуковой тракт. */
+    val alertVolumeFactor: Float
+        get() = alertVolumePercent.coerceIn(MIN_ALERT_VOLUME, MAX_ALERT_VOLUME) / PERCENT
+
+    /** Скорость речи в долях единицы: 1.0 — нормальная для выбранного движка. */
+    val speechRate: Float
+        get() = speechRatePercent.coerceIn(MIN_SPEECH_RATE, MAX_SPEECH_RATE) / PERCENT
+
+    companion object {
+        const val DEFAULT_ALERT_VOLUME = 100
+        const val MIN_ALERT_VOLUME = 10
+        const val MAX_ALERT_VOLUME = 100
+        const val ALERT_VOLUME_STEP = 10
+
+        const val DEFAULT_SPEECH_RATE = 100
+        const val MIN_SPEECH_RATE = 50
+        const val MAX_SPEECH_RATE = 200
+        const val SPEECH_RATE_STEP = 10
+
+        private const val PERCENT = 100f
+    }
+}

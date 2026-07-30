@@ -2,6 +2,7 @@ package com.quantumaes.yogatiming.feature.editor
 
 import com.quantumaes.yogatiming.domain.alert.AlertPlayer
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
+import com.quantumaes.yogatiming.domain.alert.VoiceStatus
 import com.quantumaes.yogatiming.domain.model.NEW_ID
 import com.quantumaes.yogatiming.domain.model.Profile
 import com.quantumaes.yogatiming.domain.model.ProfileSummary
@@ -85,6 +86,19 @@ class FakeSettingsStore(
     override suspend fun setVoiceEnabled(enabled: Boolean) {
         state.value = state.value.copy(voiceEnabled = enabled)
     }
+
+    // Остальные настройки редактору безразличны: он читает только голос.
+    override suspend fun setAlertVolume(percent: Int) = Unit
+
+    override suspend fun setDuckMusicOnAlert(enabled: Boolean) = Unit
+
+    override suspend fun setSpeechRate(percent: Int) = Unit
+
+    override suspend fun setKeepScreenOn(enabled: Boolean) = Unit
+
+    override suspend fun setAutoDim(enabled: Boolean) = Unit
+
+    override suspend fun setOnboardingCompleted(completed: Boolean) = Unit
 }
 
 /** Проигрыватель, который только запоминает, что его просили сыграть. */
@@ -95,7 +109,12 @@ class FakeAlertPlayer : AlertPlayer {
     var stopped = 0
         private set
 
+    var customSoundStopped = 0
+        private set
+
     val played = mutableListOf<AlertRequest>()
+
+    override val voiceStatus = MutableStateFlow(VoiceStatus.READY)
 
     override fun prepare() {
         prepared++
@@ -103,6 +122,10 @@ class FakeAlertPlayer : AlertPlayer {
 
     override fun play(request: AlertRequest) {
         played += request
+    }
+
+    override fun stopCustomSound() {
+        customSoundStopped++
     }
 
     override fun stop() {

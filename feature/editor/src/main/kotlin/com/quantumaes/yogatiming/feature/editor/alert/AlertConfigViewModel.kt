@@ -123,7 +123,10 @@ class AlertConfigViewModel
         }
 
         /** Пресет заменяет набор целиком — это и есть смысл готового набора. */
-        fun applyPreset(preset: AlertPreset) = _uiState.update { it.copy(config = AlertPresets.of(preset)) }
+        fun applyPreset(preset: AlertPreset) {
+            alertPlayer.stopCustomSound()
+            _uiState.update { it.copy(config = AlertPresets.of(preset)) }
+        }
 
         fun setMasterVolume(percent: Int) =
             edit { it.copy(masterVolumePercent = percent.coerceIn(AlertConfig.MIN_VOLUME, AlertConfig.MAX_VOLUME)) }
@@ -209,12 +212,16 @@ class AlertConfigViewModel
          * `prepare()` вызывается, а `stop()` — никогда: проигрыватель общий
          * с сервисом занятия, и освобождение SoundPool из редактора оборвало бы
          * сигналы идущего занятия. Ресурсами владеет тот, кто ведёт занятие.
+         *
+         * Предыдущее предпрослушивание обрывается: файл пользователя звучит
+         * секундами, и складывать его со следующим — значит слушать оба сразу.
          */
         fun preview(
             alert: Alert,
             trigger: AlertTrigger,
         ) {
             val state = _uiState.value
+            alertPlayer.stopCustomSound()
             alertPlayer.prepare()
             alertPlayer.play(
                 AlertRequest(
@@ -224,6 +231,11 @@ class AlertConfigViewModel
                     nextStageName = state.ownerName,
                 ),
             )
+        }
+
+        /** Уход с экрана обрывает предпрослушивание: минутной мелодии здесь не место. */
+        override fun onCleared() {
+            alertPlayer.stopCustomSound()
         }
 
         fun save() {
@@ -242,11 +254,21 @@ class AlertConfigViewModel
                 copy(stages = stages.map { if (it.id == stageId) it.copy(alertConfig = config) else it })
             }
 
-        /** Ручная правка снимает ярлык готового набора. */
-        private fun edit(update: (AlertConfig) -> AlertConfig) =
+        /**
+         * Ручная правка снимает ярлык готового набора — и обрывает
+         * предпрослушивание.
+         *
+         * Правило живёт здесь, а не в экране: выбор другого звука, замена файла,
+         * смена длительности и переключение каналов — всё это делает звучащий
+         * сейчас файл неправдой, и перечислять такие места по одному в разметке
+         * значит однажды забыть очередное.
+         */
+        private fun edit(update: (AlertConfig) -> AlertConfig) {
+            alertPlayer.stopCustomSound()
             _uiState.update { state ->
                 state.copy(config = update(state.config).copy(preset = AlertPreset.CUSTOM))
             }
+        }
     }
 
 /**

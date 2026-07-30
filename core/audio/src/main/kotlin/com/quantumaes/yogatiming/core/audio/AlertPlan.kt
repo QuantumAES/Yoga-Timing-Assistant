@@ -26,6 +26,8 @@ internal data class AlertPlan(
     val sound: AlertSound? = null,
     /** Заполнено только для [AlertSound.CUSTOM]: где лежит файл пользователя. */
     val customSoundUri: String? = null,
+    /** Сколько играть файл пользователя, включая затухание в конце. */
+    val customSoundLimitMs: Long = 0,
     val voice: VoiceText? = null,
     val vibration: VibrationPattern? = null,
     val gain: Float = 0f,
@@ -45,11 +47,13 @@ internal data class AlertPlan(
  *   ([com.quantumaes.yogatiming.domain.settings.AppSettings.voiceEnabled]).
  *   В отличие от [speechReady] это не поломка, а решение: подменять
  *   выключенный голос гонгом значит возвращать звук, от которого отказались.
+ * @param volumeFactor общий множитель громкости из настроек (Экран 6).
  */
 internal fun alertPlanOf(
     request: AlertRequest,
     speechReady: Boolean,
     voiceEnabled: Boolean = true,
+    volumeFactor: Float = 1f,
 ): AlertPlan {
     val alert = request.alert
     // Пустая фраза — не деградация, а настройка: канал VOICE включён, но
@@ -71,9 +75,10 @@ internal fun alertPlanOf(
     return AlertPlan(
         sound = sound,
         customSoundUri = alert.customSoundUri.takeIf { sound == AlertSound.CUSTOM },
+        customSoundLimitMs = alert.customSoundLimitMs,
         voice = intendedVoice.takeIf { speechReady },
         vibration = vibration,
-        gain = gainOf(alert.volumePercent),
+        gain = gainOf(alert.volumePercent, volumeFactor),
     )
 }
 
