@@ -5,6 +5,8 @@ import android.util.Log
 import com.quantumaes.yogatiming.core.audio.di.AlertScope
 import com.quantumaes.yogatiming.domain.alert.AlertPlayer
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
+import com.quantumaes.yogatiming.domain.model.alert.AlertSound
+import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -22,6 +24,12 @@ private const val DEFER_RETRY_MS = 500L
 
 /** Верхняя оценка длительности фразы: движок TTS сообщит точнее, когда дочитает. */
 private const val SPEECH_MAX_MS = 8_000L
+
+/**
+ * Верхняя оценка длительности файла пользователя. Реальную сообщит сам
+ * проигрыватель, когда файл дозвучит; до тех пор фоновая музыка приглушена.
+ */
+private const val CUSTOM_SOUND_MAX_MS = 20_000L
 
 /** Сколько ждать, пока дозвучит последний сигнал, прежде чем освобождать ресурсы. */
 private const val STOP_GRACE_MS = 6_000L
@@ -46,10 +54,12 @@ class AndroidAlertPlayer
     @Inject
     constructor(
         private val sound: SoundChannel,
+        private val customSound: CustomSoundChannel,
         private val vibration: VibrationChannel,
         private val speech: SpeechChannel,
         private val phrases: VoicePhrases,
         private val focus: AlertFocus,
+        settingsStore: SettingsStore,
         @AlertScope private val scope: CoroutineScope,
     ) : AlertPlayer {
         /** До какого момента звучит уже запущенный сэмпл или вибрация. */
@@ -58,6 +68,20 @@ class AndroidAlertPlayer
         /** Голос отслеживается отдельно: его конец известен точно, а длительность — нет. */
         private var speaking = false
         private var stopping: Job? = null
+
+        /**
+         * Разрешён ли голос вообще (Экран 6 настроек).
+         *
+         * Читается заранее и держится полем: решение нужно в момент сборки
+         * оповещения, а ждать чтения хранилища на границе этапа нельзя.
+         * По умолчанию выключен — до первого значения из хранилища тоже.
+         */
+        @Volatile
+        private var voiceEnabled = false
+
+        init {
+            scope.launch { settingsStore.settings.collect { voiceEnabled = it.voiceEnabled } }
+        }
 
         override fun prepare() {
             stopping?.cancel()
@@ -80,12 +104,13 @@ class AndroidAlertPlayer
                     vibration.cancel()
                     focus.abandon()
                     sound.release()
+                    customSound.release()
                     soundUntilMs = 0L
                 }
         }
 
         private suspend fun deliver(request: AlertRequest) {
-            val plan = alertPlanOf(request, speech.maySpeak)
+            val plan = alertPlanOf(request, speech.maySpeak, voiceEnabled)
             if (plan.isEmpty) return
             if (!plan.needsAudioFocus || awaitFocus(request.trigger)) fire(plan)
         }
@@ -116,8 +141,16 @@ class AndroidAlertPlayer
                 tailMs = maxOf(tailMs, vibration.durationMs(it))
             }
             plan.sound?.let {
-                sound.play(it, plan.gain)
-                tailMs = maxOf(tailMs, sound.durationMs(it))
+                if (it == AlertSound.CUSTOM) {
+                    // Длительность чужого файла заранее неизвестна, поэтому
+                    // фокус держится по верхней оценке и отпускается по факту
+                    // окончания — тем же приёмом, что и для голоса.
+                    plan.customSoundUri?.let { uri -> customSound.play(uri, plan.gain, ::onCustomSoundDone) }
+                    tailMs = maxOf(tailMs, CUSTOM_SOUND_MAX_MS)
+                } else {
+                    sound.play(it, plan.gain)
+                    tailMs = maxOf(tailMs, sound.durationMs(it))
+                }
             }
             soundUntilMs = SystemClock.elapsedRealtime() + tailMs
 
@@ -141,9 +174,15 @@ class AndroidAlertPlayer
             focus.releaseAfter(remainingSoundMs())
         }
 
+        /** То же для файла пользователя: реальный конец точнее верхней оценки. */
+        private fun onCustomSoundDone() {
+            soundUntilMs = SystemClock.elapsedRealtime()
+            if (!speaking) focus.releaseAfter(0)
+        }
+
         private suspend fun awaitSilence() {
             withTimeoutOrNull(STOP_GRACE_MS) {
-                while (speaking || remainingSoundMs() > 0) delay(BUSY_POLL_MS)
+                while (speaking || customSound.isPlaying || remainingSoundMs() > 0) delay(BUSY_POLL_MS)
             }
         }
 

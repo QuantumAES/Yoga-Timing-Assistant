@@ -8,6 +8,7 @@ import com.quantumaes.yogatiming.domain.model.ProfileCategory
 import com.quantumaes.yogatiming.domain.model.ProfileSummary
 import com.quantumaes.yogatiming.domain.repository.ProfileFilter
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.timer.service.ActiveSessionSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
@@ -40,10 +41,17 @@ data class ProfilesUiState(
     val category: ProfileCategory? = null,
     val favoritesOnly: Boolean = false,
     val isLoading: Boolean = true,
+    /** Занятие, которое идёт прямо сейчас; `null` — не идёт никакого. */
+    val activeSession: ActiveSession? = null,
 ) {
     val hasFilter: Boolean get() = query.isNotBlank() || category != null || favoritesOnly
 
     val isEmpty: Boolean get() = !isLoading && profiles.isEmpty()
+
+    /** Профиль запущенного занятия: его нельзя ни править, ни удалять. */
+    val activeProfileId: Long? get() = activeSession?.profileId
+
+    fun isRunning(profileId: Long): Boolean = profileId == activeProfileId
 }
 
 /** Одноразовые сообщения экрану: то, что нельзя выразить состоянием. */
@@ -52,6 +60,16 @@ sealed interface ProfilesEvent {
     data class Deleted(
         val name: String,
     ) : ProfilesEvent
+
+    /**
+     * Действие отклонено: профиль занят идущим занятием.
+     *
+     * Правка запущенного профиля меняет план у него под ногами: движок получил
+     * план при старте и второй раз его не собирает (docs/02-TIMER-CORE-DESIGN.md
+     * §3.1). Удаление — тем более: восстанавливать после смерти процесса станет
+     * нечего. Поэтому сначала «Стоп», потом правка.
+     */
+    data object BlockedByRunningSession : ProfilesEvent
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -60,8 +78,17 @@ class ProfilesViewModel
     @Inject
     constructor(
         private val repository: ProfileRepository,
+        session: ActiveSessionSource,
     ) : ViewModel() {
         private val filter = MutableStateFlow(ProfileFilter())
+
+        /**
+         * Снапшот идущего занятия — напрямую из синглтона, как и на рабочем
+         * экране: движок и интерфейс живут в одном процессе, второго состояния,
+         * способного с ним разойтись, в системе нет. Список читает занятие, но
+         * не управляет им — отсюда узкий контракт вместо контроллера целиком.
+         */
+        private val activeSession = session.snapshot
 
         /**
          * Отменённое удаление держится в памяти целиком, вместе с этапами.
@@ -85,13 +112,15 @@ class ProfilesViewModel
             combine(
                 filter,
                 filter.flatMapLatest(repository::observeProfileSummaries),
-            ) { current, profiles ->
+                activeSession,
+            ) { current, profiles, session ->
                 ProfilesUiState(
                     profiles = profiles,
                     query = current.query,
                     category = current.category,
                     favoritesOnly = current.favoritesOnly,
                     isLoading = false,
+                    activeSession = session.toActiveSession(),
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -127,7 +156,23 @@ class ProfilesViewModel
             viewModelScope.launch { repository.duplicateProfile(profileId, copyName) }
         }
 
+        /**
+         * Правку запрещает модель, а не экран: свайп, меню и карточка ведут
+         * к одному и тому же действию, и правило должно быть одно на всех.
+         *
+         * @return `false` — профиль занят идущим занятием, переход не состоится.
+         */
+        fun requestEdit(profileId: Long): Boolean {
+            if (!uiState.value.isRunning(profileId)) return true
+            events.trySend(ProfilesEvent.BlockedByRunningSession)
+            return false
+        }
+
         fun delete(profileId: Long) {
+            if (uiState.value.isRunning(profileId)) {
+                events.trySend(ProfilesEvent.BlockedByRunningSession)
+                return
+            }
             viewModelScope.launch {
                 val snapshot = repository.getProfile(profileId) ?: return@launch
                 lastDeleted = snapshot

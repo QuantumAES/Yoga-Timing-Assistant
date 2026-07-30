@@ -7,6 +7,9 @@ import com.quantumaes.yogatiming.domain.model.Profile
 import com.quantumaes.yogatiming.domain.model.ProfileSummary
 import com.quantumaes.yogatiming.domain.repository.ProfileFilter
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.domain.settings.AppSettings
+import com.quantumaes.yogatiming.domain.settings.SettingsStore
+import com.quantumaes.yogatiming.domain.settings.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -61,6 +64,27 @@ class FakeProfileRepository(
         id: Long,
         isFavorite: Boolean,
     ) = Unit
+}
+
+/** Настройки в памяти. Редактору важна одна из них — разрешён ли голос. */
+class FakeSettingsStore(
+    initial: AppSettings = AppSettings(),
+) : SettingsStore {
+    private val state = MutableStateFlow(initial)
+
+    override val settings: Flow<AppSettings> = state
+
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        state.value = state.value.copy(themeMode = mode)
+    }
+
+    override suspend fun setDynamicColor(enabled: Boolean) {
+        state.value = state.value.copy(dynamicColor = enabled)
+    }
+
+    override suspend fun setVoiceEnabled(enabled: Boolean) {
+        state.value = state.value.copy(voiceEnabled = enabled)
+    }
 }
 
 /** Проигрыватель, который только запоминает, что его просили сыграть. */

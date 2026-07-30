@@ -45,6 +45,7 @@ import com.quantumaes.yogatiming.domain.model.alert.VibrationPattern
 import com.quantumaes.yogatiming.domain.model.alert.VoicePhrase
 import com.quantumaes.yogatiming.feature.editor.R
 import com.quantumaes.yogatiming.feature.editor.channelLabelRes
+import com.quantumaes.yogatiming.feature.editor.component.CustomSoundPicker
 import com.quantumaes.yogatiming.feature.editor.component.EditorScaffold
 import com.quantumaes.yogatiming.feature.editor.component.FieldHint
 import com.quantumaes.yogatiming.feature.editor.component.SectionTitle
@@ -155,6 +156,7 @@ private fun AlertConfigContent(
                     alert = uiState.config.start,
                     trigger = AlertTrigger.START,
                     voiceOptions = START_VOICES,
+                    voiceEnabled = uiState.voiceEnabled,
                     onEnabled = { onTriggerEnabled(AlertTrigger.START, it) },
                     onUpdate = onUpdateStart,
                     onPreview = onPreview,
@@ -165,6 +167,7 @@ private fun AlertConfigContent(
                     WarningSection(
                         alert = warning,
                         unreachable = uiState.isWarningUnreachable(warning),
+                        voiceEnabled = uiState.voiceEnabled,
                         onOffsetChange = { onWarningOffset(warning.offsetSec, it) },
                         onUpdate = { update -> onUpdateWarning(warning.offsetSec, update) },
                         onRemove = { onRemoveWarning(warning.offsetSec) },
@@ -190,6 +193,7 @@ private fun AlertConfigContent(
                     alert = uiState.config.end,
                     trigger = AlertTrigger.END,
                     voiceOptions = END_VOICES,
+                    voiceEnabled = uiState.voiceEnabled,
                     onEnabled = { onTriggerEnabled(AlertTrigger.END, it) },
                     onUpdate = onUpdateEnd,
                     onPreview = onPreview,
@@ -240,6 +244,7 @@ private fun TriggerSection(
     alert: Alert?,
     trigger: AlertTrigger,
     voiceOptions: List<VoicePhrase>,
+    voiceEnabled: Boolean,
     onEnabled: (Boolean) -> Unit,
     onUpdate: ((Alert) -> Alert) -> Unit,
     onPreview: (Alert, AlertTrigger) -> Unit,
@@ -255,6 +260,7 @@ private fun TriggerSection(
         alert = alert,
         trigger = trigger,
         voiceOptions = voiceOptions,
+        voiceEnabled = voiceEnabled,
         onUpdate = onUpdate,
         onPreview = onPreview,
     )
@@ -264,6 +270,7 @@ private fun TriggerSection(
 private fun WarningSection(
     alert: Alert,
     unreachable: Boolean,
+    voiceEnabled: Boolean,
     onOffsetChange: (Int) -> Unit,
     onUpdate: ((Alert) -> Alert) -> Unit,
     onRemove: () -> Unit,
@@ -308,6 +315,7 @@ private fun WarningSection(
             alert = alert,
             trigger = AlertTrigger.WARNING,
             voiceOptions = WARNING_VOICES,
+            voiceEnabled = voiceEnabled,
             onUpdate = onUpdate,
             onPreview = onPreview,
         )
@@ -320,6 +328,7 @@ private fun AlertBody(
     alert: Alert,
     trigger: AlertTrigger,
     voiceOptions: List<VoicePhrase>,
+    voiceEnabled: Boolean,
     onUpdate: ((Alert) -> Alert) -> Unit,
     onPreview: (Alert, AlertTrigger) -> Unit,
 ) {
@@ -343,9 +352,20 @@ private fun AlertBody(
             label = { stringResource(it.soundLabelRes()) },
             onSelect = { sound -> onUpdate { it.copy(sound = sound) } },
         )
+        if (alert.sound == AlertSound.CUSTOM) {
+            CustomSoundPicker(
+                uri = alert.customSoundUri,
+                onPick = { uri -> onUpdate { it.copy(customSoundUri = uri) } },
+            )
+        }
     }
 
     if (AlertChannel.VOICE in alert.channels) {
+        // Канал включён, а голос выключен целиком: оповещение промолчит, и
+        // сказать об этом надо здесь, а не оставить выяснять на занятии.
+        if (!voiceEnabled) {
+            FieldHint(stringResource(R.string.editor_alerts_voice_disabled), error = true)
+        }
         SingleChoiceChips(
             options = voiceOptions,
             selected = alert.voice,
@@ -364,6 +384,7 @@ private fun AlertBody(
                 label = { Text(stringResource(R.string.editor_alerts_custom_text)) },
                 singleLine = true,
             )
+            FieldHint(stringResource(R.string.editor_alerts_custom_text_hint))
         }
     }
 

@@ -37,6 +37,29 @@ class VoiceTextTest {
     }
 
     @Test
+    fun `произношение этапа старше его названия`() {
+        val withPronunciation =
+            request(VoicePhrase.STAGE_NAME).copy(stageName = "Шавасана", stageVoiceName = "шав+асана")
+
+        assertThat(voiceTextOf(withPronunciation)).isEqualTo(VoiceText.Raw("шав+асана"))
+    }
+
+    @Test
+    fun `пустое произношение возвращает к названию`() {
+        val blank = request(VoicePhrase.STAGE_NAME).copy(stageVoiceName = "   ")
+
+        assertThat(voiceTextOf(blank)).isEqualTo(VoiceText.Raw("Разминка"))
+    }
+
+    @Test
+    fun `следующий этап объявляется своим произношением`() {
+        val withPronunciation =
+            request(VoicePhrase.NEXT_STAGE, trigger = AlertTrigger.END).copy(nextStageVoiceName = "шав+асана")
+
+        assertThat(voiceTextOf(withPronunciation)).isEqualTo(VoiceText.NextStage("шав+асана"))
+    }
+
+    @Test
     fun `на последнем этапе вместо следующего объявляется конец занятия`() {
         val request = request(VoicePhrase.NEXT_STAGE, nextStageName = null, trigger = AlertTrigger.END)
 

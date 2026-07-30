@@ -16,6 +16,7 @@ fun NavGraphBuilder.profilesScreen(
     onCreateProfile: () -> Unit,
     onEditProfile: (Long) -> Unit,
     onStartSession: (Long) -> Unit,
+    onOpenSession: (Long) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     composable<ProfilesRoute> {
@@ -23,6 +24,7 @@ fun NavGraphBuilder.profilesScreen(
             onCreateProfile = onCreateProfile,
             onEditProfile = onEditProfile,
             onStartSession = onStartSession,
+            onOpenSession = onOpenSession,
             onOpenSettings = onOpenSettings,
         )
     }

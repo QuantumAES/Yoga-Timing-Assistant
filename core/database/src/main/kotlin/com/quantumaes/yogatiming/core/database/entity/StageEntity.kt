@@ -14,6 +14,7 @@ import androidx.room.PrimaryKey
  * эффекта не существует (ADR-002, снятие блокера P0-7).
  *
  * `alert_config` = NULL означает наследование конфига профиля, а не «тишину».
+ * `voice_name` = NULL означает «произносить как написано», а не «молчать».
  */
 @Entity(
     tableName = "stages",
@@ -37,4 +38,5 @@ data class StageEntity(
     val note: String? = null,
     @ColumnInfo(name = "sort_order") val sortOrder: Int,
     @ColumnInfo(name = "alert_config") val alertConfigJson: String? = null,
+    @ColumnInfo(name = "voice_name") val voiceName: String? = null,
 )

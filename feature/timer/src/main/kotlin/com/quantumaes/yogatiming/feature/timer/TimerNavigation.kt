@@ -2,7 +2,9 @@ package com.quantumaes.yogatiming.feature.timer
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import androidx.navigation.navDeepLink
 import androidx.navigation.toRoute
+import com.quantumaes.yogatiming.core.common.navigation.YtaDeepLinks
 import kotlinx.serialization.Serializable
 
 /** Экран 4 ТЗ — рабочий экран занятия. */
@@ -22,7 +24,12 @@ fun NavGraphBuilder.timerScreens(
     onRepeat: (profileId: Long) -> Unit,
     onExitToProfiles: () -> Unit,
 ) {
-    composable<TimerRoute> { entry ->
+    // Ссылка `yta://session/{profileId}` — то, по чему открывается занятие из
+    // шторки. Маршрут тот же, что и при запуске из списка: `ensureSession`
+    // видит идущее занятие своего профиля и не начинает его заново.
+    composable<TimerRoute>(
+        deepLinks = listOf(navDeepLink<TimerRoute>(basePath = YtaDeepLinks.SESSION_BASE)),
+    ) { entry ->
         val route = entry.toRoute<TimerRoute>()
         TimerScreen(
             profileId = route.profileId,

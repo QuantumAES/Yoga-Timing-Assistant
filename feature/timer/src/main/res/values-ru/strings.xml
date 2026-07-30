@@ -2,7 +2,6 @@
 <resources>
     <string name="timer_idle">Занятие не запущено</string>
     <string name="timer_no_time">--:--</string>
-    <string name="timer_previous">Пред.</string>
     <string name="timer_next">След.</string>
     <string name="timer_pause">Пауза</string>
     <string name="timer_resume">Продолжить</string>
@@ -16,6 +15,22 @@
     <string name="timer_finished_title">Занятие завершено</string>
     <string name="timer_finished_repeat">Повторить</string>
     <string name="timer_finished_exit">К списку профилей</string>
+
+    <!-- Верхний бар и режимы рабочего экрана (docs/03-GESTURES.md). -->
+    <string name="timer_lock">Заблокировать экран</string>
+    <string name="timer_unlock_hint">Удерживайте для разблокировки</string>
+    <string name="timer_focus_enter">Режим фокуса</string>
+    <string name="timer_focus_hint">‹ свайп для смены этапа · свайп вниз — выход ›</string>
+    <string name="timer_previous_stage">‹ Пред. этап</string>
+    <string name="timer_next_stage">Далее: %1$s</string>
+    <string name="timer_last_stage">Последний этап</string>
+
+    <string name="timer_stop_title">Завершить занятие?</string>
+    <string name="timer_stop_message">Отсчёт остановится, и продолжить занятие будет нельзя.</string>
+    <string name="timer_stop_confirm">Завершить</string>
+    <string name="timer_stop_cancel">Продолжить занятие</string>
+
+    <string name="timer_finished_hint">Отсчёт остановлен, уведомление снято.</string>
 
     <string name="timer_notice_dismiss">Скрыть</string>
     <string name="timer_notice_understood">Понятно</string>

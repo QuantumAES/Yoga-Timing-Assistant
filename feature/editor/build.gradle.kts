@@ -8,4 +8,7 @@ android {
 
 dependencies {
     implementation(project(":domain"))
+    // Свой звук этапа выбирается системным выборщиком документов:
+    // rememberLauncherForActivityResult живёт здесь.
+    implementation(libs.androidx.activity.compose)
 }

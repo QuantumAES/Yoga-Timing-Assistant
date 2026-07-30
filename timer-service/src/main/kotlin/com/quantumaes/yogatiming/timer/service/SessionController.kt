@@ -69,11 +69,11 @@ class SessionController
         private val watchdog: Watchdog,
         private val time: TimeSource,
         @TimerSessionScope scope: CoroutineScope,
-    ) {
+    ) : ActiveSessionSource {
         private val engine = TimerEngine(time, scope, ::onEffect)
 
         /** `null` — занятие не загружено. */
-        val snapshot: StateFlow<SessionSnapshot?> get() = engine.snapshot
+        override val snapshot: StateFlow<SessionSnapshot?> get() = engine.snapshot
 
         val events: SharedFlow<TimerEvent> get() = engine.events
 
@@ -141,6 +141,8 @@ class SessionController
                 stageName = stage.name,
                 nextStageName = next?.name,
                 nextStageAnnouncesItself = event.alert.trigger == AlertTrigger.END && next.announcesItself(),
+                stageVoiceName = stage.voiceName,
+                nextStageVoiceName = next?.voiceName,
             )
         }
 

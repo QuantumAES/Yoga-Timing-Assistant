@@ -90,6 +90,7 @@ internal fun SettingsScreen(
             dynamicColorAvailable = viewModel.dynamicColorAvailable,
             onThemeModeChange = viewModel::setThemeMode,
             onDynamicColorChange = viewModel::setDynamicColor,
+            onVoiceEnabledChange = viewModel::setVoiceEnabled,
             onRestoreHints = viewModel::restoreHints,
             modifier = Modifier.padding(innerPadding),
         )
@@ -102,6 +103,7 @@ private fun SettingsContent(
     dynamicColorAvailable: Boolean,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onVoiceEnabledChange: (Boolean) -> Unit,
     onRestoreHints: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -132,6 +134,16 @@ private fun SettingsContent(
                 onCheckedChange = onDynamicColorChange,
             )
         }
+
+        HorizontalDivider(Modifier.padding(vertical = Spacing.s))
+
+        SectionTitle(stringResource(R.string.settings_section_alerts))
+        SwitchRow(
+            title = stringResource(R.string.settings_voice),
+            subtitle = stringResource(R.string.settings_voice_hint),
+            checked = settings.voiceEnabled,
+            onCheckedChange = onVoiceEnabledChange,
+        )
 
         HorizontalDivider(Modifier.padding(vertical = Spacing.s))
 
@@ -247,6 +259,7 @@ private fun SettingsContentPreview() {
             dynamicColorAvailable = true,
             onThemeModeChange = {},
             onDynamicColorChange = {},
+            onVoiceEnabledChange = {},
             onRestoreHints = {},
         )
     }

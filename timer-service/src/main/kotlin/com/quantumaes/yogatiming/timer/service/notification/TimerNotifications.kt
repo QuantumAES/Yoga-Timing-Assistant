@@ -37,6 +37,8 @@ data class TimerNotificationContent(
     val title: String,
     val text: String,
     val paused: Boolean,
+    /** Куда ведёт тап по уведомлению: к занятию именно этого профиля. */
+    val profileId: Long,
 )
 
 /**
@@ -79,6 +81,7 @@ class TimerNotifications
                 title = snapshot.currentStageName,
                 text = position + context.getString(R.string.timer_notification_separator) + timing(snapshot),
                 paused = paused,
+                profileId = snapshot.profileId,
             )
         }
 
@@ -109,8 +112,10 @@ class TimerNotifications
                 .setSmallIcon(R.drawable.ic_stat_timer)
                 .setContentTitle(content?.title.orEmpty())
                 .setContentText(content?.text.orEmpty())
-                .setContentIntent(context.launchAppIntent())
-                .setOngoing(true)
+                // Пока сессия не загружена, вести некуда — открывается приложение.
+                .setContentIntent(
+                    content?.let { context.sessionIntent(it.profileId) } ?: context.launchAppIntent(),
+                ).setOngoing(true)
                 .setSilent(true)
                 .setShowWhen(false)
                 .setCategory(NotificationCompat.CATEGORY_STOPWATCH)

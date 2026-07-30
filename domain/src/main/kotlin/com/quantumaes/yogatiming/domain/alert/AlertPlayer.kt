@@ -18,6 +18,8 @@ import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
  *   своим START-оповещением. Флаг заполняет владелец плана: только он видит
  *   оповещения соседнего этапа. Нужен, чтобы «далее: X» и «X» не прозвучали
  *   подряд на одной и той же границе.
+ * @param stageVoiceName как произносить [stageName]; `null` — как написано.
+ * @param nextStageVoiceName то же для [nextStageName].
  */
 data class AlertRequest(
     val alert: Alert,
@@ -25,7 +27,14 @@ data class AlertRequest(
     val stageName: String,
     val nextStageName: String?,
     val nextStageAnnouncesItself: Boolean = false,
-)
+    val stageVoiceName: String? = null,
+    val nextStageVoiceName: String? = null,
+) {
+    /** Что произносить вместо названия этапа: правка озвучки старше написания. */
+    val spokenStageName: String get() = stageVoiceName?.takeIf { it.isNotBlank() } ?: stageName
+
+    val spokenNextStageName: String? get() = nextStageVoiceName?.takeIf { it.isNotBlank() } ?: nextStageName
+}
 
 /**
  * Воспроизведение оповещений: звук, голос, вибрация.

@@ -39,4 +39,12 @@
     <string name="profiles_copy_name">%1$s — copy</string>
     <string name="profiles_deleted">Profile “%1$s” deleted</string>
     <string name="profiles_undo">Undo</string>
+
+    <!-- Полоса идущего занятия над списком. -->
+    <string name="profiles_active_stage">Stage %1$d/%2$d</string>
+    <string name="profiles_active_running">in progress</string>
+    <string name="profiles_active_paused">paused</string>
+    <string name="profiles_active_open">Open the session</string>
+    <string name="profiles_running">Session in progress</string>
+    <string name="profiles_blocked_by_session">Stop the session first — a running profile cannot be edited or deleted.</string>
 </resources>

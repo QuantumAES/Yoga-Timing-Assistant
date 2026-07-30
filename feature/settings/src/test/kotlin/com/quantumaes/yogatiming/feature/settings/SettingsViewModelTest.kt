@@ -19,7 +19,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/** Хранилище настроек в памяти: весь контракт — один поток и два сеттера. */
+/** Хранилище настроек в памяти: весь контракт — один поток и три сеттера. */
 private class FakeSettingsStore(
     initial: AppSettings = AppSettings(),
 ) : SettingsStore {
@@ -33,6 +33,10 @@ private class FakeSettingsStore(
 
     override suspend fun setDynamicColor(enabled: Boolean) {
         state.value = state.value.copy(dynamicColor = enabled)
+    }
+
+    override suspend fun setVoiceEnabled(enabled: Boolean) {
+        state.value = state.value.copy(voiceEnabled = enabled)
     }
 }
 
@@ -66,6 +70,29 @@ class SettingsViewModelTest {
     }
 
     private fun viewModel() = SettingsViewModel(settingsStore, hintStore)
+
+    @Test
+    fun `по умолчанию голос выключен`() =
+        runTest(dispatcher) {
+            // Синтезатор читает санскритские названия асан с чужими ударениями,
+            // и первое занятие после установки не должно этим огорошивать.
+            viewModel().settings.test {
+                assertThat(awaitItem().voiceEnabled).isFalse()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `включение голоса уходит в хранилище`() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            model.settings.test {
+                awaitItem()
+                model.setVoiceEnabled(true)
+                assertThat(awaitItem().voiceEnabled).isTrue()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 
     @Test
     fun `по умолчанию тема системная`() =

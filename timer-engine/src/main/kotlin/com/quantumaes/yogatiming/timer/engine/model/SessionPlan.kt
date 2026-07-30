@@ -38,6 +38,9 @@ data class SessionPlan(
  * @param plannedDurationMs плановая длительность; для [StageKind.FREE] — 0,
  *   этап длится до ручного перехода.
  * @param note заметка инструктору, показывается на рабочем экране.
+ * @param voiceName как этап произносится вслух; `null` — как написан [name].
+ *   Движок его не читает и не показывает: несёт как часть плана тому, кто
+ *   озвучивает оповещения.
  */
 data class PlannedStage(
     val id: Long,
@@ -46,5 +49,6 @@ data class PlannedStage(
     val colorTag: String,
     val plannedDurationMs: Long,
     val note: String? = null,
+    val voiceName: String? = null,
     val alerts: ResolvedAlertConfig = ResolvedAlertConfig.SILENT,
 )

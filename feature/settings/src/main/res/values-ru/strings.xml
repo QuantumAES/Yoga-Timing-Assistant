@@ -10,6 +10,10 @@
     <string name="settings_dynamic_color">Цвета из обоев</string>
     <string name="settings_dynamic_color_hint">Палитра Material You. К рабочему экрану занятия не применяется никогда — она не гарантирует контраст.</string>
 
+    <string name="settings_section_alerts">Оповещения</string>
+    <string name="settings_voice">Голосовые оповещения</string>
+    <string name="settings_voice_hint">По умолчанию выключены: синтезатор ставит ударения в санскритских названиях асан по-своему. Поправьте поле «Произношение» у этапа и включите.</string>
+
     <string name="settings_section_hints">Подсказки</string>
     <string name="settings_restore_hints">Показывать подсказки снова</string>
     <string name="settings_restore_hints_hint">Разовые советы об энергосбережении и точных будильниках показываются один раз и больше не возвращаются.</string>

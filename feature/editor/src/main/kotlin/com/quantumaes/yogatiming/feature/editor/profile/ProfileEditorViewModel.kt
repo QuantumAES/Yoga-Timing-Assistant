@@ -8,6 +8,9 @@ import com.quantumaes.yogatiming.domain.model.NEW_ID
 import com.quantumaes.yogatiming.domain.model.Profile
 import com.quantumaes.yogatiming.domain.model.ProfileCategory
 import com.quantumaes.yogatiming.domain.model.Stage
+import com.quantumaes.yogatiming.domain.model.TotalDurationMode
+import com.quantumaes.yogatiming.domain.model.alert.AlertConfig
+import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
 import com.quantumaes.yogatiming.feature.editor.NEW_ENTITY_ID
 import com.quantumaes.yogatiming.feature.editor.RouteArgs
@@ -87,10 +90,22 @@ class ProfileEditorViewModel
                 ?.takeIf { it != NEW_ENTITY_ID }
                 ?: NEW_ID
 
-        /** Сохраняются вместе с профилем и правкой не подлежат. */
+        /**
+         * Поля профиля, которых на этом экране нет.
+         *
+         * Их приходится помнить, потому что `saveProfile` пишет профиль целиком:
+         * собрать `Profile` из одних лишь полей формы — значит затереть всё
+         * остальное значениями по умолчанию. Именно так и терялись оповещения
+         * по умолчанию, настроенные на соседнем экране: возврат в редактор и
+         * любое сохранение возвращали профилю «Стандарт».
+         */
         private var uuid: String = UUID.randomUUID().toString()
         private var createdAt: Long = 0
         private var sortOrder: Int = 0
+        private var iconId: String? = null
+        private var totalDurationMode: TotalDurationMode = TotalDurationMode.DEFAULT
+        private var fixedTotalSec: Int? = null
+        private var defaultAlertConfig: AlertConfig = AlertPresets.standard()
 
         private val _uiState = MutableStateFlow(ProfileEditorUiState())
         val uiState: StateFlow<ProfileEditorUiState> = _uiState.asStateFlow()
@@ -105,15 +120,17 @@ class ProfileEditorViewModel
         /**
          * Перечитывание при каждом возвращении на экран.
          *
-         * Этапы правятся на соседнем экране и сохраняются им самим, поэтому
-         * список приходится забирать заново. Поля профиля при этом не трогаются:
-         * пользователь мог отредактировать название и уйти добавлять этап.
+         * Этапы и оповещения по умолчанию правятся на соседних экранах и
+         * сохраняются ими самими, поэтому их приходится забирать заново. Поля
+         * формы при этом не трогаются: пользователь мог отредактировать
+         * название и уйти добавлять этап.
          */
         fun refreshStages() {
             if (profileId == NEW_ID) return
             viewModelScope.launch {
-                val stages = repository.getProfile(profileId)?.stages ?: return@launch
-                _uiState.update { it.copy(stages = stages) }
+                val profile = repository.getProfile(profileId) ?: return@launch
+                defaultAlertConfig = profile.defaultAlertConfig
+                _uiState.update { it.copy(stages = profile.stages) }
             }
         }
 
@@ -132,6 +149,10 @@ class ProfileEditorViewModel
             uuid = profile.uuid
             createdAt = profile.createdAt
             sortOrder = profile.sortOrder
+            iconId = profile.iconId
+            totalDurationMode = profile.totalDurationMode
+            fixedTotalSec = profile.fixedTotalSec
+            defaultAlertConfig = profile.defaultAlertConfig
             _uiState.value =
                 ProfileEditorUiState(
                     isNew = false,
@@ -217,8 +238,12 @@ class ProfileEditorViewModel
                 name = name.trim(),
                 category = category,
                 colorTag = colorTag,
+                iconId = iconId,
+                totalDurationMode = totalDurationMode,
+                fixedTotalSec = fixedTotalSec,
                 isFavorite = isFavorite,
                 sortOrder = sortOrder,
+                defaultAlertConfig = defaultAlertConfig,
                 createdAt = createdAt,
                 stages = stages,
             )

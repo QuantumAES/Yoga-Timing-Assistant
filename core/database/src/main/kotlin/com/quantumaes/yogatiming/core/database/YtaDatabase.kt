@@ -26,7 +26,8 @@ abstract class YtaDatabase : RoomDatabase() {
     abstract fun stageDao(): StageDao
 
     companion object {
-        const val VERSION = 1
+        /** v2 — `stages.voice_name`: произношение этапа для синтезатора речи. */
+        const val VERSION = 2
         const val NAME = "yoga-timing.db"
     }
 }

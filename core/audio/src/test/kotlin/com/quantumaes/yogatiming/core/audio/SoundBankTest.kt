@@ -10,20 +10,29 @@ import org.junit.Test
  * занятия, в сборке — никак. Здесь — как красный тест.
  */
 class SoundBankTest {
-    private val playable = AlertSound.entries - AlertSound.NONE
+    /**
+     * `CUSTOM` — файл пользователя, его в банке нет и быть не может: он играется
+     * через [CustomSoundChannel] по ссылке из самого оповещения.
+     */
+    private val bundled = AlertSound.entries - AlertSound.NONE - AlertSound.CUSTOM
 
     @Test
     fun `у каждого звукового пресета есть сэмпл`() {
-        assertThat(RESOURCES.keys).containsExactlyElementsIn(playable)
+        assertThat(RESOURCES.keys).containsExactlyElementsIn(bundled)
     }
 
     @Test
     fun `у каждого сэмпла известна длительность`() {
-        assertThat(DURATIONS_MS.keys).containsExactlyElementsIn(playable)
+        assertThat(DURATIONS_MS.keys).containsExactlyElementsIn(bundled)
     }
 
     @Test
     fun `тишина сэмпла не имеет`() {
         assertThat(RESOURCES).doesNotContainKey(AlertSound.NONE)
+    }
+
+    @Test
+    fun `звук пользователя в банке не лежит`() {
+        assertThat(RESOURCES).doesNotContainKey(AlertSound.CUSTOM)
     }
 }

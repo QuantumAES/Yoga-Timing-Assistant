@@ -17,11 +17,13 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SwipeToDismissBox
@@ -58,6 +60,7 @@ private const val MILLIS_IN_SECOND = 1_000L
 @Composable
 internal fun SwipeToDelete(
     onDelete: () -> Unit,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val state = rememberSwipeToDismissBoxState()
@@ -73,6 +76,7 @@ internal fun SwipeToDelete(
 
     SwipeToDismissBox(
         state = state,
+        gesturesEnabled = enabled,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
             Box(
@@ -103,9 +107,20 @@ internal fun ProfileCard(
     onLongClick: () -> Unit,
     onStart: () -> Unit,
     onToggleFavorite: () -> Unit,
+    isRunning: Boolean = false,
 ) {
     val menuLabel = stringResource(R.string.profiles_menu)
-    Card {
+    Card(
+        colors =
+            if (isRunning) {
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            } else {
+                CardDefaults.cardColors()
+            },
+    ) {
         Row(
             modifier =
                 Modifier
@@ -131,9 +146,13 @@ internal fun ProfileCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = profile.subtitle(),
+                    // Идущее занятие важнее статистики профиля: пока оно идёт,
+                    // «6 этапов · 60 мин» пользователю не нужно, а «идёт
+                    // занятие» объясняет, почему карточка не открывает редактор.
+                    text = if (isRunning) stringResource(R.string.profiles_running) else profile.subtitle(),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color =
+                        if (isRunning) LocalContentColor.current else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

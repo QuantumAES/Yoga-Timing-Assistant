@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.domain.model.Profile
 import com.quantumaes.yogatiming.domain.model.Stage
+import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
 import com.quantumaes.yogatiming.feature.editor.profile.ProfileEditorEvent
 import com.quantumaes.yogatiming.feature.editor.profile.ProfileEditorViewModel
 import kotlinx.coroutines.Dispatchers
@@ -189,5 +190,63 @@ class ProfileEditorViewModelTest {
                 .containsExactly("Разминка", "Разминка", "Асаны", "Шавасана")
                 .inOrder()
             assertThat(stages.map { it.id }.toSet()).hasSize(stages.size)
+        }
+
+    /**
+     * Регрессия полевой проверки 2026-07-30: оповещения по умолчанию,
+     * настроенные на соседнем экране, терялись при любом сохранении профиля.
+     * `saveProfile` пишет профиль целиком, а редактор собирал его из одних лишь
+     * полей формы — и возвращал конфигу «Стандарт».
+     */
+    @Test
+    fun `сохранение профиля не затирает оповещения по умолчанию`() =
+        runTest(dispatcher) {
+            val stored = requireNotNull(repository.getProfile(PROFILE_ID))
+            repository.saveProfile(stored.copy(defaultAlertConfig = AlertPresets.silent()))
+            testScheduler.runCurrent()
+
+            val viewModel = viewModel()
+            viewModel.setName("Хатха 90 мин")
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            val saved = requireNotNull(repository.getProfile(PROFILE_ID))
+            assertThat(saved.name).isEqualTo("Хатха 90 мин")
+            assertThat(saved.defaultAlertConfig).isEqualTo(AlertPresets.silent())
+        }
+
+    @Test
+    fun `правка оповещений на соседнем экране подхватывается при возвращении`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            // Экран оповещений сохранил свой конфиг, пока редактор был скрыт.
+            val stored = requireNotNull(repository.getProfile(PROFILE_ID))
+            repository.saveProfile(stored.copy(defaultAlertConfig = AlertPresets.vibrationOnly()))
+            testScheduler.runCurrent()
+
+            viewModel.refreshStages()
+            testScheduler.runCurrent()
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            assertThat(requireNotNull(repository.getProfile(PROFILE_ID)).defaultAlertConfig)
+                .isEqualTo(AlertPresets.vibrationOnly())
+        }
+
+    @Test
+    fun `поля, которых нет в форме, переживают сохранение`() =
+        runTest(dispatcher) {
+            val stored = requireNotNull(repository.getProfile(PROFILE_ID))
+            repository.saveProfile(stored.copy(iconId = "lotus", sortOrder = 7))
+            testScheduler.runCurrent()
+
+            val viewModel = viewModel()
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            val saved = requireNotNull(repository.getProfile(PROFILE_ID))
+            assertThat(saved.iconId).isEqualTo("lotus")
+            assertThat(saved.sortOrder).isEqualTo(7)
         }
 }

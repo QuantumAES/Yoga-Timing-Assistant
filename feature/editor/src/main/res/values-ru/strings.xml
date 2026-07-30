@@ -29,6 +29,13 @@
     <string name="editor_stage_note">Заметка</string>
     <string name="editor_stage_note_label">Заметка инструктору</string>
     <string name="editor_stage_note_hint">Показывается на рабочем экране. Вслух не произносится.</string>
+
+    <!-- Произношение этапа: ударения для синтезатора речи. -->
+    <string name="editor_stage_voice_name">Произношение</string>
+    <string name="editor_stage_voice_name_placeholder">шав+асана</string>
+    <string name="editor_stage_voice_name_hint">Как этап произносится вслух. Пусто — как написан. Ударную гласную пометьте плюсом перед ней: «шав+асана».</string>
+    <string name="editor_stage_voice_preview">Прослушать</string>
+    <string name="editor_stage_voice_disabled">Голосовые оповещения выключены в настройках — прослушать пока нечем.</string>
     <string name="editor_stage_alerts">Оповещения</string>
     <string name="editor_stage_own_alerts">Свои оповещения</string>
     <string name="editor_stage_own_alerts_hint">Выключено — этап наследует оповещения профиля.</string>
@@ -71,6 +78,8 @@
     <string name="editor_alerts_warning_unreachable">Этап короче этого смещения — предупреждение будет пропущено молча.</string>
     <string name="editor_alerts_offset_minutes">%1$d мин</string>
     <string name="editor_alerts_custom_text">Произносимый текст</string>
+    <string name="editor_alerts_custom_text_hint">Ударную гласную пометьте плюсом перед ней: «шав+асана».</string>
+    <string name="editor_alerts_voice_disabled">Голосовые оповещения выключены в настройках — это оповещение промолчит.</string>
     <string name="editor_alerts_preview">Прослушать</string>
     <string name="editor_alerts_free_stage">У свободного этапа нет конца, поэтому предупреждения и сигнал конца сработают только при ручном переходе.</string>
 
@@ -90,6 +99,11 @@
     <string name="editor_sound_bell">Колокольчик</string>
     <string name="editor_sound_tone">Тон</string>
     <string name="editor_sound_tick">Тик</string>
+    <string name="editor_sound_custom">Свой файл</string>
+    <string name="editor_sound_custom_pick">Выбрать файл</string>
+    <string name="editor_sound_custom_replace">Заменить</string>
+    <string name="editor_sound_custom_clear">Убрать файл</string>
+    <string name="editor_sound_custom_none">Файл не выбран — оповещение промолчит</string>
 
     <string name="editor_vibration_single">Одиночная</string>
     <string name="editor_vibration_double">Двойная</string>

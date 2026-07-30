@@ -64,13 +64,14 @@ internal fun ProfilesScreen(
     onCreateProfile: () -> Unit,
     onEditProfile: (Long) -> Unit,
     onStartSession: (Long) -> Unit,
+    onOpenSession: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     viewModel: ProfilesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    DeletionSnackbar(
+    ProfilesSnackbars(
         events = viewModel.uiEvents,
         snackbarHostState = snackbarHostState,
         onUndo = viewModel::undoDelete,
@@ -80,8 +81,11 @@ internal fun ProfilesScreen(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onCreateProfile = onCreateProfile,
-        onEditProfile = onEditProfile,
+        // Запрет правки живёт в модели: свайп, меню и карточка ведут к одному
+        // действию, и правило должно быть одно на всех (см. `requestEdit`).
+        onEditProfile = { profileId -> if (viewModel.requestEdit(profileId)) onEditProfile(profileId) },
         onStartSession = onStartSession,
+        onOpenSession = onOpenSession,
         onOpenSettings = onOpenSettings,
         onToggleFavorite = viewModel::setFavorite,
         onQueryChange = viewModel::setQuery,
@@ -94,20 +98,21 @@ internal fun ProfilesScreen(
 }
 
 /**
- * Снекбар с отменой удаления.
+ * Снекбары экрана: отмена удаления и отказ править запущенный профиль.
  *
- * Вынесен из тела экрана, потому что `showSnackbar` приостанавливается до
+ * Вынесены из тела экрана, потому что `showSnackbar` приостанавливается до
  * закрытия снекбара: внутри `LaunchedEffect` по состоянию он висел бы поперёк
  * перекомпозиций.
  */
 @Composable
-private fun DeletionSnackbar(
+private fun ProfilesSnackbars(
     events: Flow<ProfilesEvent>,
     snackbarHostState: SnackbarHostState,
     onUndo: () -> Unit,
 ) {
     val undoLabel = stringResource(R.string.profiles_undo)
     val deletedTemplate = stringResource(R.string.profiles_deleted)
+    val blockedMessage = stringResource(R.string.profiles_blocked_by_session)
 
     LaunchedEffect(events) {
         events.collect { event ->
@@ -120,6 +125,10 @@ private fun DeletionSnackbar(
                             withDismissAction = true,
                         )
                     if (result == SnackbarResult.ActionPerformed) onUndo()
+                }
+
+                ProfilesEvent.BlockedByRunningSession -> {
+                    snackbarHostState.showSnackbar(message = blockedMessage, withDismissAction = true)
                 }
             }
         }
@@ -134,6 +143,7 @@ internal fun ProfilesScreen(
     onCreateProfile: () -> Unit,
     onEditProfile: (Long) -> Unit,
     onStartSession: (Long) -> Unit,
+    onOpenSession: (Long) -> Unit,
     onOpenSettings: () -> Unit,
     onToggleFavorite: (Long, Boolean) -> Unit,
     onQueryChange: (String) -> Unit,
@@ -169,6 +179,10 @@ internal fun ProfilesScreen(
         },
     ) { innerPadding ->
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
+            uiState.activeSession?.let { session ->
+                ActiveSessionBar(session = session, onOpen = { onOpenSession(session.profileId) })
+            }
+
             SearchField(query = uiState.query, onQueryChange = onQueryChange)
             FilterRow(
                 category = uiState.category,
@@ -189,8 +203,10 @@ internal fun ProfilesScreen(
                 else -> {
                     ProfileList(
                         profiles = uiState.profiles,
+                        activeProfileId = uiState.activeProfileId,
                         onEditProfile = onEditProfile,
                         onStartSession = onStartSession,
+                        onOpenSession = onOpenSession,
                         onToggleFavorite = onToggleFavorite,
                         onOpenMenu = { menuFor = it },
                         onDelete = onDelete,
@@ -315,8 +331,10 @@ private fun EmptyState(
 @Composable
 private fun ProfileList(
     profiles: List<ProfileSummary>,
+    activeProfileId: Long?,
     onEditProfile: (Long) -> Unit,
     onStartSession: (Long) -> Unit,
+    onOpenSession: (Long) -> Unit,
     onToggleFavorite: (Long, Boolean) -> Unit,
     onOpenMenu: (ProfileSummary) -> Unit,
     onDelete: (Long) -> Unit,
@@ -334,10 +352,21 @@ private fun ProfileList(
         verticalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         items(profiles, key = { it.id }) { profile ->
-            SwipeToDelete(onDelete = { onDelete(profile.id) }) {
+            val isRunning = profile.id == activeProfileId
+            SwipeToDelete(
+                onDelete = { onDelete(profile.id) },
+                // Свайп по запущенному профилю не срабатывает вовсе, а не
+                // срабатывает и получает отказ: карточка не должна уезжать
+                // за пределы экрана, если удаления не будет.
+                enabled = !isRunning,
+            ) {
                 ProfileCard(
                     profile = profile,
-                    onClick = { onEditProfile(profile.id) },
+                    isRunning = isRunning,
+                    // Карточка запущенного профиля ведёт к занятию, а не в
+                    // редактор: править профиль под идущим занятием нельзя,
+                    // а вернуться к отсчёту — самое вероятное намерение.
+                    onClick = { if (isRunning) onOpenSession(profile.id) else onEditProfile(profile.id) },
                     onLongClick = { onOpenMenu(profile) },
                     onStart = { onStartSession(profile.id) },
                     onToggleFavorite = { onToggleFavorite(profile.id, !profile.isFavorite) },
@@ -387,6 +416,7 @@ private fun ProfilesScreenPreview() {
             onCreateProfile = {},
             onEditProfile = {},
             onStartSession = {},
+            onOpenSession = {},
             onOpenSettings = {},
             onToggleFavorite = { _, _ -> },
             onQueryChange = {},

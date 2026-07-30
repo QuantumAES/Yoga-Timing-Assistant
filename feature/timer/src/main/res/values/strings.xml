@@ -2,7 +2,6 @@
 <resources>
     <string name="timer_idle">Session not started</string>
     <string name="timer_no_time">--:--</string>
-    <string name="timer_previous">Prev</string>
     <string name="timer_next">Next</string>
     <string name="timer_pause">Pause</string>
     <string name="timer_resume">Resume</string>
@@ -17,6 +16,22 @@
     <string name="timer_finished_title">Class complete</string>
     <string name="timer_finished_repeat">Repeat</string>
     <string name="timer_finished_exit">Back to profiles</string>
+
+    <!-- Верхний бар и режимы рабочего экрана (docs/03-GESTURES.md). -->
+    <string name="timer_lock">Lock the screen</string>
+    <string name="timer_unlock_hint">Press and hold to unlock</string>
+    <string name="timer_focus_enter">Focus mode</string>
+    <string name="timer_focus_hint">‹ swipe to change stage ·  swipe down to exit ›</string>
+    <string name="timer_previous_stage">‹ Previous stage</string>
+    <string name="timer_next_stage">Next: %1$s</string>
+    <string name="timer_last_stage">Last stage</string>
+
+    <string name="timer_stop_title">End the session?</string>
+    <string name="timer_stop_message">The countdown will stop and the session will not be resumed.</string>
+    <string name="timer_stop_confirm">End</string>
+    <string name="timer_stop_cancel">Keep going</string>
+
+    <string name="timer_finished_hint">The countdown has stopped and the notification is gone.</string>
 
     <string name="timer_notice_dismiss">Hide</string>
     <string name="timer_notice_understood">Got it</string>

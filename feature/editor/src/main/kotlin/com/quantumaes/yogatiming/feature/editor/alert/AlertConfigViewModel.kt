@@ -12,6 +12,7 @@ import com.quantumaes.yogatiming.domain.model.alert.AlertConfig
 import com.quantumaes.yogatiming.domain.model.alert.AlertPreset
 import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.feature.editor.NEW_ENTITY_ID
 import com.quantumaes.yogatiming.feature.editor.RouteArgs
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
@@ -46,6 +47,13 @@ data class AlertConfigUiState(
     val isFreeStage: Boolean = false,
     /** Длительность этапа: по ней видно, какие предупреждения не сработают (B-7). */
     val stageDurationSec: Int = 0,
+    /**
+     * Разрешён ли голос вообще (Экран 6 настроек).
+     *
+     * Настроенный канал VOICE при выключенном голосе промолчит, и узнать об
+     * этом здесь честнее, чем посреди занятия.
+     */
+    val voiceEnabled: Boolean = false,
 ) {
     val warnings: List<Alert> get() = config.warningsByTime
 
@@ -75,6 +83,7 @@ class AlertConfigViewModel
     constructor(
         private val repository: ProfileRepository,
         private val alertPlayer: AlertPlayer,
+        settingsStore: SettingsStore,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val profileId: Long = requireNotNull(savedStateHandle.get<Long>(RouteArgs.PROFILE_ID))
@@ -89,13 +98,20 @@ class AlertConfigViewModel
 
         init {
             viewModelScope.launch { load() }
+            viewModelScope.launch {
+                settingsStore.settings.collect { settings ->
+                    _uiState.update { it.copy(voiceEnabled = settings.voiceEnabled) }
+                }
+            }
         }
 
         private suspend fun load() {
             val profile = repository.getProfile(profileId) ?: return
             val stage = stageId?.let { id -> profile.stages.firstOrNull { it.id == id } }
-            _uiState.value =
-                AlertConfigUiState(
+            // copy, а не новое состояние: настройка голоса приезжает своим
+            // потоком и может успеть раньше чтения профиля.
+            _uiState.update {
+                it.copy(
                     isLoading = false,
                     isStageScope = stage != null,
                     ownerName = stage?.name ?: profile.name,
@@ -103,6 +119,7 @@ class AlertConfigViewModel
                     isFreeStage = stage != null && !stage.hasPlannedDuration,
                     stageDurationSec = stage?.durationSec ?: 0,
                 )
+            }
         }
 
         /** Пресет заменяет набор целиком — это и есть смысл готового набора. */

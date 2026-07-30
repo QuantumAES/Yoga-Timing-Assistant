@@ -9,6 +9,11 @@ import com.quantumaes.yogatiming.domain.model.alert.AlertConfig
  *   этап длится до ручного перехода.
  * @param alertConfig `null` означает наследование конфига профиля. Это не
  *   «пустые оповещения», а именно отсутствие переопределения (ADR-002).
+ * @param voiceName как этап произносится вслух. `null` — как написан.
+ *   Санскритские названия асан синтезатор читает с чужими ударениями, и
+ *   исправить это можно только текстом: «шав+асана» или прямая перезапись
+ *   произношения. На экране всегда виден [name] — поле правит озвучку, а не
+ *   название.
  */
 data class Stage(
     val id: Long = NEW_ID,
@@ -20,6 +25,7 @@ data class Stage(
     val note: String? = null,
     val sortOrder: Int = 0,
     val alertConfig: AlertConfig? = null,
+    val voiceName: String? = null,
 ) {
     /** Участвует ли этап в подсчёте общего времени занятия (решение B-4). */
     val hasPlannedDuration: Boolean get() = type != StageType.FREE

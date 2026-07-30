@@ -136,6 +136,64 @@ class AlertPlanTest {
     }
 
     @Test
+    fun `выключенный в настройках голос не подменяется звуком`() {
+        val alert =
+            Alert(
+                channels = setOf(AlertChannel.VOICE),
+                sound = AlertSound.NONE,
+                voice = VoicePhrase.STAGE_NAME,
+            )
+
+        val plan = alertPlanOf(request(alert), speechReady = true, voiceEnabled = false)
+
+        // Голос выключен решением пользователя, а не поломкой движка: возвращать
+        // вместо него гонг значит возвращать звук, от которого отказались.
+        assertThat(plan.voice).isNull()
+        assertThat(plan.sound).isNull()
+        assertThat(plan.isEmpty).isTrue()
+    }
+
+    @Test
+    fun `выключенный голос не мешает остальным каналам`() {
+        val alert =
+            Alert(
+                channels = setOf(AlertChannel.SOUND, AlertChannel.VOICE),
+                sound = AlertSound.BELL,
+                voice = VoicePhrase.STAGE_NAME,
+            )
+
+        val plan = alertPlanOf(request(alert), speechReady = true, voiceEnabled = false)
+
+        assertThat(plan.sound).isEqualTo(AlertSound.BELL)
+        assertThat(plan.voice).isNull()
+    }
+
+    @Test
+    fun `свой звук уходит в план вместе со ссылкой на файл`() {
+        val alert =
+            Alert(
+                channels = setOf(AlertChannel.SOUND),
+                sound = AlertSound.CUSTOM,
+                customSoundUri = "content://media/audio/42",
+            )
+
+        val plan = alertPlanOf(request(alert), speechReady = true)
+
+        assertThat(plan.sound).isEqualTo(AlertSound.CUSTOM)
+        assertThat(plan.customSoundUri).isEqualTo("content://media/audio/42")
+    }
+
+    @Test
+    fun `свой звук без выбранного файла не звучит`() {
+        val alert = Alert(channels = setOf(AlertChannel.SOUND), sound = AlertSound.CUSTOM, customSoundUri = null)
+
+        val plan = alertPlanOf(request(alert), speechReady = true)
+
+        assertThat(plan.sound).isNull()
+        assertThat(plan.isEmpty).isTrue()
+    }
+
+    @Test
     fun `границы этапа ждут окончания разговора, предупреждения — нет`() {
         assertThat(canDefer(AlertTrigger.START)).isTrue()
         assertThat(canDefer(AlertTrigger.END)).isTrue()

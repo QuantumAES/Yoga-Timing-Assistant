@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +67,8 @@ internal fun StageEditorScreen(
     StageEditorContent(
         uiState = uiState,
         onNameChange = viewModel::setName,
+        onVoiceNameChange = viewModel::setVoiceName,
+        onPreviewVoice = viewModel::previewVoice,
         onTypeChange = viewModel::setType,
         onDeclineRestPreset = viewModel::declineRestPreset,
         onColorChange = viewModel::setColorTag,
@@ -82,6 +85,8 @@ internal fun StageEditorScreen(
 private fun StageEditorContent(
     uiState: StageEditorUiState,
     onNameChange: (String) -> Unit,
+    onVoiceNameChange: (String) -> Unit,
+    onPreviewVoice: () -> Unit,
     onTypeChange: (StageType) -> Unit,
     onDeclineRestPreset: () -> Unit,
     onColorChange: (String) -> Unit,
@@ -118,6 +123,13 @@ private fun StageEditorContent(
                 if (uiState.nameErrorShown) {
                     FieldHint(stringResource(R.string.editor_stage_name_required), error = true)
                 }
+
+                PronunciationField(
+                    voiceName = uiState.voiceName,
+                    voiceEnabled = uiState.voiceEnabled,
+                    onVoiceNameChange = onVoiceNameChange,
+                    onPreview = onPreviewVoice,
+                )
 
                 SectionTitle(stringResource(R.string.editor_stage_type))
                 SingleChoiceChips(
@@ -187,6 +199,57 @@ private fun StageEditorContent(
 }
 
 /**
+ * Произношение этапа.
+ *
+ * Санскритские названия асан синтезатор читает с ударением по своим правилам,
+ * и «шавáсана» превращается в «шавасáну». Исправить это можно только текстом:
+ * пометкой ударения или прямой перезаписью произношения. На экране при этом
+ * остаётся настоящее название — поле правит озвучку, а не заголовок.
+ *
+ * Кнопка прослушивания обязательна: попала пометка в нужный слог или нет,
+ * видно только на слух. Когда голос выключен целиком (Экран 6), проверять
+ * нечем — вместо кнопки честно сказано, почему.
+ */
+@Composable
+private fun PronunciationField(
+    voiceName: String,
+    voiceEnabled: Boolean,
+    onVoiceNameChange: (String) -> Unit,
+    onPreview: () -> Unit,
+) {
+    OutlinedTextField(
+        value = voiceName,
+        onValueChange = onVoiceNameChange,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.m, vertical = Spacing.s),
+        label = { Text(stringResource(R.string.editor_stage_voice_name)) },
+        placeholder = { Text(stringResource(R.string.editor_stage_voice_name_placeholder)) },
+        singleLine = true,
+    )
+    FieldHint(stringResource(R.string.editor_stage_voice_name_hint))
+
+    if (voiceEnabled) {
+        OutlinedButton(
+            onClick = onPreview,
+            modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s),
+        ) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = null)
+            Text(
+                text = stringResource(R.string.editor_stage_voice_preview),
+                modifier = Modifier.padding(start = Spacing.s),
+            )
+        }
+    } else {
+        FieldHint(
+            text = stringResource(R.string.editor_stage_voice_disabled),
+            modifier = Modifier.padding(top = Spacing.xs),
+        )
+    }
+}
+
+/**
  * Предложение тихого пресета для этапа отдыха (решение C-6).
  *
  * Пресет уже применён — сообщение о факте с возможностью отказаться, а не
@@ -227,8 +290,12 @@ private fun StageEditorPreview() {
                     name = "Асаны стоя",
                     durationSec = Stage.MIN_DURATION_SEC * 216,
                     note = "Вирабхадрасана I–II, триконасана",
+                    voiceName = "ас+аны ст+оя",
+                    voiceEnabled = true,
                 ),
             onNameChange = {},
+            onVoiceNameChange = {},
+            onPreviewVoice = {},
             onTypeChange = {},
             onDeclineRestPreset = {},
             onColorChange = {},

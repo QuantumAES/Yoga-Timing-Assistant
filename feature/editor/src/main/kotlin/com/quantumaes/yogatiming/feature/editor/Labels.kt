@@ -59,6 +59,7 @@ internal fun AlertSound.soundLabelRes(): Int =
         AlertSound.BELL -> R.string.editor_sound_bell
         AlertSound.TONE -> R.string.editor_sound_tone
         AlertSound.TICK -> R.string.editor_sound_tick
+        AlertSound.CUSTOM -> R.string.editor_sound_custom
     }
 
 internal fun VibrationPattern.vibrationLabelRes(): Int =

@@ -41,6 +41,12 @@ fun YtaNavHost(navController: NavHostController = rememberNavController()) {
             onCreateProfile = { navController.navigate(ProfileEditorRoute()) },
             onEditProfile = { profileId -> navController.navigate(ProfileEditorRoute(profileId)) },
             onStartSession = { profileId -> navController.navigate(TimerRoute(profileId)) },
+            // Возврат к идущему занятию, а не запуск нового: `launchSingleTop`
+            // не даёт положить второй экран занятия поверх первого, если
+            // пользователь нажал полосу дважды.
+            onOpenSession = { profileId ->
+                navController.navigate(TimerRoute(profileId)) { launchSingleTop = true }
+            },
             onOpenSettings = { navController.navigate(SettingsRoute) },
         )
 

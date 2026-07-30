@@ -1,54 +1,96 @@
 package com.quantumaes.yogatiming.feature.timer
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.quantumaes.yogatiming.core.common.time.TimeFormatter
 import com.quantumaes.yogatiming.core.designsystem.component.KeepScreenOn
-import com.quantumaes.yogatiming.core.designsystem.component.PlaceholderAction
-import com.quantumaes.yogatiming.core.designsystem.component.PlaceholderScreen
+import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.TimerPalette
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTextStyles
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.core.designsystem.theme.timerPalette
+import com.quantumaes.yogatiming.feature.timer.component.LockOverlay
+import com.quantumaes.yogatiming.feature.timer.component.ProgressRing
+import com.quantumaes.yogatiming.feature.timer.component.RestrictionNotice
+import com.quantumaes.yogatiming.feature.timer.component.SessionControls
+import com.quantumaes.yogatiming.feature.timer.component.TimerDisplay
+import com.quantumaes.yogatiming.feature.timer.component.WindowBrightness
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
-import com.quantumaes.yogatiming.timer.service.restrictions.RestrictionSeverity
+import com.quantumaes.yogatiming.timer.engine.model.StageKind
 import com.quantumaes.yogatiming.timer.service.restrictions.TimerRestriction
+import kotlinx.coroutines.delay
+import kotlin.math.abs
+
+/** Через сколько бездействия гаснет экран в режиме фокуса (ТЗ, Экран 4). */
+private const val IDLE_DIM_MS = 15_000L
+
+/** Смена этапа подсвечивает экран независимо от таймера бездействия. */
+private const val STAGE_FLASH_MS = 2_000L
+
+/** До какой яркости приглушать окно. Не в ноль: цифры должны остаться видны. */
+private const val DIM_BRIGHTNESS = 0.1f
+
+/** Порог свайпа в фокусе, px. Ниже — случайное смещение пальца при тапе. */
+private const val SWIPE_THRESHOLD_PX = 120f
 
 /**
- * Экран 4 «Занятие» — временная проверочная версия Фазы 3.
+ * Экран 4 «Занятие» (Фаза 6 дорожной карты).
  *
- * Настоящий экран с кольцом прогресса и жестами — Фаза 6 (docs/01-ROADMAP.md).
- * Здесь ровно то, что нужно для вехи M2: увидеть своими глазами, что отсчёт
- * идёт при заблокированном экране, что управление из шторки работает и что
- * сессия переживает убийство процесса.
+ * Три режима из карты жестов (docs/03-GESTURES.md): обычный с кнопками, фокус
+ * без них и блокировка. Управление ранжировано по частоте использования на
+ * реальном занятии, а не по порядку макета: «Пауза» доминирует, «Пред. этап»
+ * уходит в текстовую кнопку (§5.1 анализа).
  *
  * Цвета берутся из [TimerPalette], а не из схемы Material: экран обязан
  * читаться с 2–3 метров, и динамическим цветам здесь места нет
@@ -64,10 +106,10 @@ internal fun TimerScreen(
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     val notices by viewModel.notices.collectAsStateWithLifecycle()
 
-    // Экран не гаснет и не приглушается, пока идёт занятие: инструктор смотрит
-    // на таймер издалека и не может тянуться к телефону, чтобы его разбудить.
-    // Процессор при этом держит сервис (SessionWakeLock), а экран — только этот
-    // флаг и только пока рабочий экран на переднем плане.
+    // Экран не гаснет и не приглушается системой, пока идёт занятие: инструктор
+    // смотрит на таймер издалека и не может тянуться к телефону, чтобы его
+    // разбудить. Процессор при этом держит сервис (SessionWakeLock), а экран —
+    // только этот флаг и только пока рабочий экран на переднем плане.
     KeepScreenOn()
 
     LaunchedEffect(profileId) { viewModel.ensureSession(profileId) }
@@ -81,9 +123,14 @@ internal fun TimerScreen(
         if (snapshot?.runState == RunState.FINISHED) onFinish()
     }
 
-    SessionContent(
+    var mode by rememberSaveable { mutableStateOf(SessionMode.NORMAL) }
+    var stopRequested by rememberSaveable { mutableStateOf(false) }
+
+    SessionScreen(
         snapshot = snapshot,
         notices = notices,
+        mode = mode,
+        onModeChange = { mode = it },
         onNoticeAction = viewModel::openSettings,
         onNoticeDismiss = viewModel::dismiss,
         onTogglePause = viewModel::togglePause,
@@ -91,17 +138,44 @@ internal fun TimerScreen(
         onPrevious = viewModel::previous,
         onAddTime = viewModel::addTime,
         onSubtractTime = viewModel::subtractTime,
-        onStop = {
-            viewModel.stop()
-            onExit()
-        },
+        onStopRequest = { stopRequested = true },
     )
+
+    // Системная «Назад» в обычном режиме спрашивает — занятие идёт, и выйти
+    // из него случайным свайпом от края нельзя. В фокусе она выходит из фокуса,
+    // под блокировкой игнорируется (docs/03-GESTURES.md §3).
+    BackHandler(enabled = true) {
+        when (mode) {
+            SessionMode.NORMAL -> stopRequested = true
+            SessionMode.FOCUS -> mode = SessionMode.NORMAL
+            SessionMode.LOCK -> Unit
+        }
+    }
+
+    if (stopRequested) {
+        StopConfirmation(
+            onConfirm = {
+                stopRequested = false
+                viewModel.stop()
+                onExit()
+            },
+            onDismiss = { stopRequested = false },
+        )
+    }
 }
 
+/**
+ * Разметка экрана.
+ *
+ * Ландшафт — отдельная раскладка, а не повёрнутый портрет (§5.4 анализа):
+ * в повёрнутом портрете кольцо съедает всю высоту и кнопки уезжают за экран.
+ */
 @Composable
-private fun SessionContent(
+private fun SessionScreen(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
+    mode: SessionMode,
+    onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
@@ -109,220 +183,221 @@ private fun SessionContent(
     onPrevious: () -> Unit,
     onAddTime: () -> Unit,
     onSubtractTime: () -> Unit,
-    onStop: () -> Unit,
+    onStopRequest: () -> Unit,
 ) {
     val palette = timerPalette
-    val paused = snapshot?.runState == RunState.PAUSED
+    var interactions by remember { mutableIntStateOf(0) }
 
-    Column(
+    // Ландшафт определяется по размеру окна, а не по ориентации устройства:
+    // в многооконном режиме телефон стоит вертикально, а окно шире, чем выше.
+    val window = LocalWindowInfo.current.containerSize
+    val landscape = window.width > window.height
+
+    Dimming(mode = mode, interactions = interactions, stageIndex = snapshot?.currentIndex)
+
+    Box(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(palette.background)
+                .background(palette.background),
+    ) {
+        val content =
+            Modifier
+                .fillMaxSize()
                 .safeDrawingPadding()
-                .padding(Spacing.m),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        notices.forEach { restriction ->
-            RestrictionNotice(
-                restriction = restriction,
-                onAction = { onNoticeAction(restriction) },
-                onDismiss = { onNoticeDismiss(restriction) },
-            )
-        }
+                .padding(Spacing.m)
 
-        Text(
-            text = snapshot?.currentStageName ?: stringResource(R.string.timer_idle),
-            style = YtaTextStyles.stageTitle,
-            color = palette.onBackground,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = remainingText(snapshot),
-            style = YtaTextStyles.timerDisplay,
-            color = if (paused) palette.paused else palette.onBackground,
-        )
-        Text(
-            text = totalText(snapshot),
-            style = MaterialTheme.typography.bodyLarge,
-            color = palette.onBackgroundMuted,
-            textAlign = TextAlign.Center,
-        )
-
-        Row(
-            modifier = Modifier.padding(top = Spacing.l),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-        ) {
-            SessionButton(stringResource(R.string.timer_previous), onPrevious)
-            Button(
-                onClick = onTogglePause,
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = palette.running,
-                        contentColor = palette.background,
-                    ),
-            ) {
-                Text(stringResource(if (paused) R.string.timer_resume else R.string.timer_pause))
+        when {
+            mode.isFocus -> {
+                FocusContent(
+                    snapshot = snapshot,
+                    palette = palette,
+                    modifier =
+                        content.focusGestures(
+                            onExit = { onModeChange(SessionMode.NORMAL) },
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onInteraction = { interactions++ },
+                        ),
+                )
             }
-            SessionButton(stringResource(R.string.timer_next), onNext)
-        }
-        Row(
-            modifier = Modifier.padding(top = Spacing.s),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-        ) {
-            SessionButton(stringResource(R.string.timer_subtract_30), onSubtractTime)
-            SessionButton(stringResource(R.string.timer_add_30), onAddTime)
-            SessionButton(stringResource(R.string.timer_stop), onStop)
-        }
-    }
-}
 
-/** Кнопка рабочего экрана: контур и подпись — цветами палитры, а не схемы. */
-@Composable
-private fun SessionButton(
-    label: String,
-    onClick: () -> Unit,
-) {
-    val palette = timerPalette
-    OutlinedButton(
-        onClick = onClick,
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = palette.onBackground),
-    ) {
-        Text(label)
+            landscape -> {
+                LandscapeContent(
+                    snapshot = snapshot,
+                    notices = notices,
+                    palette = palette,
+                    onModeChange = onModeChange,
+                    onNoticeAction = onNoticeAction,
+                    onNoticeDismiss = onNoticeDismiss,
+                    onTogglePause = onTogglePause,
+                    onNext = onNext,
+                    onPrevious = onPrevious,
+                    onAddTime = onAddTime,
+                    onSubtractTime = onSubtractTime,
+                    onStopRequest = onStopRequest,
+                    modifier = content,
+                )
+            }
+
+            else -> {
+                PortraitContent(
+                    snapshot = snapshot,
+                    notices = notices,
+                    palette = palette,
+                    onModeChange = onModeChange,
+                    onNoticeAction = onNoticeAction,
+                    onNoticeDismiss = onNoticeDismiss,
+                    onTogglePause = onTogglePause,
+                    onNext = onNext,
+                    onPrevious = onPrevious,
+                    onAddTime = onAddTime,
+                    onSubtractTime = onSubtractTime,
+                    onStopRequest = onStopRequest,
+                    modifier = content,
+                )
+            }
+        }
+
+        if (mode.isLocked) {
+            LockOverlay(palette = palette, onUnlock = { onModeChange(SessionMode.NORMAL) })
+        }
     }
 }
 
 /**
- * Сообщение об ограничении системы.
+ * Автозатемнение режима фокуса (ТЗ, Экран 4).
  *
- * Красным — только то, из-за чего занятие пройдёт молча или без управления.
- * Совет про энергосбережение красным не бывает: он описывает риск, а не
- * поломку, закрывается навсегда и не имеет права мозолить глаза каждый раз
- * (docs/05-PLAY-DECLARATIONS.md §5). Полноценные баннеры рабочего экрана —
- * Фаза 6.
+ * Два независимых повода светить полной яркостью: касание и смена этапа.
+ * Касание перезапускает пятнадцатисекундный отсчёт бездействия, смена этапа
+ * подсвечивает экран на две секунды — за них инструктор успевает поднять
+ * глаза и увидеть, что началось.
  */
 @Composable
-private fun RestrictionNotice(
-    restriction: TimerRestriction,
-    onAction: () -> Unit,
+private fun Dimming(
+    mode: SessionMode,
+    interactions: Int,
+    stageIndex: Int?,
+) {
+    var idle by remember { mutableStateOf(false) }
+    var stageFlash by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mode, interactions) {
+        idle = false
+        if (!mode.isFocus) return@LaunchedEffect
+        delay(IDLE_DIM_MS)
+        idle = true
+    }
+
+    LaunchedEffect(stageIndex) {
+        if (stageIndex == null) return@LaunchedEffect
+        stageFlash = true
+        delay(STAGE_FLASH_MS)
+        stageFlash = false
+    }
+
+    WindowBrightness(level = if (idle && !stageFlash) DIM_BRIGHTNESS else null)
+}
+
+/**
+ * Тап без ряби и без прямоугольника подсветки: экран рисуется фиксированной
+ * палитрой, и ripple из схемы Material смотрелся бы на нём чужим. Роль и
+ * подпись действия остаются — TalkBack объявляет цель как кнопку.
+ */
+internal fun Modifier.tapTarget(
+    label: String,
+    onTap: () -> Unit,
+): Modifier =
+    this
+        .pointerInput(onTap) { detectTapGestures { onTap() } }
+        .semantics {
+            role = Role.Button
+            onClick(label = label) {
+                onTap()
+                true
+            }
+        }
+
+/**
+ * Свайпы режима фокуса.
+ *
+ * Направление определяется по преобладающей оси в конце жеста, а не в его
+ * начале: палец на коврике идёт по дуге, и решение по первым пикселям
+ * ошибается. Любое касание считается активностью и отменяет автозатемнение.
+ */
+private fun Modifier.focusGestures(
+    onExit: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onInteraction: () -> Unit,
+): Modifier =
+    this
+        .pointerInput(onExit, onNext, onPrevious) {
+            var total = Offset.Zero
+            detectDragGestures(
+                onDragStart = {
+                    total = Offset.Zero
+                    onInteraction()
+                },
+                onDragEnd = {
+                    when {
+                        abs(total.x) > abs(total.y) && abs(total.x) > SWIPE_THRESHOLD_PX -> {
+                            if (total.x < 0) onNext() else onPrevious()
+                        }
+
+                        total.y > SWIPE_THRESHOLD_PX -> {
+                            onExit()
+                        }
+                    }
+                },
+                onDrag = { _, delta -> total += delta },
+            )
+        }.pointerInput(onExit) {
+            detectTapGestures {
+                onInteraction()
+                onExit()
+            }
+        }
+
+/** Подтверждение выхода: занятие идёт, и обрывать его случайным жестом нельзя. */
+@Composable
+private fun StopConfirmation(
+    onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val palette = timerPalette
-    val warning = restriction.severity == RestrictionSeverity.WARNING
-    val accent = if (warning) palette.danger else palette.running
-
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.m),
-        colors = CardDefaults.cardColors(containerColor = palette.ringTrack),
-    ) {
-        Column(modifier = Modifier.padding(Spacing.m)) {
-            Text(
-                text = stringResource(restriction.messageRes),
-                style = MaterialTheme.typography.bodyMedium,
-                color = palette.onBackground,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(
-                        text =
-                            stringResource(
-                                if (warning) R.string.timer_notice_dismiss else R.string.timer_notice_understood,
-                            ),
-                        color = palette.onBackgroundMuted,
-                    )
-                }
-                TextButton(onClick = onAction) {
-                    Text(stringResource(restriction.actionRes), color = accent)
-                }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.timer_stop_title)) },
+        text = { Text(stringResource(R.string.timer_stop_message)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(R.string.timer_stop_confirm),
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
-        }
-    }
-}
-
-/**
- * Формулировки честные до цифр: пользователю важно знать не то, что «что-то
- * может пойти не так», а что именно и насколько это плохо.
- */
-private val TimerRestriction.messageRes: Int
-    get() =
-        when (this) {
-            TimerRestriction.NOTIFICATIONS_DISABLED -> R.string.timer_notice_notifications
-            TimerRestriction.ALARMS_SILENCED_BY_DND -> R.string.timer_notice_dnd
-            TimerRestriction.BATTERY_OPTIMIZED -> R.string.timer_notice_battery
-            TimerRestriction.EXACT_ALARMS_UNAVAILABLE -> R.string.timer_notice_exact_alarms
-        }
-
-private val TimerRestriction.actionRes: Int
-    get() =
-        when (this) {
-            TimerRestriction.NOTIFICATIONS_DISABLED -> R.string.timer_notice_action_notifications
-            TimerRestriction.ALARMS_SILENCED_BY_DND -> R.string.timer_notice_action_dnd
-            TimerRestriction.BATTERY_OPTIMIZED -> R.string.timer_notice_action_battery
-            TimerRestriction.EXACT_ALARMS_UNAVAILABLE -> R.string.timer_notice_action_exact_alarms
-        }
-
-@Composable
-private fun remainingText(snapshot: SessionSnapshot?): String {
-    val remaining = snapshot?.stageRemainingMs
-    return when {
-        snapshot == null -> stringResource(R.string.timer_no_time)
-
-        // У свободного этапа конца нет — счёт идёт вверх (решение B-5).
-        remaining == null -> TimeFormatter.clock(snapshot.stageElapsedMs)
-
-        else -> TimeFormatter.clock(remaining, roundUp = true)
-    }
-}
-
-@Composable
-private fun totalText(snapshot: SessionSnapshot?): String {
-    if (snapshot == null) return ""
-    val clock = TimeFormatter.clock(snapshot.totalRemainingMs)
-    val total =
-        if (snapshot.totalRemainingIsLowerBound) {
-            stringResource(R.string.timer_total_at_least, clock)
-        } else {
-            clock
-        }
-    val position = stringResource(R.string.timer_stage_position, snapshot.currentIndex + 1, snapshot.stageCount)
-    val remaining = stringResource(R.string.timer_total_remaining, total)
-    val adjustment =
-        if (snapshot.stageAdjustmentMs == 0L) {
-            ""
-        } else {
-            " · ${TimeFormatter.signedClock(snapshot.stageAdjustmentMs)}"
-        }
-    return "$position · $remaining$adjustment"
-}
-
-/** Экран после завершения занятия: «В начало» / «Повторить». */
-@Composable
-internal fun SessionFinishedScreen(
-    onRepeat: () -> Unit,
-    onExit: () -> Unit,
-) {
-    PlaceholderScreen(
-        title = stringResource(R.string.timer_finished_title),
-        description = "",
-        actions =
-            listOf(
-                PlaceholderAction(stringResource(R.string.timer_finished_repeat)) { onRepeat() },
-                PlaceholderAction(stringResource(R.string.timer_finished_exit)) { onExit() },
-            ),
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.timer_stop_cancel)) }
+        },
     )
 }
 
-@Preview
+/**
+ * Цвет цифр и кольца.
+ *
+ * Три состояния, различимые с трёх метров: идёт, последняя минута, пауза.
+ * Последняя минута — то, ради чего инструктор и смотрит на экран: пора
+ * готовить следующий этап.
+ */
 @Composable
-private fun SessionContentPreview() {
-    YtaTheme(darkTheme = false) {
-        SessionContent(
-            snapshot = null,
+private fun SessionScreenPreview() {
+    YtaTheme(darkTheme = true) {
+        SessionScreen(
+            snapshot = previewSnapshot(),
             notices = emptyList(),
+            mode = SessionMode.NORMAL,
+            onModeChange = {},
             onNoticeAction = {},
             onNoticeDismiss = {},
             onTogglePause = {},
@@ -330,7 +405,32 @@ private fun SessionContentPreview() {
             onPrevious = {},
             onAddTime = {},
             onSubtractTime = {},
-            onStop = {},
+            onStopRequest = {},
         )
     }
 }
+
+private fun previewSnapshot() =
+    SessionSnapshot(
+        profileId = 1,
+        profileName = "Хатха 60 мин",
+        runState = RunState.RUNNING,
+        currentIndex = 2,
+        stageCount = 6,
+        currentStageName = "Асаны стоя",
+        currentStageColor = "#FFB300",
+        currentStageKind = StageKind.NORMAL,
+        currentNote = "Держим позиции по 5 циклов дыхания",
+        stageRemainingMs = 754_000,
+        stageElapsedMs = 326_000,
+        stageDurationMs = 1_080_000,
+        stageProgress = 0.3f,
+        stageAdjustmentMs = 0,
+        totalElapsedMs = 1_100_000,
+        totalRemainingMs = 2_500_000,
+        totalRemainingIsLowerBound = false,
+        totalProgress = 0.3f,
+        nextStageName = "Балансы",
+        nextStageDurationMs = 720_000,
+        isLastStage = false,
+    )

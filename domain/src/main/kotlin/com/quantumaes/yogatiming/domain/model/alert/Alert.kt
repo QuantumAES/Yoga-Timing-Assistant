@@ -12,6 +12,15 @@ enum class AlertSound {
     BELL,
     TONE,
     TICK,
+
+    /**
+     * Файл пользователя из [Alert.customSoundUri].
+     *
+     * Единственный пресет без собственного сэмпла в банке: что именно прозвучит,
+     * известно только вместе с оповещением. Без ссылки на файл ведёт себя
+     * как [NONE] — иначе оповещение молчало бы, обещая звук.
+     */
+    CUSTOM,
 }
 
 /** Паттерн вибрации (ТЗ §5.1). */
@@ -64,6 +73,9 @@ enum class VoicePhrase {
  * @param offsetSec за сколько секунд до конца этапа сработать. Осмысленно
  *   только для предупреждений; для START и END игнорируется.
  * @param volumePercent 0..100, `null` — наследовать [AlertConfig.masterVolumePercent].
+ * @param customSoundUri `content://`-ссылка на файл пользователя. Осмысленна
+ *   только вместе с [AlertSound.CUSTOM]. Хранится строкой, а не `Uri`: домен
+ *   про Android не знает, а формат хранения и формат экспорта тут совпадают.
  */
 @Serializable
 data class Alert(
@@ -75,9 +87,25 @@ data class Alert(
     val customVoiceText: String? = null,
     val vibration: VibrationPattern = VibrationPattern.SINGLE,
     val volumePercent: Int? = null,
+    val customSoundUri: String? = null,
 ) : AlertPayload {
     /** Оповещение, которое ничего не сделает: выключено или без единого канала. */
     val isSilent: Boolean get() = !enabled || channels.isEmpty()
+
+    /**
+     * Прозвучит ли звуковой канал.
+     *
+     * `CUSTOM` без ссылки на файл — не звук, а обещание звука: пользователь
+     * выбрал «свой файл» и не выбрал файл.
+     */
+    val hasPlayableSound: Boolean
+        get() =
+            hasChannel(AlertChannel.SOUND) &&
+                when (sound) {
+                    AlertSound.NONE -> false
+                    AlertSound.CUSTOM -> !customSoundUri.isNullOrBlank()
+                    else -> true
+                }
 
     /**
      * Произнесёт ли это оповещение название своего этапа.

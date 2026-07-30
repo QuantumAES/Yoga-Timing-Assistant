@@ -1,7 +1,9 @@
 package com.quantumaes.yogatiming.timer.service.di
 
 import com.quantumaes.yogatiming.timer.engine.TimeSource
+import com.quantumaes.yogatiming.timer.service.ActiveSessionSource
 import com.quantumaes.yogatiming.timer.service.AndroidTimeSource
+import com.quantumaes.yogatiming.timer.service.SessionController
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
 import com.quantumaes.yogatiming.timer.service.watchdog.WatchdogAlarm
 import dagger.Binds
@@ -35,6 +37,11 @@ abstract class TimerServiceModule {
     @Binds
     @Singleton
     abstract fun bindWatchdog(impl: WatchdogAlarm): Watchdog
+
+    /** Экранам, которые занятием не управляют, достаётся только чтение. */
+    @Binds
+    @Singleton
+    abstract fun bindActiveSessionSource(impl: SessionController): ActiveSessionSource
 
     // Реализация AlertPlayer живёт в `:core:audio` и привязывается там же
     // (Фаза 4): контракт объявлен в домене, поэтому остальной граф не изменился.

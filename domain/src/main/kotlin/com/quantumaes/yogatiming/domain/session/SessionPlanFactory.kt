@@ -57,6 +57,7 @@ private fun Stage.toPlannedStage(profileDefaults: AlertConfig): PlannedStage =
         colorTag = colorTag,
         plannedDurationMs = if (type == StageType.FREE) 0L else durationSec * MS_IN_SECOND,
         note = note,
+        voiceName = voiceName,
         alerts = (alertConfig ?: profileDefaults).resolve(type),
     )
 

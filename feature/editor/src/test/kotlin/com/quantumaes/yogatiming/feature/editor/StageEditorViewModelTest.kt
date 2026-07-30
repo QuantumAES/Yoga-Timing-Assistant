@@ -61,11 +61,41 @@ class StageEditorViewModelTest {
         val viewModel =
             StageEditorViewModel(
                 repository,
+                FakeAlertPlayer(),
+                FakeSettingsStore(),
                 SavedStateHandle(mapOf("profileId" to PROFILE_ID, "stageId" to stageId)),
             )
         testScheduler.runCurrent()
         return viewModel
     }
+
+    @Test
+    fun `произношение сохраняется отдельно от названия`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.setVoiceName("шав+асана")
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            val stage = requireNotNull(repository.getProfile(PROFILE_ID)).stages.first { it.id == STAGE_ID }
+            assertThat(stage.name).isEqualTo("Разминка")
+            assertThat(stage.voiceName).isEqualTo("шав+асана")
+        }
+
+    @Test
+    fun `пустое произношение не сохраняется вовсе`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            // Пусто — «произносить как написано», а не «произносить пустоту».
+            viewModel.setVoiceName("   ")
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            val stage = requireNotNull(repository.getProfile(PROFILE_ID)).stages.first { it.id == STAGE_ID }
+            assertThat(stage.voiceName).isNull()
+        }
 
     @Test
     fun `существующий этап читается в состояние`() =

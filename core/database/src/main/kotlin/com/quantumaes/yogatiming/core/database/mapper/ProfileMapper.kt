@@ -85,6 +85,7 @@ fun StageEntity.toDomain(): Stage =
         sortOrder = sortOrder,
         // null здесь означает наследование конфига профиля, а не тишину.
         alertConfig = alertConfigJson?.decodeAlertConfig(AlertPresets.standard()),
+        voiceName = voiceName,
     )
 
 fun ProfileSummaryProjection.toDomain(): ProfileSummary =
@@ -138,6 +139,7 @@ fun Stage.toEntity(
         note = note,
         sortOrder = sortOrder,
         alertConfigJson = alertConfig?.encode(),
+        voiceName = voiceName,
     )
 
 /** Приведение к виду, в котором ищет SQL: регистр в SQLite для кириллицы не работает. */

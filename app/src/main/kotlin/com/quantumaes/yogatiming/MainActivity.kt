@@ -1,5 +1,6 @@
 package com.quantumaes.yogatiming
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Window
 import androidx.activity.ComponentActivity
@@ -16,8 +17,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
@@ -44,6 +48,9 @@ class MainActivity : ComponentActivity() {
 
             SystemBarsAppearance(window, darkTheme)
 
+            val navController = rememberNavController()
+            DeepLinkHandler(navController)
+
             YtaTheme(darkTheme = darkTheme, dynamicColor = resolved.dynamicColor) {
                 // Экран без собственного фона рисуется поверх фона окна, а тот
                 // задан ресурсом и темы не знает. Одна поверхность на всё
@@ -52,10 +59,27 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    YtaNavHost()
+                    YtaNavHost(navController)
                 }
             }
         }
+    }
+}
+
+/**
+ * Ссылки, пришедшие в уже открытое окно.
+ *
+ * Интент холодного старта навигация разбирает сама, когда получает граф.
+ * А вот тап по уведомлению занятия при живом приложении приходит в
+ * `onNewIntent`, и без этой подписки он не делал бы ничего: окно поднималось бы
+ * на тот экран, где его оставили.
+ */
+@Composable
+private fun ComponentActivity.DeepLinkHandler(navController: NavHostController) {
+    DisposableEffect(navController) {
+        val listener = Consumer<Intent> { navController.handleDeepLink(it) }
+        addOnNewIntentListener(listener)
+        onDispose { removeOnNewIntentListener(listener) }
     }
 }
 

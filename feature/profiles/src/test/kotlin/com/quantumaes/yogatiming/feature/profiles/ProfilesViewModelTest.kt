@@ -5,9 +5,15 @@ import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.domain.model.Profile
 import com.quantumaes.yogatiming.domain.model.ProfileCategory
 import com.quantumaes.yogatiming.domain.model.Stage
+import com.quantumaes.yogatiming.timer.engine.model.RunState
+import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
+import com.quantumaes.yogatiming.timer.engine.model.StageKind
+import com.quantumaes.yogatiming.timer.service.ActiveSessionSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -20,9 +26,55 @@ import org.junit.Test
 
 private const val TEN_MINUTES_SEC = 600
 
+/** Идущее занятие в тесте — один поток, который тест сам и заполняет. */
+private class FakeActiveSessionSource : ActiveSessionSource {
+    private val state = MutableStateFlow<SessionSnapshot?>(null)
+
+    override val snapshot: StateFlow<SessionSnapshot?> = state
+
+    fun run(
+        profileId: Long,
+        runState: RunState = RunState.RUNNING,
+    ) {
+        state.value = snapshotOf(profileId, runState)
+    }
+
+    fun clear() {
+        state.value = null
+    }
+}
+
+private fun snapshotOf(
+    profileId: Long,
+    runState: RunState,
+) = SessionSnapshot(
+    profileId = profileId,
+    profileName = "Хатха 60 мин",
+    runState = runState,
+    currentIndex = 2,
+    stageCount = 6,
+    currentStageName = "Асаны стоя",
+    currentStageColor = "#4CAF50",
+    currentStageKind = StageKind.NORMAL,
+    currentNote = null,
+    stageRemainingMs = 754_000,
+    stageElapsedMs = 46_000,
+    stageDurationMs = 800_000,
+    stageProgress = 0.05f,
+    stageAdjustmentMs = 0,
+    totalElapsedMs = 46_000,
+    totalRemainingMs = 3_554_000,
+    totalRemainingIsLowerBound = false,
+    totalProgress = 0.01f,
+    nextStageName = "Балансы",
+    nextStageDurationMs = 720_000,
+    isLastStage = false,
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProfilesViewModelTest {
     private val dispatcher = StandardTestDispatcher()
+    private val session = FakeActiveSessionSource()
     private val repository =
         FakeProfileRepository(
             listOf(
@@ -49,7 +101,7 @@ class ProfilesViewModelTest {
      * а проверять надо результат.
      */
     private fun TestScope.viewModel(): ProfilesViewModel {
-        val viewModel = ProfilesViewModel(repository)
+        val viewModel = ProfilesViewModel(repository, session)
         subscribe(backgroundScope, viewModel)
         testScheduler.runCurrent()
         return viewModel
@@ -196,6 +248,83 @@ class ProfilesViewModelTest {
             val copy = repository.stored.first { it.name == "Хатха 60 мин — копия" }
             assertThat(copy.isFavorite).isFalse()
             assertThat(copy.uuid).isNotEqualTo(repository.getProfile(1)?.uuid)
+        }
+
+    @Test
+    fun `идущее занятие видно в состоянии списка`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            session.run(profileId = 2)
+            testScheduler.runCurrent()
+
+            val active = viewModel.uiState.value.activeSession
+            assertThat(active?.profileId).isEqualTo(2)
+            assertThat(active?.stageNumber).isEqualTo(3)
+            assertThat(active?.stageCount).isEqualTo(6)
+            assertThat(active?.paused).isFalse()
+        }
+
+    @Test
+    fun `завершённое занятие идущим не считается`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            session.run(profileId = 2, runState = RunState.FINISHED)
+            testScheduler.runCurrent()
+
+            assertThat(viewModel.uiState.value.activeSession).isNull()
+        }
+
+    @Test
+    fun `запущенный профиль не открывается на правку`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            session.run(profileId = 2)
+            testScheduler.runCurrent()
+
+            viewModel.uiEvents.test {
+                assertThat(viewModel.requestEdit(2)).isFalse()
+                assertThat(awaitItem()).isEqualTo(ProfilesEvent.BlockedByRunningSession)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `остальные профили правятся и во время занятия`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            session.run(profileId = 2)
+            testScheduler.runCurrent()
+
+            assertThat(viewModel.requestEdit(1)).isTrue()
+        }
+
+    @Test
+    fun `запущенный профиль не удаляется`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            session.run(profileId = 2)
+            testScheduler.runCurrent()
+
+            viewModel.delete(2)
+            testScheduler.runCurrent()
+
+            // Удалить профиль под идущим занятием — значит лишить сессию плана,
+            // по которому её восстанавливают после смерти процесса.
+            assertThat(repository.stored.map { it.id }).contains(2L)
+        }
+
+    @Test
+    fun `остановленное занятие снимает запрет`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            session.run(profileId = 2)
+            testScheduler.runCurrent()
+            session.clear()
+            testScheduler.runCurrent()
+
+            assertThat(viewModel.requestEdit(2)).isTrue()
         }
 }
 

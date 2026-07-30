@@ -52,7 +52,7 @@ fun voiceTextOf(request: AlertRequest): VoiceText? {
         }
 
         VoicePhrase.STAGE_NAME -> {
-            request.stageName
+            request.spokenStageName
                 .trim()
                 .takeIf { it.isNotEmpty() }
                 ?.let(VoiceText::Raw)
@@ -95,7 +95,7 @@ fun voiceTextOf(request: AlertRequest): VoiceText? {
  */
 private fun nextStageText(request: AlertRequest): VoiceText? {
     val next =
-        request.nextStageName
+        request.spokenNextStageName
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: return VoiceText.SessionFinished
@@ -114,14 +114,22 @@ private fun timeRemaining(offsetSec: Int): VoiceText? =
         else -> VoiceText.SecondsLeft(offsetSec)
     }
 
-/** Рендер фразы в текущей локали приложения (решение P1-6). */
+/**
+ * Рендер фразы в текущей локали приложения (решение P1-6).
+ *
+ * Пометки ударения снимаются здесь же, на последнем шаге: их может содержать
+ * любая часть фразы, пришедшая от пользователя, — и название этапа, и
+ * произвольный текст, и подставленное в шаблон название следующего этапа.
+ */
 @Singleton
 class VoicePhrases
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
     ) {
-        fun render(text: VoiceText): String =
+        fun render(text: VoiceText): String = Pronunciation.withStressMarks(rawText(text))
+
+        private fun rawText(text: VoiceText): String =
             when (text) {
                 is VoiceText.Raw -> {
                     text.text

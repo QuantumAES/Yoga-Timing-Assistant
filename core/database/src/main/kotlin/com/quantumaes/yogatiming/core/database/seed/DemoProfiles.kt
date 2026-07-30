@@ -30,6 +30,13 @@ internal object DemoProfiles {
 
     private const val MIN = 60
 
+    /**
+     * Санскрит синтезатор читает с ударением по своим правилам, и «шавáсана»
+     * превращается в «шавасáну». Демо-профили показывают, чем это лечится, —
+     * плюсом перед ударной гласной (поле «Произношение» у этапа).
+     */
+    private const val SHAVASANA_VOICE = "шав+асана"
+
     fun all(): List<Profile> = listOf(hatha60(), yin90(), meditation20())
 
     /** Классические 60 минут хатхи из шести блоков — сценарий A-1 критериев приёмки. */
@@ -44,12 +51,18 @@ internal object DemoProfiles {
             defaultAlertConfig = AlertPresets.standard(),
             stages =
                 listOf(
-                    stage("Настройка и пранаяма", 5 * MIN, COLOR_TEAL, note = "Дыхание уджайи, счёт 4–4"),
-                    stage("Разминка, сурья намаскар", 8 * MIN, COLOR_LIME),
+                    stage(
+                        "Настройка и пранаяма",
+                        5 * MIN,
+                        COLOR_TEAL,
+                        note = "Дыхание уджайи, счёт 4–4",
+                        voiceName = "настройка и пранай+ама",
+                    ),
+                    stage("Разминка, сурья намаскар", 8 * MIN, COLOR_LIME, voiceName = "разминка, с+урья намаск+ар"),
                     stage("Асаны стоя", 18 * MIN, COLOR_AMBER, note = "Вирабхадрасана I–II, триконасана"),
                     stage("Асаны сидя и наклоны", 15 * MIN, COLOR_ORANGE),
                     stage("Скрутки и перевёрнутые", 4 * MIN, COLOR_INDIGO),
-                    restStage("Шавасана", 10 * MIN, COLOR_PURPLE),
+                    restStage("Шавасана", 10 * MIN, COLOR_PURPLE, voiceName = SHAVASANA_VOICE),
                 ),
         )
 
@@ -73,7 +86,7 @@ internal object DemoProfiles {
                     stage("Полубабочка", 8 * MIN, COLOR_INDIGO),
                     stage("Ноги на стене", 12 * MIN, COLOR_PURPLE),
                     restStage("Медитация сидя", 8 * MIN, COLOR_PURPLE),
-                    restStage("Шавасана", 12 * MIN, COLOR_PURPLE),
+                    restStage("Шавасана", 12 * MIN, COLOR_PURPLE, voiceName = SHAVASANA_VOICE),
                 ),
         )
 
@@ -99,12 +112,14 @@ internal object DemoProfiles {
         durationSec: Int,
         color: String,
         note: String? = null,
+        voiceName: String? = null,
     ) = Stage(
         name = name,
         type = StageType.NORMAL,
         colorTag = color,
         durationSec = durationSec,
         note = note,
+        voiceName = voiceName,
     )
 
     /** REST-этап всегда получает тихий пресет — иначе гонг посреди шавасаны (C-6). */
@@ -113,6 +128,7 @@ internal object DemoProfiles {
         durationSec: Int,
         color: String,
         note: String? = null,
+        voiceName: String? = null,
     ) = Stage(
         name = name,
         type = StageType.REST,
@@ -120,5 +136,6 @@ internal object DemoProfiles {
         durationSec = durationSec,
         note = note,
         alertConfig = AlertPresets.silent(),
+        voiceName = voiceName,
     )
 }

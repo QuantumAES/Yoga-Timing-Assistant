@@ -10,6 +10,10 @@
     <string name="settings_dynamic_color">Wallpaper colors</string>
     <string name="settings_dynamic_color_hint">Material You palette. Never applied to the session screen — it does not guarantee contrast.</string>
 
+    <string name="settings_section_alerts">Alerts</string>
+    <string name="settings_voice">Voice cues</string>
+    <string name="settings_voice_hint">Off by default: the synthesiser stresses Sanskrit asana names its own way. Set “Pronunciation” on a stage to fix it, then turn this on.</string>
+
     <string name="settings_section_hints">Hints</string>
     <string name="settings_restore_hints">Show hints again</string>
     <string name="settings_restore_hints_hint">One-off advice about battery optimisation and exact alarms is shown once and then hidden for good.</string>

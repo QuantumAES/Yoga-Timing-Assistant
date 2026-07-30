@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.quantumaes.yogatiming.core.database.YtaDatabase
 import com.quantumaes.yogatiming.core.database.dao.ProfileDao
 import com.quantumaes.yogatiming.core.database.dao.StageDao
+import com.quantumaes.yogatiming.core.database.migration.YTA_MIGRATIONS
 import com.quantumaes.yogatiming.core.database.repository.ProfileRepositoryImpl
 import com.quantumaes.yogatiming.core.database.seed.DemoSeedCallback
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
@@ -29,6 +30,9 @@ object DatabaseModule {
             // Демо-профили появляются ровно один раз — при создании файла базы
             // (docs/01-ROADMAP.md, Фаза 2).
             .addCallback(DemoSeedCallback())
+            // Никакого fallbackToDestructiveMigration: профили инструктора —
+            // это его подготовка к занятиям, терять её при обновлении нельзя.
+            .addMigrations(*YTA_MIGRATIONS)
             .build()
 
     @Provides

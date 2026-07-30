@@ -29,6 +29,13 @@
     <string name="editor_stage_note">Note</string>
     <string name="editor_stage_note_label">Note for the instructor</string>
     <string name="editor_stage_note_hint">Shown on the session screen. Not spoken aloud.</string>
+
+    <!-- Произношение этапа: ударения для синтезатора речи. -->
+    <string name="editor_stage_voice_name">Pronunciation</string>
+    <string name="editor_stage_voice_name_placeholder">shav+asana</string>
+    <string name="editor_stage_voice_name_hint">How the stage is spoken aloud. Leave empty to speak it as written. Mark the stressed vowel with a plus in front of it: “shav+asana”.</string>
+    <string name="editor_stage_voice_preview">Listen</string>
+    <string name="editor_stage_voice_disabled">Voice cues are off in Settings — there is nothing to listen with yet.</string>
     <string name="editor_stage_alerts">Alerts</string>
     <string name="editor_stage_own_alerts">Own alerts</string>
     <string name="editor_stage_own_alerts_hint">Off — the stage inherits the profile alerts.</string>
@@ -71,6 +78,8 @@
     <string name="editor_alerts_warning_unreachable">The stage is shorter than this offset — the warning will be skipped silently.</string>
     <string name="editor_alerts_offset_minutes">%1$d min</string>
     <string name="editor_alerts_custom_text">Text to speak</string>
+    <string name="editor_alerts_custom_text_hint">Mark the stressed vowel with a plus in front of it: “shav+asana”.</string>
+    <string name="editor_alerts_voice_disabled">Voice cues are off in Settings — this cue will stay silent.</string>
     <string name="editor_alerts_preview">Preview</string>
     <string name="editor_alerts_free_stage">A free stage has no end, so warnings and the end cue only fire when you move on manually.</string>
 
@@ -90,6 +99,11 @@
     <string name="editor_sound_bell">Bell</string>
     <string name="editor_sound_tone">Tone</string>
     <string name="editor_sound_tick">Tick</string>
+    <string name="editor_sound_custom">My file</string>
+    <string name="editor_sound_custom_pick">Choose a file</string>
+    <string name="editor_sound_custom_replace">Replace</string>
+    <string name="editor_sound_custom_clear">Remove the file</string>
+    <string name="editor_sound_custom_none">No file chosen — the cue will stay silent</string>
 
     <string name="editor_vibration_single">Single</string>
     <string name="editor_vibration_double">Double</string>

@@ -12,14 +12,35 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Yta.Starting">
 
+        <!--
+            singleTop: приложение живёт в одной Activity, и ссылка на идущее
+            занятие обязана приходить в уже открытое окно через onNewIntent,
+            а не создавать второе.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Yta.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Ссылка на занятие: по ней уведомление в шторке открывает экран
+                отсчёта, а не список профилей. Схема продублирована из
+                YtaDeepLinks — в манифесте её иначе не объявить.
+                BROWSABLE нет намеренно: ссылка внутренняя, снаружи открывать
+                занятие некому.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:host="session"
+                    android:scheme="yta" />
             </intent-filter>
         </activity>
     </application>

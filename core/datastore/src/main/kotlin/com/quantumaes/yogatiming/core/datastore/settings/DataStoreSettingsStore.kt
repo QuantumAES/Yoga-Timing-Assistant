@@ -19,6 +19,7 @@ import javax.inject.Singleton
 
 private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
 private val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+private val KEY_VOICE_ENABLED = booleanPreferencesKey("voice_enabled")
 
 /**
  * Настройки оформления в том же файле, что и разовые подсказки.
@@ -44,6 +45,7 @@ class DataStoreSettingsStore
                     AppSettings(
                         themeMode = ThemeMode.fromName(prefs[KEY_THEME_MODE]),
                         dynamicColor = prefs[KEY_DYNAMIC_COLOR] ?: false,
+                        voiceEnabled = prefs[KEY_VOICE_ENABLED] ?: false,
                     )
                 }
 
@@ -53,5 +55,9 @@ class DataStoreSettingsStore
 
         override suspend fun setDynamicColor(enabled: Boolean) {
             context.userPrefs.edit { it[KEY_DYNAMIC_COLOR] = enabled }
+        }
+
+        override suspend fun setVoiceEnabled(enabled: Boolean) {
+            context.userPrefs.edit { it[KEY_VOICE_ENABLED] = enabled }
         }
     }

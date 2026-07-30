@@ -69,6 +69,7 @@ class AlertConfigViewModelTest {
             AlertConfigViewModel(
                 repository,
                 player,
+                FakeSettingsStore(),
                 SavedStateHandle(mapOf("profileId" to PROFILE_ID, "stageId" to stageId)),
             )
         testScheduler.runCurrent()

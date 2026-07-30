@@ -3,15 +3,23 @@ package com.quantumaes.yogatiming.feature.editor.stage
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.quantumaes.yogatiming.domain.alert.AlertPlayer
+import com.quantumaes.yogatiming.domain.alert.AlertRequest
 import com.quantumaes.yogatiming.domain.model.DEFAULT_COLOR_TAG
 import com.quantumaes.yogatiming.domain.model.NEW_ID
 import com.quantumaes.yogatiming.domain.model.Stage
 import com.quantumaes.yogatiming.domain.model.StageType
+import com.quantumaes.yogatiming.domain.model.alert.Alert
+import com.quantumaes.yogatiming.domain.model.alert.AlertChannel
 import com.quantumaes.yogatiming.domain.model.alert.AlertConfig
 import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
+import com.quantumaes.yogatiming.domain.model.alert.AlertSound
+import com.quantumaes.yogatiming.domain.model.alert.VoicePhrase
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.feature.editor.NEW_ENTITY_ID
 import com.quantumaes.yogatiming.feature.editor.RouteArgs
+import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -35,6 +43,15 @@ data class StageEditorUiState(
     val colorTag: String = DEFAULT_COLOR_TAG,
     val durationSec: Int = DEFAULT_DURATION_SEC,
     val note: String = "",
+    /**
+     * Как этап произносится вслух. Пусто — как написан.
+     *
+     * Отдельно от названия: на экране должно остаться «Шавасана», а произнести
+     * синтезатор обязан «шавáсану», иначе ударение уедет на последний слог.
+     */
+    val voiceName: String = "",
+    /** Разрешён ли голос вообще (Экран 6): иначе произношение проверить нечем. */
+    val voiceEnabled: Boolean = false,
     /** `null` — этап наследует оповещения профиля (ADR-002). */
     val alertConfig: AlertConfig? = null,
     val nameErrorShown: Boolean = false,
@@ -79,6 +96,8 @@ class StageEditorViewModel
     @Inject
     constructor(
         private val repository: ProfileRepository,
+        private val alertPlayer: AlertPlayer,
+        settingsStore: SettingsStore,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val profileId: Long = requireNotNull(savedStateHandle.get<Long>(RouteArgs.PROFILE_ID))
@@ -96,6 +115,11 @@ class StageEditorViewModel
 
         init {
             viewModelScope.launch { load() }
+            viewModelScope.launch {
+                settingsStore.settings.collect { settings ->
+                    _uiState.update { it.copy(voiceEnabled = settings.voiceEnabled) }
+                }
+            }
         }
 
         /** Оповещения правит соседний экран — при возвращении их надо перечитать. */
@@ -114,8 +138,10 @@ class StageEditorViewModel
                 _uiState.update { it.copy(isNew = true, isLoading = false) }
                 return
             }
-            _uiState.value =
-                StageEditorUiState(
+            // copy, а не новое состояние целиком: настройка голоса приезжает
+            // своим потоком и может успеть раньше чтения этапа.
+            _uiState.update {
+                it.copy(
                     isNew = false,
                     isLoading = false,
                     name = stage.name,
@@ -123,11 +149,45 @@ class StageEditorViewModel
                     colorTag = stage.colorTag,
                     durationSec = stage.durationSec,
                     note = stage.note.orEmpty(),
+                    voiceName = stage.voiceName.orEmpty(),
                     alertConfig = stage.alertConfig,
                 )
+            }
         }
 
         fun setName(name: String) = _uiState.update { it.copy(name = name, nameErrorShown = false) }
+
+        fun setVoiceName(voiceName: String) = _uiState.update { it.copy(voiceName = voiceName) }
+
+        /**
+         * Прослушать произношение.
+         *
+         * Настроить ударение вслепую нельзя: помогла пометка или нет, слышно
+         * только на слух. Проигрывается ровно то, что скажет START этапа, —
+         * тем же проигрывателем и с теми же правилами, включая общий
+         * выключатель голоса.
+         */
+        fun previewVoice() {
+            val state = _uiState.value
+            val spoken = state.voiceName.trim().takeIf { it.isNotEmpty() } ?: state.name.trim()
+            if (spoken.isEmpty()) return
+            alertPlayer.prepare()
+            alertPlayer.play(
+                AlertRequest(
+                    alert =
+                        Alert(
+                            channels = setOf(AlertChannel.VOICE),
+                            sound = AlertSound.NONE,
+                            voice = VoicePhrase.STAGE_NAME,
+                            volumePercent = AlertConfig.DEFAULT_MASTER_VOLUME,
+                        ),
+                    trigger = AlertTrigger.START,
+                    stageName = state.name,
+                    nextStageName = null,
+                    stageVoiceName = state.voiceName,
+                ),
+            )
+        }
 
         /**
          * Смена типа на REST предлагает тихий пресет (решение C-6).
@@ -231,5 +291,6 @@ class StageEditorViewModel
                     },
                 note = note.trim().takeIf { it.isNotEmpty() },
                 alertConfig = alertConfig,
+                voiceName = voiceName.trim().takeIf { it.isNotEmpty() },
             )
     }

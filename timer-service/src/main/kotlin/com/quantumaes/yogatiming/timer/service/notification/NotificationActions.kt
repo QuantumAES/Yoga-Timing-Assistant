@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
+import androidx.core.net.toUri
+import com.quantumaes.yogatiming.core.common.navigation.YtaDeepLinks
 import com.quantumaes.yogatiming.timer.service.R
 import com.quantumaes.yogatiming.timer.service.TimerService
 
@@ -43,6 +45,26 @@ internal fun Context.togglePauseAction(paused: Boolean): NotificationCompat.Acti
 internal fun Context.launchAppIntent(): PendingIntent? {
     val launch = packageManager.getLaunchIntentForPackage(packageName) ?: return null
     return PendingIntent.getActivity(this, REQUEST_CONTENT, launch, immutableFlags())
+}
+
+/**
+ * Тап по уведомлению занятия открывает само занятие, а не список профилей.
+ *
+ * Через ссылку, а не через экстру в launcher-интенте: `ACTION_MAIN` с уже
+ * запущенной задачей просто поднимает её на передний план, не доставляя ни
+ * `onNewIntent`, ни экстр, — и пользователь оказывался бы там, где закрыл
+ * приложение. `ACTION_VIEW` со своей схемой доходит и до живой задачи, и до
+ * холодного старта (`YtaDeepLinks`).
+ *
+ * Пакет проставлен явно: ссылка внутренняя, и предлагать её чужим приложениям
+ * незачем.
+ */
+internal fun Context.sessionIntent(profileId: Long): PendingIntent {
+    val view =
+        Intent(Intent.ACTION_VIEW, YtaDeepLinks.session(profileId).toUri())
+            .setPackage(packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    return PendingIntent.getActivity(this, REQUEST_CONTENT, view, immutableFlags())
 }
 
 private fun Context.serviceIntent(

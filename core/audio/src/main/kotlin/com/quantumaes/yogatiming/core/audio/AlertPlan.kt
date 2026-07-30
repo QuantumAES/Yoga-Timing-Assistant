@@ -24,6 +24,8 @@ private val VOICE_FALLBACK_SOUND = AlertSound.SOFT_GONG
  */
 internal data class AlertPlan(
     val sound: AlertSound? = null,
+    /** Заполнено только для [AlertSound.CUSTOM]: где лежит файл пользователя. */
+    val customSoundUri: String? = null,
     val voice: VoiceText? = null,
     val vibration: VibrationPattern? = null,
     val gain: Float = 0f,
@@ -39,20 +41,26 @@ internal data class AlertPlan(
  *   деградирует на звук, но только когда без него оповещение стало бы немым:
  *   у «двойная вибрация + голос» вибрация и так сработает, добавлять к ней
  *   гонг никто не просил (ADR-003).
+ * @param voiceEnabled разрешил ли пользователь голос вообще
+ *   ([com.quantumaes.yogatiming.domain.settings.AppSettings.voiceEnabled]).
+ *   В отличие от [speechReady] это не поломка, а решение: подменять
+ *   выключенный голос гонгом значит возвращать звук, от которого отказались.
  */
 internal fun alertPlanOf(
     request: AlertRequest,
     speechReady: Boolean,
+    voiceEnabled: Boolean = true,
 ): AlertPlan {
     val alert = request.alert
     // Пустая фраза — не деградация, а настройка: канал VOICE включён, но
     // говорить нечего. Подменять такую «фразу» звуком нечестно.
-    val intendedVoice = if (alert.hasChannel(AlertChannel.VOICE)) voiceTextOf(request) else null
+    val intendedVoice =
+        if (voiceEnabled && alert.hasChannel(AlertChannel.VOICE)) voiceTextOf(request) else null
     val vibration = if (alert.hasChannel(AlertChannel.VIBRATION)) alert.vibration else null
 
     val sound =
         when {
-            alert.hasChannel(AlertChannel.SOUND) && alert.sound != AlertSound.NONE -> alert.sound
+            alert.hasPlayableSound -> alert.sound
 
             // Голос заявлен, но произнести его нечем — и заменить, кроме звука, нечем.
             intendedVoice != null && !speechReady && vibration == null -> VOICE_FALLBACK_SOUND
@@ -62,6 +70,7 @@ internal fun alertPlanOf(
 
     return AlertPlan(
         sound = sound,
+        customSoundUri = alert.customSoundUri.takeIf { sound == AlertSound.CUSTOM },
         voice = intendedVoice.takeIf { speechReady },
         vibration = vibration,
         gain = gainOf(alert.volumePercent),
