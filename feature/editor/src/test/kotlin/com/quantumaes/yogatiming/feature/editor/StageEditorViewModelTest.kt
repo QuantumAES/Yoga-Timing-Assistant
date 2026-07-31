@@ -245,4 +245,26 @@ class StageEditorViewModelTest {
             val stages = requireNotNull(repository.getProfile(PROFILE_ID)).stages
             assertThat(stages.map { it.name }).containsExactly("Разминка", "Шавасана 10").inOrder()
         }
+
+    /** Полевая проверка 2026-07-31, замечание 8: уход с правками спрашивает подтверждение. */
+    @Test
+    fun `правка этапа отмечается несохранённой, а сохранение снимает признак`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+
+            viewModel.setDuration(FIVE_MINUTES_SEC * 2)
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isTrue()
+
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+        }
+
+    @Test
+    fun `нетронутый новый этап не считается изменённым`() =
+        runTest(dispatcher) {
+            assertThat(viewModel(stageId = NEW_ENTITY_ID).uiState.value.hasUnsavedChanges).isFalse()
+        }
 }

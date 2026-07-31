@@ -116,6 +116,7 @@ internal fun SettingsScreen(
             onSpeechRateChange = viewModel::setSpeechRate,
             onKeepScreenOnChange = viewModel::setKeepScreenOn,
             onAutoDimChange = viewModel::setAutoDim,
+            onSettingsFromSessionChange = viewModel::setSettingsFromSession,
             onPreviewSound = viewModel::previewSound,
             onPreviewVoice = viewModel::previewVoice,
             onRestoreHints = viewModel::restoreHints,
@@ -141,6 +142,7 @@ private fun SettingsContent(
     onSpeechRateChange: (Int) -> Unit,
     onKeepScreenOnChange: (Boolean) -> Unit,
     onAutoDimChange: (Boolean) -> Unit,
+    onSettingsFromSessionChange: (Boolean) -> Unit,
     onPreviewSound: () -> Unit,
     onPreviewVoice: () -> Unit,
     onRestoreHints: () -> Unit,
@@ -210,6 +212,12 @@ private fun SettingsContent(
             subtitle = stringResource(R.string.settings_auto_dim_hint),
             checked = settings.autoDimEnabled,
             onCheckedChange = onAutoDimChange,
+        )
+        SwitchRow(
+            title = stringResource(R.string.settings_session_settings),
+            subtitle = stringResource(R.string.settings_session_settings_hint),
+            checked = settings.settingsFromSession,
+            onCheckedChange = onSettingsFromSessionChange,
         )
 
         HorizontalDivider(Modifier.padding(vertical = Spacing.s))
@@ -465,6 +473,7 @@ private fun SettingsContentPreview() {
             onSpeechRateChange = {},
             onKeepScreenOnChange = {},
             onAutoDimChange = {},
+            onSettingsFromSessionChange = {},
             onPreviewSound = {},
             onPreviewVoice = {},
             onRestoreHints = {},

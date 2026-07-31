@@ -26,6 +26,8 @@
     <string name="settings_keep_screen_on_hint">Только на время занятия. Отсчёт от этого не зависит: он идёт и при выключенном экране.</string>
     <string name="settings_auto_dim">Затемнять в режиме фокуса</string>
     <string name="settings_auto_dim_hint">Через 15 секунд без касаний экран приглушается, но остаётся читаемым. Любое касание и смена этапа возвращают яркость.</string>
+    <string name="settings_session_settings">Настройки во время занятия</string>
+    <string name="settings_session_settings_hint">Кнопка настроек на рабочем экране. Занятие от перехода не прерывается: отсчёт держит фоновая служба.</string>
 
     <string name="settings_section_appearance">Оформление</string>
     <string name="settings_theme_system">Как в системе</string>
@@ -40,17 +42,17 @@
     <string name="settings_hints_restored">Подсказки снова будут показаны</string>
     <string name="settings_replay_onboarding">Показать знакомство заново</string>
 
-    <string name="settings_section_about">О программе</string>
+    <string name="settings_section_about">О приложении</string>
     <string name="settings_about_version">Версия %1$s</string>
     <string name="settings_about_donate_hint">Приложение бесплатное и без рекламы. Если оно помогает вам вести занятия, разработку можно поддержать.</string>
     <string name="settings_about_donate">Поддержать разработчика</string>
 
-    <string name="onboarding_profiles_title">Соберите занятие</string>
-    <string name="onboarding_profiles_text">Профиль — это занятие, разбитое на этапы. Настройте длительности один раз и запускайте каждую неделю.</string>
+    <string name="onboarding_profiles_title">Профиль — это занятие</string>
+    <string name="onboarding_profiles_text">Занятие складывается из этапов: разминка, асаны, шавасана. У каждого занятия своя длительность и свои оповещения — настройте однажды и ведите хоть каждую неделю.</string>
     <string name="onboarding_session_title">Ведите занятие, не глядя на экран</string>
-    <string name="onboarding_session_text">Крупные цифры, читаемые с другого конца зала, и отсчёт, который продолжается при заблокированном экране и свёрнутом приложении.</string>
-    <string name="onboarding_alerts_title">Оповещения под этап</string>
-    <string name="onboarding_alerts_text">Звук, вибрация и голос в начале, в конце и за минуту до него. Шавасана остаётся тихой.</string>
+    <string name="onboarding_session_text">Крупные цифры видны с другого конца зала, а отсчёт не прерывается ни при заблокированном экране, ни при свёрнутом приложении.</string>
+    <string name="onboarding_alerts_title">Оповещения под каждый этап</string>
+    <string name="onboarding_alerts_text">Звук, вибрация и голос — в начале этапа, в конце и за минуту до него. А шавасана останется в тишине.</string>
     <string name="onboarding_next">Далее</string>
     <string name="onboarding_skip">Пропустить</string>
     <string name="onboarding_start">Начать</string>

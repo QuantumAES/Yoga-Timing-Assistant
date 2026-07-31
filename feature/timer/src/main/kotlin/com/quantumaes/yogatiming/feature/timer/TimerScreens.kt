@@ -1,7 +1,8 @@
 package com.quantumaes.yogatiming.feature.timer
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -81,6 +82,20 @@ private const val STAGE_FLASH_MS = 2_000L
 /** До какой яркости приглушать окно. Не в ноль: цифры должны остаться видны. */
 private const val DIM_BRIGHTNESS = 0.1f
 
+/**
+ * Плотность затемняющей пелены поверх экрана.
+ *
+ * Яркости окна одной мало: `screenBrightness` — величина абсолютная, и в
+ * полутёмном зале, где системная яркость и без того около десяти процентов,
+ * приглушение попросту не видно (полевая проверка 2026-07-31, замечание 3).
+ * Пелена же затемняет ровно относительно текущего вида и работает на любом
+ * устройстве, что бы оболочка ни делала с яркостью окна.
+ */
+private const val DIM_SCRIM_ALPHA = 0.55f
+
+/** Насколько плавно гаснет и возвращается экран. Резкая смена бьёт по глазам. */
+private const val DIM_FADE_MS = 700
+
 /** Порог свайпа в фокусе, px. Ниже — случайное смещение пальца при тапе. */
 private const val SWIPE_THRESHOLD_PX = 120f
 
@@ -101,6 +116,7 @@ internal fun TimerScreen(
     profileId: Long,
     onFinish: () -> Unit,
     onExit: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val viewModel: TimerViewModel = hiltViewModel()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
@@ -134,6 +150,8 @@ internal fun TimerScreen(
         snapshot = snapshot,
         notices = notices,
         autoDimEnabled = settings.autoDimEnabled,
+        settingsAvailable = settings.settingsFromSession,
+        onOpenSettings = onOpenSettings,
         mode = mode,
         onModeChange = { mode = it },
         onNoticeAction = viewModel::openSettings,
@@ -180,6 +198,8 @@ private fun SessionScreen(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
     autoDimEnabled: Boolean,
+    settingsAvailable: Boolean,
+    onOpenSettings: () -> Unit,
     mode: SessionMode,
     onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
@@ -199,12 +219,14 @@ private fun SessionScreen(
     val window = LocalWindowInfo.current.containerSize
     val landscape = window.width > window.height
 
-    Dimming(
-        mode = mode,
-        enabled = autoDimEnabled,
-        interactions = interactions,
-        stageIndex = snapshot?.currentIndex,
-    )
+    val dimmed =
+        isDimmed(
+            mode = mode,
+            enabled = autoDimEnabled,
+            interactions = interactions,
+            stageIndex = snapshot?.currentIndex,
+        )
+    WindowBrightness(level = if (dimmed) DIM_BRIGHTNESS else null)
 
     Box(
         modifier =
@@ -238,6 +260,8 @@ private fun SessionScreen(
                     snapshot = snapshot,
                     notices = notices,
                     palette = palette,
+                    settingsAvailable = settingsAvailable,
+                    onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
                     onNoticeAction = onNoticeAction,
                     onNoticeDismiss = onNoticeDismiss,
@@ -256,6 +280,8 @@ private fun SessionScreen(
                     snapshot = snapshot,
                     notices = notices,
                     palette = palette,
+                    settingsAvailable = settingsAvailable,
+                    onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
                     onNoticeAction = onNoticeAction,
                     onNoticeDismiss = onNoticeDismiss,
@@ -270,6 +296,17 @@ private fun SessionScreen(
             }
         }
 
+        // Пелена без собственных обработчиков касаний: жесты режима фокуса
+        // проходят сквозь неё и сами же её снимают.
+        val scrim by animateFloatAsState(
+            targetValue = if (dimmed) DIM_SCRIM_ALPHA else 0f,
+            animationSpec = tween(DIM_FADE_MS),
+            label = "focus-dim",
+        )
+        if (scrim > 0f) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim)))
+        }
+
         if (mode.isLocked) {
             LockOverlay(palette = palette, onUnlock = { onModeChange(SessionMode.NORMAL) })
         }
@@ -277,7 +314,7 @@ private fun SessionScreen(
 }
 
 /**
- * Автозатемнение режима фокуса (ТЗ, Экран 4).
+ * Пора ли гасить экран в режиме фокуса (ТЗ, Экран 4).
  *
  * Два независимых повода светить полной яркостью: касание и смена этапа.
  * Касание перезапускает пятнадцатисекундный отсчёт бездействия, смена этапа
@@ -285,12 +322,12 @@ private fun SessionScreen(
  * глаза и увидеть, что началось.
  */
 @Composable
-private fun Dimming(
+private fun isDimmed(
     mode: SessionMode,
     enabled: Boolean,
     interactions: Int,
     stageIndex: Int?,
-) {
+): Boolean {
     var idle by remember { mutableStateOf(false) }
     var stageFlash by remember { mutableStateOf(false) }
 
@@ -308,7 +345,7 @@ private fun Dimming(
         stageFlash = false
     }
 
-    WindowBrightness(level = if (idle && !stageFlash) DIM_BRIGHTNESS else null)
+    return idle && !stageFlash
 }
 
 /**
@@ -395,13 +432,7 @@ private fun StopConfirmation(
     )
 }
 
-/**
- * Цвет цифр и кольца.
- *
- * Три состояния, различимые с трёх метров: идёт, последняя минута, пауза.
- * Последняя минута — то, ради чего инструктор и смотрит на экран: пора
- * готовить следующий этап.
- */
+@Preview
 @Composable
 private fun SessionScreenPreview() {
     YtaTheme(darkTheme = true) {
@@ -409,6 +440,8 @@ private fun SessionScreenPreview() {
             snapshot = previewSnapshot(),
             notices = emptyList(),
             autoDimEnabled = true,
+            settingsAvailable = true,
+            onOpenSettings = {},
             mode = SessionMode.NORMAL,
             onModeChange = {},
             onNoticeAction = {},

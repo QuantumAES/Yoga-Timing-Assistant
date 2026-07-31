@@ -59,6 +59,11 @@ enum class ThemeMode {
  *   зависит — его держит partial WakeLock сервиса.
  * @param autoDimEnabled гасить ли яркость в режиме фокуса после 15 секунд
  *   бездействия (ТЗ, Экран 4).
+ * @param settingsFromSession пускать ли в настройки прямо с рабочего экрана.
+ *   По умолчанию да: громкость и скорость речи чаще всего хочется поправить
+ *   именно тогда, когда сигнал уже прозвучал не так, — то есть посреди
+ *   занятия. Выключается теми, кто отдаёт телефон в чужие руки: занятие идёт
+ *   дальше в любом случае, но лишней двери на экране не остаётся.
  * @param onboardingCompleted показан ли онбординг. Отдельный флаг, а не
  *   «первый запуск»: онбординг можно пересмотреть из настроек.
  */
@@ -71,6 +76,7 @@ data class AppSettings(
     val speechRatePercent: Int = DEFAULT_SPEECH_RATE,
     val keepScreenOn: Boolean = true,
     val autoDimEnabled: Boolean = true,
+    val settingsFromSession: Boolean = true,
     val onboardingCompleted: Boolean = false,
 ) {
     /** Множитель громкости в долях единицы — в том виде, в каком его ждёт звуковой тракт. */

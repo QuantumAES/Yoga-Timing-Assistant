@@ -98,6 +98,8 @@ class FakeSettingsStore(
 
     override suspend fun setAutoDim(enabled: Boolean) = Unit
 
+    override suspend fun setSettingsFromSession(enabled: Boolean) = Unit
+
     override suspend fun setOnboardingCompleted(completed: Boolean) = Unit
 }
 

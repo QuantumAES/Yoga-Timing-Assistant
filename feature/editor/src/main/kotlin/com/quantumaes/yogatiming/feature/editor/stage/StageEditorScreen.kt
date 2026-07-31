@@ -99,7 +99,12 @@ private fun StageEditorContent(
 ) {
     val title = stringResource(if (uiState.isNew) R.string.editor_stage_new else R.string.editor_stage_title)
 
-    EditorScaffold(title = title, onBack = onBack, onSave = onSave) { modifier ->
+    EditorScaffold(
+        title = title,
+        onBack = onBack,
+        onSave = onSave,
+        hasUnsavedChanges = uiState.hasUnsavedChanges,
+    ) { modifier ->
         if (uiState.isLoading) {
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else {

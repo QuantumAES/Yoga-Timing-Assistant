@@ -29,6 +29,22 @@ import java.util.UUID
 import javax.inject.Inject
 
 /**
+ * Поля профиля в том виде, в каком они уходят в базу.
+ *
+ * Нужен ровно для одного вопроса — менялось ли что-нибудь с последней записи
+ * (полевая проверка 2026-07-31, замечание 8). Флага «грязно» вместо снимка
+ * недостаточно: правку легко вернуть обратно руками, и спрашивать после этого
+ * не о чем.
+ */
+data class ProfileForm(
+    val name: String = "",
+    val category: ProfileCategory = ProfileCategory.DEFAULT,
+    val colorTag: String = DEFAULT_COLOR_TAG,
+    val isFavorite: Boolean = false,
+    val stages: List<Stage> = emptyList(),
+)
+
+/**
  * Состояние редактора профиля.
  *
  * Этапы лежат здесь же, а не читаются потоком напрямую: их порядок правится
@@ -45,7 +61,13 @@ data class ProfileEditorUiState(
     val stages: List<Stage> = emptyList(),
     /** Показывать ли ошибку пустого имени. До первой попытки сохранить — нет. */
     val nameErrorShown: Boolean = false,
+    /** Снимок последней записи в базу. Пустой у профиля, которого там ещё нет. */
+    val savedForm: ProfileForm = ProfileForm(),
 ) {
+    val form: ProfileForm get() = ProfileForm(name.trim(), category, colorTag, isFavorite, stages)
+
+    val hasUnsavedChanges: Boolean get() = form != savedForm
+
     val isNameValid: Boolean get() = name.isNotBlank()
 
     /** Профиль без этапов запустить нельзя (решение B-6) — но сохранить можно. */
@@ -130,7 +152,10 @@ class ProfileEditorViewModel
             viewModelScope.launch {
                 val profile = repository.getProfile(profileId) ?: return@launch
                 defaultAlertConfig = profile.defaultAlertConfig
-                _uiState.update { it.copy(stages = profile.stages) }
+                // Этапы пришли из базы — значит, они же теперь и сохранённые.
+                _uiState.update {
+                    it.copy(stages = profile.stages, savedForm = it.savedForm.copy(stages = profile.stages))
+                }
             }
         }
 
@@ -153,7 +178,7 @@ class ProfileEditorViewModel
             totalDurationMode = profile.totalDurationMode
             fixedTotalSec = profile.fixedTotalSec
             defaultAlertConfig = profile.defaultAlertConfig
-            _uiState.value =
+            val loaded =
                 ProfileEditorUiState(
                     isNew = false,
                     isLoading = false,
@@ -163,6 +188,7 @@ class ProfileEditorViewModel
                     isFavorite = profile.isFavorite,
                     stages = profile.stages,
                 )
+            _uiState.value = loaded.copy(savedForm = loaded.form)
         }
 
         fun setName(name: String) = _uiState.update { it.copy(name = name, nameErrorShown = false) }
@@ -226,7 +252,10 @@ class ProfileEditorViewModel
             viewModelScope.launch {
                 val id = repository.saveProfile(state.toProfile())
                 profileId = id
-                _uiState.update { it.copy(isNew = false) }
+                // Сохранённым считается ровно то, что записано, — не то, что
+                // на экране: у новых этапов идентификаторы появятся только
+                // после чтения (`refreshStages`).
+                _uiState.update { it.copy(isNew = false, savedForm = state.form) }
                 action(id)
             }
         }

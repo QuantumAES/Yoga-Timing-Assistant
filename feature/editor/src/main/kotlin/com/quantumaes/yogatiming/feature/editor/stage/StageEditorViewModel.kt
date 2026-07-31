@@ -35,6 +35,24 @@ import javax.inject.Inject
 /** Длительность нового этапа по умолчанию: пять минут — типичный блок. */
 private const val DEFAULT_DURATION_SEC = 300
 
+/**
+ * Поля этапа в том виде, в каком они уходят в базу.
+ *
+ * Снимок последней записи сравнивается с текущими полями — так виден ответ на
+ * вопрос «есть ли что терять при выходе» (полевая проверка 2026-07-31,
+ * замечание 8). Значения по умолчанию совпадают с [StageEditorUiState]:
+ * только что открытый новый этап несохранённых правок не имеет.
+ */
+data class StageForm(
+    val name: String = "",
+    val type: StageType = StageType.NORMAL,
+    val colorTag: String = DEFAULT_COLOR_TAG,
+    val durationSec: Int = DEFAULT_DURATION_SEC,
+    val note: String = "",
+    val voiceName: String = "",
+    val alertConfig: AlertConfig? = null,
+)
+
 data class StageEditorUiState(
     val isNew: Boolean = true,
     val isLoading: Boolean = true,
@@ -62,7 +80,14 @@ data class StageEditorUiState(
      * отменой висит до следующего действия.
      */
     val restPresetOffered: Boolean = false,
+    /** Снимок последней записи в базу. */
+    val savedForm: StageForm = StageForm(),
 ) {
+    val form: StageForm
+        get() = StageForm(name.trim(), type, colorTag, durationSec, note.trim(), voiceName.trim(), alertConfig)
+
+    val hasUnsavedChanges: Boolean get() = form != savedForm
+
     val isNameValid: Boolean get() = name.isNotBlank()
 
     /** FREE-этап длится до ручного перехода, длительность у него не спрашивают. */
@@ -127,7 +152,14 @@ class StageEditorViewModel
             if (stageId == NEW_ID) return
             viewModelScope.launch {
                 val stage = repository.getProfile(profileId)?.stages?.firstOrNull { it.id == stageId } ?: return@launch
-                _uiState.update { it.copy(alertConfig = stage.alertConfig, restPresetOffered = false) }
+                // Оповещения пришли из базы — значит, они же теперь и сохранённые.
+                _uiState.update {
+                    it.copy(
+                        alertConfig = stage.alertConfig,
+                        restPresetOffered = false,
+                        savedForm = it.savedForm.copy(alertConfig = stage.alertConfig),
+                    )
+                }
             }
         }
 
@@ -141,17 +173,19 @@ class StageEditorViewModel
             // copy, а не новое состояние целиком: настройка голоса приезжает
             // своим потоком и может успеть раньше чтения этапа.
             _uiState.update {
-                it.copy(
-                    isNew = false,
-                    isLoading = false,
-                    name = stage.name,
-                    type = stage.type,
-                    colorTag = stage.colorTag,
-                    durationSec = stage.durationSec,
-                    note = stage.note.orEmpty(),
-                    voiceName = stage.voiceName.orEmpty(),
-                    alertConfig = stage.alertConfig,
-                )
+                val loaded =
+                    it.copy(
+                        isNew = false,
+                        isLoading = false,
+                        name = stage.name,
+                        type = stage.type,
+                        colorTag = stage.colorTag,
+                        durationSec = stage.durationSec,
+                        note = stage.note.orEmpty(),
+                        voiceName = stage.voiceName.orEmpty(),
+                        alertConfig = stage.alertConfig,
+                    )
+                loaded.copy(savedForm = loaded.form)
             }
         }
 
@@ -270,6 +304,7 @@ class StageEditorViewModel
                     stageId = saved.firstOrNull { it.id !in knownIds }?.id ?: NEW_ID
                     _uiState.update { it.copy(isNew = false) }
                 }
+                _uiState.update { it.copy(savedForm = state.form) }
                 action(stageId)
             }
         }

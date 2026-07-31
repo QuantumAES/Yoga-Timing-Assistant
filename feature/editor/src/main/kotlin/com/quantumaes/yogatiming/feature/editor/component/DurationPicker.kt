@@ -1,13 +1,11 @@
 package com.quantumaes.yogatiming.feature.editor.component
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.MaterialTheme
@@ -77,14 +75,9 @@ fun DurationPicker(
             )
         }
 
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.m, vertical = Spacing.s),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
-        ) {
+        // Готовых значений десять, и в ширину экрана они не помещаются:
+        // ряд прокручивается, и по растворяющемуся краю это видно.
+        ScrollableRow(Modifier.padding(vertical = Spacing.s)) {
             PRESET_MINUTES.forEach { preset ->
                 AssistChip(
                     onClick = { onDurationChange(preset * SECONDS_IN_MINUTE) },

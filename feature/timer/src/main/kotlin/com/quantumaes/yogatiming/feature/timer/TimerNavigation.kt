@@ -23,6 +23,7 @@ fun NavGraphBuilder.timerScreens(
     onSessionFinished: (profileId: Long) -> Unit,
     onRepeat: (profileId: Long) -> Unit,
     onExitToProfiles: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     // Ссылка `yta://session/{profileId}` — то, по чему открывается занятие из
     // шторки. Маршрут тот же, что и при запуске из списка: `ensureSession`
@@ -35,6 +36,7 @@ fun NavGraphBuilder.timerScreens(
             profileId = route.profileId,
             onFinish = { onSessionFinished(route.profileId) },
             onExit = onExitToProfiles,
+            onOpenSettings = onOpenSettings,
         )
     }
 

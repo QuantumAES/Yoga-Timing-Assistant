@@ -26,6 +26,8 @@
     <string name="settings_keep_screen_on_hint">During a session only. The countdown does not depend on it: it keeps running with the screen off.</string>
     <string name="settings_auto_dim">Dim in focus mode</string>
     <string name="settings_auto_dim_hint">After 15 seconds without a touch the screen dims but stays readable. Any touch or a stage change brings the brightness back.</string>
+    <string name="settings_session_settings">Settings during a session</string>
+    <string name="settings_session_settings_hint">A settings button on the session screen. Leaving for it does not interrupt the class: the countdown is held by the background service.</string>
 
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_theme_system">Follow system</string>
@@ -40,7 +42,7 @@
     <string name="settings_hints_restored">Hints will be shown again</string>
     <string name="settings_replay_onboarding">Show the intro again</string>
 
-    <string name="settings_section_about">About</string>
+    <string name="settings_section_about">About the app</string>
     <string name="settings_about_version">Version %1$s</string>
     <string name="settings_about_donate_hint">The app is free and has no ads. If it helps you teach, you can support its development.</string>
     <string name="settings_about_donate">Support the developer</string>
@@ -50,12 +52,12 @@
     -->
     <string name="settings_about_donate_url" translatable="false">https://boosty.to/quantumaes</string>
 
-    <string name="onboarding_profiles_title">Build your class</string>
-    <string name="onboarding_profiles_text">A profile is a class split into stages. Set the duration once and reuse it every week.</string>
+    <string name="onboarding_profiles_title">A profile is a class</string>
+    <string name="onboarding_profiles_text">A class is built from stages: warm-up, asanas, savasana. Every class keeps its own durations and its own cues — set them once and teach it week after week.</string>
     <string name="onboarding_session_title">Teach without watching the screen</string>
-    <string name="onboarding_session_text">Huge digits readable from across the room, and a countdown that keeps running with the screen locked and the app in the background.</string>
-    <string name="onboarding_alerts_title">Cues that fit the stage</string>
-    <string name="onboarding_alerts_text">Sound, vibration and voice at the start, the end and a minute before it. Savasana stays quiet.</string>
+    <string name="onboarding_session_text">Digits large enough to read from across the room, and a countdown that stops for nothing — neither a locked screen nor a backgrounded app.</string>
+    <string name="onboarding_alerts_title">Cues that fit each stage</string>
+    <string name="onboarding_alerts_text">Sound, vibration and voice — at the start of a stage, at its end and a minute before it. And savasana stays in silence.</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_start">Get started</string>

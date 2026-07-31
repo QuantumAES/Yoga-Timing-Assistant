@@ -60,7 +60,7 @@ internal fun stagePositionText(snapshot: SessionSnapshot?): String {
     return stringResource(R.string.timer_stage_position, snapshot.currentIndex + 1, snapshot.stageCount)
 }
 
-/** «Осталось 45:45 · +0:30» — вторая строка: остаток занятия и ручная поправка. */
+/** «Осталось 45:45» — вторая строка: остаток всего занятия. */
 @Composable
 internal fun totalRemainingText(snapshot: SessionSnapshot?): String {
     if (snapshot == null) return ""
@@ -71,12 +71,18 @@ internal fun totalRemainingText(snapshot: SessionSnapshot?): String {
         } else {
             clock
         }
-    val remaining = stringResource(R.string.timer_total_remaining, total)
-    val adjustment =
-        if (snapshot.stageAdjustmentMs == 0L) {
-            ""
-        } else {
-            " · ${TimeFormatter.signedClock(snapshot.stageAdjustmentMs)}"
-        }
-    return "$remaining$adjustment"
+    return stringResource(R.string.timer_total_remaining, total)
+}
+
+/**
+ * «+0:30 к этапу» — ручная поправка ±30 с отдельной строкой.
+ *
+ * Раньше она дописывалась хвостом к остатку занятия и на узком экране
+ * наезжала на дугу кольца (полевая проверка 2026-07-31, замечание 4).
+ * `null` — поправки не было: пустой строки в разметке кольца тоже не место.
+ */
+@Composable
+internal fun stageAdjustmentText(snapshot: SessionSnapshot?): String? {
+    val adjustment = snapshot?.stageAdjustmentMs?.takeIf { it != 0L } ?: return null
+    return stringResource(R.string.timer_stage_adjustment, TimeFormatter.signedClock(adjustment))
 }

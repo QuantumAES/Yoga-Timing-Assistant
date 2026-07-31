@@ -2,6 +2,12 @@
 <resources>
     <string name="editor_save">Save</string>
     <string name="editor_back">Back</string>
+
+    <!-- Leaving with unsaved edits. -->
+    <string name="editor_unsaved_title">Leave without saving?</string>
+    <string name="editor_unsaved_message">The changes are not written yet. Leaving now discards them.</string>
+    <string name="editor_unsaved_save">Save</string>
+    <string name="editor_unsaved_discard">Leave without saving</string>
     <string name="editor_color">Colour tag</string>
 
     <!-- Экран 2: редактор профиля -->
@@ -64,13 +70,18 @@
     <string name="editor_alerts_profile_title">Profile alerts</string>
     <string name="editor_alerts_stage_title">Stage alerts</string>
     <string name="editor_alerts_owner">Applies to “%1$s”</string>
+    <string name="editor_alerts_common">Common to every cue</string>
     <string name="editor_alerts_preset">Preset</string>
     <string name="editor_alerts_volume">Volume</string>
     <string name="editor_alerts_volume_value">%1$d%%</string>
     <string name="editor_alerts_volume_hint">A multiplier on top of the system alarm volume. The app never changes your system settings.</string>
-    <string name="editor_alerts_enabled">Play this cue</string>
+    <string name="editor_alerts_on">Cue is on</string>
+    <string name="editor_alerts_off">Cue is off — this moment stays silent</string>
+    <string name="editor_alerts_channels">How to cue</string>
+    <string name="editor_alerts_offset">How long before the end</string>
     <string name="editor_alerts_start">Stage start</string>
     <string name="editor_alerts_warnings">Warnings</string>
+    <string name="editor_alerts_warnings_hint">Cues shortly before the stage ends — time to round off the pose.</string>
     <string name="editor_alerts_end">Stage end</string>
     <string name="editor_alerts_add_warning">Add warning</string>
     <string name="editor_alerts_remove_warning">Remove warning</string>

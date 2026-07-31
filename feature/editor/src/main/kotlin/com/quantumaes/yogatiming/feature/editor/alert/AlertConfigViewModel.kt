@@ -41,6 +41,13 @@ data class AlertConfigUiState(
     val ownerName: String = "",
     val config: AlertConfig = AlertPresets.standard(),
     /**
+     * Набор в том виде, в каком он лежит в базе.
+     *
+     * `null` до чтения профиля: сравнивать ещё не с чем, и спрашивать про
+     * несохранённые правки на пустом экране нельзя.
+     */
+    val savedConfig: AlertConfig? = null,
+    /**
      * Этап свободный: предупреждения и END привязаны к концу, которого нет
      * (решение B-5). Секции показываются, но с честным предупреждением.
      */
@@ -56,6 +63,9 @@ data class AlertConfigUiState(
     val voiceEnabled: Boolean = false,
 ) {
     val warnings: List<Alert> get() = config.warningsByTime
+
+    /** Есть ли правки, которых нет в базе (полевая проверка 2026-07-31, замечание 8). */
+    val hasUnsavedChanges: Boolean get() = savedConfig != null && config != savedConfig
 
     /** Предупреждение со смещением больше длительности этапа пропускается молча (B-7). */
     fun isWarningUnreachable(alert: Alert): Boolean =
@@ -116,6 +126,7 @@ class AlertConfigViewModel
                     isStageScope = stage != null,
                     ownerName = stage?.name ?: profile.name,
                     config = stage?.alertConfig ?: profile.defaultAlertConfig,
+                    savedConfig = stage?.alertConfig ?: profile.defaultAlertConfig,
                     isFreeStage = stage != null && !stage.hasPlannedDuration,
                     stageDurationSec = stage?.durationSec ?: 0,
                 )
@@ -243,6 +254,7 @@ class AlertConfigViewModel
             viewModelScope.launch {
                 val profile = repository.getProfile(profileId) ?: return@launch
                 repository.saveProfile(profile.withConfig(config))
+                _uiState.update { it.copy(savedConfig = config) }
                 events.trySend(AlertConfigEvent.Saved)
             }
         }

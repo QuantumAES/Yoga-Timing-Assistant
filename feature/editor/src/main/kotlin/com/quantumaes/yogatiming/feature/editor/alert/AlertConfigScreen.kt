@@ -13,8 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -24,6 +22,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,12 +44,13 @@ import com.quantumaes.yogatiming.domain.model.alert.VibrationPattern
 import com.quantumaes.yogatiming.domain.model.alert.VoicePhrase
 import com.quantumaes.yogatiming.feature.editor.R
 import com.quantumaes.yogatiming.feature.editor.channelLabelRes
+import com.quantumaes.yogatiming.feature.editor.component.CardDivider
 import com.quantumaes.yogatiming.feature.editor.component.CustomSoundPicker
+import com.quantumaes.yogatiming.feature.editor.component.EditorCard
 import com.quantumaes.yogatiming.feature.editor.component.EditorScaffold
 import com.quantumaes.yogatiming.feature.editor.component.FieldHint
-import com.quantumaes.yogatiming.feature.editor.component.SectionTitle
+import com.quantumaes.yogatiming.feature.editor.component.FieldLabel
 import com.quantumaes.yogatiming.feature.editor.component.SingleChoiceChips
-import com.quantumaes.yogatiming.feature.editor.component.SwitchRow
 import com.quantumaes.yogatiming.feature.editor.presetLabelRes
 import com.quantumaes.yogatiming.feature.editor.soundLabelRes
 import com.quantumaes.yogatiming.feature.editor.vibrationLabelRes
@@ -79,6 +79,11 @@ private val CUSTOM_SOUND_SECONDS = listOf(3, 5, 10, 15, 30, 60)
  * Структура повторяет модель: START, список предупреждений, END. Плоского
  * списка с полем «тип триггера» нет ни в данных, ни здесь — так невозможно
  * собрать два START или END со смещением (ADR-002).
+ *
+ * Каждый из трёх наборов — своя карточка с переключателем в шапке (полевая
+ * проверка 2026-07-31, замечание 1). До этого экран был сплошной лентой
+ * одинаковых чипов: к чему относится очередной ряд «Звук / Голос / Вибрация»,
+ * приходилось выяснять, отсчитывая заголовки вверх.
  */
 @Composable
 internal fun AlertConfigScreen(
@@ -133,7 +138,12 @@ private fun AlertConfigContent(
             if (uiState.isStageScope) R.string.editor_alerts_stage_title else R.string.editor_alerts_profile_title,
         )
 
-    EditorScaffold(title = title, onBack = onBack, onSave = onSave) { modifier ->
+    EditorScaffold(
+        title = title,
+        onBack = onBack,
+        onSave = onSave,
+        hasUnsavedChanges = uiState.hasUnsavedChanges,
+    ) { modifier ->
         if (uiState.isLoading) {
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else {
@@ -143,25 +153,33 @@ private fun AlertConfigContent(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = Spacing.xl),
             ) {
-                FieldHint(stringResource(R.string.editor_alerts_owner, uiState.ownerName))
-
-                SectionTitle(stringResource(R.string.editor_alerts_preset))
-                SingleChoiceChips(
-                    options = AlertPreset.entries,
-                    selected = uiState.config.preset,
-                    label = { stringResource(it.presetLabelRes()) },
-                    onSelect = onPreset,
+                FieldHint(
+                    text = stringResource(R.string.editor_alerts_owner, uiState.ownerName),
+                    modifier = Modifier.padding(top = Spacing.s),
                 )
 
-                SectionTitle(stringResource(R.string.editor_alerts_volume))
-                VolumeSlider(percent = uiState.config.masterVolumePercent, onVolume = onVolume)
+                // Пресет и громкость — общее для всех трёх наборов, поэтому
+                // они в одной карточке и стоят выше самих наборов.
+                EditorCard(title = stringResource(R.string.editor_alerts_common)) {
+                    SingleChoiceChips(
+                        options = AlertPreset.entries,
+                        selected = uiState.config.preset,
+                        label = { stringResource(it.presetLabelRes()) },
+                        onSelect = onPreset,
+                        title = stringResource(R.string.editor_alerts_preset),
+                    )
+                    CardDivider()
+                    FieldLabel(stringResource(R.string.editor_alerts_volume))
+                    VolumeSlider(percent = uiState.config.masterVolumePercent, onVolume = onVolume)
+                    FieldHint(stringResource(R.string.editor_alerts_volume_hint))
+                }
 
                 if (uiState.isFreeStage) {
                     FieldHint(stringResource(R.string.editor_alerts_free_stage))
                 }
 
-                SectionTitle(stringResource(R.string.editor_alerts_start))
-                TriggerSection(
+                TriggerCard(
+                    title = stringResource(R.string.editor_alerts_start),
                     alert = uiState.config.start,
                     trigger = AlertTrigger.START,
                     voiceOptions = START_VOICES,
@@ -171,34 +189,17 @@ private fun AlertConfigContent(
                     onPreview = onPreview,
                 )
 
-                SectionTitle(stringResource(R.string.editor_alerts_warnings))
-                uiState.warnings.forEach { warning ->
-                    WarningSection(
-                        alert = warning,
-                        unreachable = uiState.isWarningUnreachable(warning),
-                        voiceEnabled = uiState.voiceEnabled,
-                        onOffsetChange = { onWarningOffset(warning.offsetSec, it) },
-                        onUpdate = { update -> onUpdateWarning(warning.offsetSec, update) },
-                        onRemove = { onRemoveWarning(warning.offsetSec) },
-                        onPreview = onPreview,
-                    )
-                }
-                OutlinedButton(
-                    onClick = onAddWarning,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Spacing.m, vertical = Spacing.s),
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Text(
-                        text = stringResource(R.string.editor_alerts_add_warning),
-                        modifier = Modifier.padding(start = Spacing.s),
-                    )
-                }
+                WarningsCard(
+                    uiState = uiState,
+                    onWarningOffset = onWarningOffset,
+                    onUpdateWarning = onUpdateWarning,
+                    onAddWarning = onAddWarning,
+                    onRemoveWarning = onRemoveWarning,
+                    onPreview = onPreview,
+                )
 
-                SectionTitle(stringResource(R.string.editor_alerts_end))
-                TriggerSection(
+                TriggerCard(
+                    title = stringResource(R.string.editor_alerts_end),
                     alert = uiState.config.end,
                     trigger = AlertTrigger.END,
                     voiceOptions = END_VOICES,
@@ -244,12 +245,17 @@ private fun VolumeSlider(
             style = MaterialTheme.typography.bodyMedium,
         )
     }
-    FieldHint(stringResource(R.string.editor_alerts_volume_hint))
 }
 
-/** Секция START или END: включение, каналы и параметры каждого канала. */
+/**
+ * Карточка START или END: переключатель в шапке, параметры — внутри.
+ *
+ * Выключенный набор сворачивается целиком: настраивать канал, который не
+ * прозвучит, незачем, а пустое место в карточке видно как ответ «здесь тихо».
+ */
 @Composable
-private fun TriggerSection(
+private fun TriggerCard(
+    title: String,
     alert: Alert?,
     trigger: AlertTrigger,
     voiceOptions: List<VoicePhrase>,
@@ -258,25 +264,72 @@ private fun TriggerSection(
     onUpdate: ((Alert) -> Alert) -> Unit,
     onPreview: (Alert, AlertTrigger) -> Unit,
 ) {
-    SwitchRow(
-        title = stringResource(R.string.editor_alerts_enabled),
-        checked = alert?.enabled == true,
+    val enabled = alert?.enabled == true
+    EditorCard(
+        title = title,
+        subtitle = stringResource(if (enabled) R.string.editor_alerts_on else R.string.editor_alerts_off),
+        checked = enabled,
         onCheckedChange = onEnabled,
-    )
-    if (alert == null || !alert.enabled) return
+    ) {
+        if (alert == null || !enabled) return@EditorCard
+        AlertBody(
+            alert = alert,
+            trigger = trigger,
+            voiceOptions = voiceOptions,
+            voiceEnabled = voiceEnabled,
+            onUpdate = onUpdate,
+            onPreview = onPreview,
+        )
+    }
+}
 
-    AlertBody(
-        alert = alert,
-        trigger = trigger,
-        voiceOptions = voiceOptions,
-        voiceEnabled = voiceEnabled,
-        onUpdate = onUpdate,
-        onPreview = onPreview,
-    )
+/**
+ * Карточка предупреждений: сколько их, столько блоков, разделённых чертой.
+ *
+ * Вложенных карточек здесь нет намеренно — карточка в карточке даёт две рамки
+ * подряд и читается хуже, чем один разделитель.
+ */
+@Composable
+private fun WarningsCard(
+    uiState: AlertConfigUiState,
+    onWarningOffset: (Int, Int) -> Unit,
+    onUpdateWarning: (Int, (Alert) -> Alert) -> Unit,
+    onAddWarning: () -> Unit,
+    onRemoveWarning: (Int) -> Unit,
+    onPreview: (Alert, AlertTrigger) -> Unit,
+) {
+    EditorCard(
+        title = stringResource(R.string.editor_alerts_warnings),
+        subtitle = stringResource(R.string.editor_alerts_warnings_hint),
+    ) {
+        uiState.warnings.forEachIndexed { index, warning ->
+            if (index > 0) CardDivider()
+            WarningBlock(
+                alert = warning,
+                unreachable = uiState.isWarningUnreachable(warning),
+                voiceEnabled = uiState.voiceEnabled,
+                onOffsetChange = { onWarningOffset(warning.offsetSec, it) },
+                onUpdate = { update -> onUpdateWarning(warning.offsetSec, update) },
+                onRemove = { onRemoveWarning(warning.offsetSec) },
+                onPreview = onPreview,
+            )
+        }
+
+        TextButton(
+            onClick = onAddWarning,
+            modifier = Modifier.padding(start = Spacing.s, top = Spacing.s),
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null)
+            Text(
+                text = stringResource(R.string.editor_alerts_add_warning),
+                modifier = Modifier.padding(start = Spacing.s),
+            )
+        }
+    }
 }
 
 @Composable
-private fun WarningSection(
+private fun WarningBlock(
     alert: Alert,
     unreachable: Boolean,
     voiceEnabled: Boolean,
@@ -285,53 +338,59 @@ private fun WarningSection(
     onRemove: () -> Unit,
     onPreview: (Alert, AlertTrigger) -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.m, vertical = Spacing.xs),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = Spacing.m, end = Spacing.s),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = Spacing.m, end = Spacing.m, top = Spacing.s),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = stringResource(R.string.editor_alerts_warning_at, alert.offsetLabel()),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            IconButton(onClick = onRemove) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.editor_alerts_remove_warning),
-                    tint = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-
-        SingleChoiceChips(
-            options = WARNING_OFFSETS_SEC,
-            selected = alert.offsetSec,
-            label = { offsetLabel(it) },
-            onSelect = onOffsetChange,
+        Text(
+            text = stringResource(R.string.editor_alerts_warning_at, alert.offsetLabel()),
+            style = MaterialTheme.typography.titleSmall,
         )
-
-        // Решение B-7: такое предупреждение движок пропустит молча, и узнать
-        // об этом лучше здесь, чем во время занятия.
-        if (unreachable) {
-            FieldHint(stringResource(R.string.editor_alerts_warning_unreachable), error = true)
+        IconButton(onClick = onRemove) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = stringResource(R.string.editor_alerts_remove_warning),
+                tint = MaterialTheme.colorScheme.error,
+            )
         }
+    }
 
-        AlertBody(
-            alert = alert,
-            trigger = AlertTrigger.WARNING,
-            voiceOptions = WARNING_VOICES,
-            voiceEnabled = voiceEnabled,
-            onUpdate = onUpdate,
-            onPreview = onPreview,
+    SingleChoiceChips(
+        options = WARNING_OFFSETS_SEC,
+        selected = alert.offsetSec,
+        label = { offsetLabel(it) },
+        onSelect = onOffsetChange,
+        title = stringResource(R.string.editor_alerts_offset),
+    )
+
+    // Решение B-7: такое предупреждение движок пропустит молча, и узнать
+    // об этом лучше здесь, чем во время занятия.
+    if (unreachable) {
+        FieldHint(
+            text = stringResource(R.string.editor_alerts_warning_unreachable),
+            modifier = Modifier.padding(top = Spacing.xs),
+            error = true,
         )
     }
+
+    AlertBody(
+        alert = alert,
+        trigger = AlertTrigger.WARNING,
+        voiceOptions = WARNING_VOICES,
+        voiceEnabled = voiceEnabled,
+        onUpdate = onUpdate,
+        onPreview = onPreview,
+    )
 }
 
-/** Общая часть любого оповещения: каналы и их параметры. */
+/**
+ * Общая часть любого оповещения: каналы и параметры каждого включённого.
+ *
+ * Параметры канала показываются только при включённом канале и всегда под
+ * своей подписью: три ряда чипов подряд без подписей — это загадка, а не
+ * форма.
+ */
 @Composable
 private fun AlertBody(
     alert: Alert,
@@ -341,8 +400,12 @@ private fun AlertBody(
     onUpdate: ((Alert) -> Alert) -> Unit,
     onPreview: (Alert, AlertTrigger) -> Unit,
 ) {
+    FieldLabel(
+        text = stringResource(R.string.editor_alerts_channels),
+        modifier = Modifier.padding(top = Spacing.s),
+    )
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.m, vertical = Spacing.s),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.m),
         horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         AlertChannel.entries.forEach { channel ->
@@ -355,11 +418,13 @@ private fun AlertBody(
     }
 
     if (AlertChannel.SOUND in alert.channels) {
+        CardDivider()
         SingleChoiceChips(
             options = AlertSound.entries,
             selected = alert.sound,
             label = { stringResource(it.soundLabelRes()) },
             onSelect = { sound -> onUpdate { it.copy(sound = sound) } },
+            title = stringResource(R.string.editor_channel_sound),
         )
         if (alert.sound == AlertSound.CUSTOM) {
             CustomSoundPicker(
@@ -367,19 +432,24 @@ private fun AlertBody(
                 onPick = { uri -> onUpdate { it.copy(customSoundUri = uri) } },
             )
             if (alert.customSoundUri != null) {
-                SectionTitle(stringResource(R.string.editor_sound_custom_duration))
                 SingleChoiceChips(
                     options = CUSTOM_SOUND_SECONDS,
                     selected = alert.customSoundDurationSec,
                     label = { stringResource(R.string.editor_sound_custom_duration_value, it) },
                     onSelect = { seconds -> onUpdate { it.copy(customSoundDurationSec = seconds) } },
+                    modifier = Modifier.padding(top = Spacing.s),
+                    title = stringResource(R.string.editor_sound_custom_duration),
                 )
-                FieldHint(stringResource(R.string.editor_sound_custom_duration_hint))
+                FieldHint(
+                    text = stringResource(R.string.editor_sound_custom_duration_hint),
+                    modifier = Modifier.padding(top = Spacing.xs),
+                )
             }
         }
     }
 
     if (AlertChannel.VOICE in alert.channels) {
+        CardDivider()
         // Канал включён, а голос выключен целиком: оповещение промолчит, и
         // сказать об этом надо здесь, а не оставить выяснять на занятии.
         if (!voiceEnabled) {
@@ -390,7 +460,7 @@ private fun AlertBody(
             selected = alert.voice,
             label = { stringResource(it.voiceLabelRes()) },
             onSelect = { voice -> onUpdate { it.copy(voice = voice) } },
-            modifier = Modifier.padding(top = Spacing.s),
+            title = stringResource(R.string.editor_channel_voice),
         )
         if (alert.voice == VoicePhrase.CUSTOM) {
             OutlinedTextField(
@@ -408,18 +478,19 @@ private fun AlertBody(
     }
 
     if (AlertChannel.VIBRATION in alert.channels) {
+        CardDivider()
         SingleChoiceChips(
             options = VibrationPattern.entries,
             selected = alert.vibration,
             label = { stringResource(it.vibrationLabelRes()) },
             onSelect = { pattern -> onUpdate { it.copy(vibration = pattern) } },
-            modifier = Modifier.padding(top = Spacing.s),
+            title = stringResource(R.string.editor_channel_vibration),
         )
     }
 
     OutlinedButton(
         onClick = { onPreview(alert, trigger) },
-        modifier = Modifier.padding(horizontal = Spacing.m, vertical = Spacing.s),
+        modifier = Modifier.padding(start = Spacing.m, top = Spacing.m),
     ) {
         Icon(Icons.Filled.PlayArrow, contentDescription = null)
         Text(

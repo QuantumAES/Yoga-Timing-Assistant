@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -145,7 +145,12 @@ private fun ProfileEditorContent(
     val title =
         stringResource(if (uiState.isNew) R.string.editor_profile_new else R.string.editor_profile_title)
 
-    EditorScaffold(title = title, onBack = onBack, onSave = onSave) { modifier ->
+    EditorScaffold(
+        title = title,
+        onBack = onBack,
+        onSave = onSave,
+        hasUnsavedChanges = uiState.hasUnsavedChanges,
+    ) { modifier ->
         if (uiState.isLoading) {
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else {
@@ -373,7 +378,7 @@ private fun StageRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Row(
-            modifier = Modifier.height(Dimens.listItemMinHeight),
+            modifier = Modifier.heightIn(min = Dimens.listItemMinHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(

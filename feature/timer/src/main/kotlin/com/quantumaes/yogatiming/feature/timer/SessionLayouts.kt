@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +49,16 @@ private const val FOCUS_HINT_MS = 3_000L
 
 private val LANDSCAPE_RING_PADDING = 8.dp
 
+/**
+ * Высота полосы под кольцом — «Далее: …» и заметка инструктору.
+ *
+ * Фиксированная, а не по содержимому (полевая проверка 2026-07-31,
+ * замечание 5): кольцо занимает всё, что осталось, и этап с заметкой ужимал
+ * его на две строки текста относительно этапа без заметки. Диаметр прыгал на
+ * каждом переходе, и глаз, привыкший к размеру цифр, каждый раз перенастраивался.
+ */
+private val FOOTER_HEIGHT = 72.dp
+
 // Раскладки рабочего экрана: портрет, ландшафт и режим фокуса. Отделены от
 // TimerScreen намеренно — тот отвечает за состояние и жесты, эти функции
 // только раскладывают уже готовые данные.
@@ -56,6 +68,8 @@ internal fun PortraitContent(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
     palette: TimerPalette,
+    settingsAvailable: Boolean,
+    onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
@@ -71,6 +85,8 @@ internal fun PortraitContent(
         SessionTopBar(
             title = snapshot?.profileName.orEmpty(),
             palette = palette,
+            settingsAvailable = settingsAvailable,
+            onOpenSettings = onOpenSettings,
             onLock = { onModeChange(SessionMode.LOCK) },
             onStop = onStopRequest,
         )
@@ -112,6 +128,8 @@ internal fun LandscapeContent(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
     palette: TimerPalette,
+    settingsAvailable: Boolean,
+    onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
@@ -139,6 +157,8 @@ internal fun LandscapeContent(
             SessionTopBar(
                 title = snapshot?.profileName.orEmpty(),
                 palette = palette,
+                settingsAvailable = settingsAvailable,
+                onOpenSettings = onOpenSettings,
                 onLock = { onModeChange(SessionMode.LOCK) },
                 onStop = onStopRequest,
             )
@@ -226,20 +246,40 @@ private fun StageRing(
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                 )
+                // Ручная поправка — третьей строкой, а не хвостом ко второй:
+                // «Осталось 45:45 · +0:30» упиралась в дугу кольца.
+                stageAdjustmentText(snapshot)?.let { adjustment ->
+                    Text(
+                        text = adjustment,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = snapshot.accent(palette),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
 }
 
-/** «Далее: Балансы · 12:00» и заметка инструктору. */
+/**
+ * «Далее: Балансы · 12:00» и заметка инструктору.
+ *
+ * Высота полосы постоянна и не зависит от того, есть ли у этапа заметка:
+ * иначе кольцо над ней меняло бы диаметр на каждом переходе (см. [FOOTER_HEIGHT]).
+ */
 @Composable
 private fun StageFooter(
     snapshot: SessionSnapshot?,
     palette: TimerPalette,
     modifier: Modifier = Modifier,
 ) {
-    if (snapshot == null) return
-    Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = modifier.fillMaxWidth().height(FOOTER_HEIGHT),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        if (snapshot == null) return@Column
         Text(
             text = nextStageText(snapshot),
             style = YtaTextStyles.stageNext,
@@ -266,6 +306,8 @@ private fun StageFooter(
 private fun SessionTopBar(
     title: String,
     palette: TimerPalette,
+    settingsAvailable: Boolean,
+    onOpenSettings: () -> Unit,
     onLock: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
@@ -282,6 +324,20 @@ private fun SessionTopBar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        // Настройки прямо с занятия (полевая проверка 2026-07-31, замечание 6):
+        // громкость и скорость речи правят тогда, когда сигнал уже прозвучал
+        // не так, — то есть посреди занятия. Отсчёт от ухода не страдает:
+        // его ведёт сервис, а не этот экран. Кнопку можно убрать настройкой
+        // «Настройки во время занятия».
+        if (settingsAvailable) {
+            IconButton(onClick = onOpenSettings, modifier = Modifier.size(Dimens.minTouchTarget)) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = stringResource(R.string.timer_settings),
+                    tint = palette.onBackgroundMuted,
+                )
+            }
+        }
         IconButton(onClick = onLock, modifier = Modifier.size(Dimens.minTouchTarget)) {
             Icon(
                 imageVector = Icons.Filled.Lock,

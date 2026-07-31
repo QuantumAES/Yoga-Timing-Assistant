@@ -64,6 +64,10 @@ private class FakeSettingsStore(
         state.value = state.value.copy(autoDimEnabled = enabled)
     }
 
+    override suspend fun setSettingsFromSession(enabled: Boolean) {
+        state.value = state.value.copy(settingsFromSession = enabled)
+    }
+
     override suspend fun setOnboardingCompleted(completed: Boolean) {
         state.value = state.value.copy(onboardingCompleted = completed)
     }
@@ -140,6 +144,25 @@ class SettingsViewModelTest {
                 awaitItem()
                 model.setVoiceEnabled(true)
                 assertThat(awaitItem().voiceEnabled).isTrue()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    /**
+     * Полевая проверка 2026-07-31, замечание 6: с занятия должен быть путь
+     * в настройки — и выключатель для тех, кому он не нужен.
+     */
+    @Test
+    fun `настройки с рабочего экрана разрешены по умолчанию и выключаются`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.settings.test {
+                assertThat(awaitItem().settingsFromSession).isTrue()
+
+                viewModel.setSettingsFromSession(false)
+
+                assertThat(awaitItem().settingsFromSession).isFalse()
                 cancelAndIgnoreRemainingEvents()
             }
         }

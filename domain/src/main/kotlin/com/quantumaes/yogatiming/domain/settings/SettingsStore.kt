@@ -29,5 +29,7 @@ interface SettingsStore {
 
     suspend fun setAutoDim(enabled: Boolean)
 
+    suspend fun setSettingsFromSession(enabled: Boolean)
+
     suspend fun setOnboardingCompleted(completed: Boolean)
 }

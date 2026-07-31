@@ -291,4 +291,20 @@ class AlertConfigViewModelTest {
                     .alert.volumePercent,
             ).isEqualTo(AlertPresets.standard().masterVolumePercent)
         }
+
+    /** Полевая проверка 2026-07-31, замечание 8: уход с правками спрашивает подтверждение. */
+    @Test
+    fun `смена пресета отмечается несохранённой, а сохранение снимает признак`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+
+            viewModel.applyPreset(AlertPreset.SILENT)
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isTrue()
+
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+        }
 }

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -82,7 +81,7 @@ fun SessionControls(
                 modifier =
                     Modifier
                         .weight(2f)
-                        .height(PRIMARY_HEIGHT),
+                        .defaultMinSize(minHeight = PRIMARY_HEIGHT),
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = if (paused) palette.paused else palette.running,
@@ -99,7 +98,7 @@ fun SessionControls(
                 label = stringResource(R.string.timer_next),
                 palette = palette,
                 onClick = onNext,
-                modifier = Modifier.weight(1f).height(PRIMARY_HEIGHT),
+                modifier = Modifier.weight(1f).defaultMinSize(minHeight = PRIMARY_HEIGHT),
             )
         }
 

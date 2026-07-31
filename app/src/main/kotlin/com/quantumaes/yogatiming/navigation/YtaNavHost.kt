@@ -84,6 +84,9 @@ fun YtaNavHost(
                     popUpTo(ProfilesRoute) { inclusive = true }
                 }
             },
+            // Настройки поверх идущего занятия: экран занятия остаётся в стеке,
+            // «Назад» возвращает к нему, а отсчёт всё это время ведёт сервис.
+            onOpenSettings = { navController.navigate(SettingsRoute) { launchSingleTop = true } },
         )
 
         settingsScreens(

@@ -2,6 +2,12 @@
 <resources>
     <string name="editor_save">Сохранить</string>
     <string name="editor_back">Назад</string>
+
+    <!-- Уход с несохранёнными правками (полевая проверка 2026-07-31, замечание 8). -->
+    <string name="editor_unsaved_title">Выйти без сохранения?</string>
+    <string name="editor_unsaved_message">Изменения не записаны. Если выйти сейчас, они пропадут.</string>
+    <string name="editor_unsaved_save">Сохранить</string>
+    <string name="editor_unsaved_discard">Выйти без сохранения</string>
     <string name="editor_color">Цветовая метка</string>
 
     <!-- Экран 2: редактор профиля -->
@@ -64,13 +70,18 @@
     <string name="editor_alerts_profile_title">Оповещения профиля</string>
     <string name="editor_alerts_stage_title">Оповещения этапа</string>
     <string name="editor_alerts_owner">Действуют для «%1$s»</string>
-    <string name="editor_alerts_preset">Пресет</string>
+    <string name="editor_alerts_common">Общее для всех сигналов</string>
+    <string name="editor_alerts_preset">Готовый набор</string>
     <string name="editor_alerts_volume">Громкость</string>
     <string name="editor_alerts_volume_value">%1$d%%</string>
     <string name="editor_alerts_volume_hint">Множитель поверх системной громкости будильника. Системные настройки приложение не трогает.</string>
-    <string name="editor_alerts_enabled">Проигрывать сигнал</string>
+    <string name="editor_alerts_on">Сигнал включён</string>
+    <string name="editor_alerts_off">Сигнал выключен — здесь будет тихо</string>
+    <string name="editor_alerts_channels">Чем оповещать</string>
+    <string name="editor_alerts_offset">За сколько до конца</string>
     <string name="editor_alerts_start">Начало этапа</string>
     <string name="editor_alerts_warnings">Предупреждения</string>
+    <string name="editor_alerts_warnings_hint">Сигналы незадолго до конца этапа — время закруглять позу.</string>
     <string name="editor_alerts_end">Конец этапа</string>
     <string name="editor_alerts_add_warning">Добавить предупреждение</string>
     <string name="editor_alerts_remove_warning">Удалить предупреждение</string>

@@ -12,12 +12,34 @@
     <string name="timer_stage_position">Stage %1$d/%2$d</string>
     <string name="timer_total_remaining">Remaining %1$s</string>
     <string name="timer_total_at_least">≥ %1$s</string>
+    <!-- The manual ±30 s adjustment. Its own line: it does not fit the remaining-time one. -->
+    <string name="timer_stage_adjustment">%1$s to this stage</string>
 
     <string name="timer_finished_title">Class complete</string>
     <string name="timer_finished_repeat">Repeat</string>
     <string name="timer_finished_exit">Back to profiles</string>
 
+    <!-- A parting line on the summary screen, picked at random after every class. -->
+    <string-array name="timer_finished_quotes">
+        <item>Yoga begins where the hurry ends.</item>
+        <item>Your body is not a burden you carry — it is the home you live in.</item>
+        <item>The breath is a bridge between body and mind. Cross it.</item>
+        <item>A flexible body starts with a flexible mind.</item>
+        <item>Practice is not perfection — it is keeping faith with yourself.</item>
+        <item>An hour on the mat comes back as a day of clarity.</item>
+        <item>It matters less how deep the pose is than how calm the breath stays.</item>
+        <item>Health is a daily habit, not a rare effort.</item>
+        <item>Every practice leaves a trace, even one you cannot see today.</item>
+        <item>Strength is born where you chose to stay for one more breath.</item>
+        <item>Stillness is not the absence of movement, but agreement with it.</item>
+        <item>You came to the mat — the hardest part is already behind you.</item>
+        <item>The quieter the practice, the deeper the change.</item>
+        <item>The body remembers care better than promises.</item>
+        <item>The best time to practise is the one that has already come.</item>
+    </string-array>
+
     <!-- Верхний бар и режимы рабочего экрана (docs/03-GESTURES.md). -->
+    <string name="timer_settings">Settings</string>
     <string name="timer_lock">Lock the screen</string>
     <string name="timer_unlock_hint">Press and hold to unlock</string>
     <string name="timer_focus_enter">Focus mode</string>
@@ -30,8 +52,6 @@
     <string name="timer_stop_message">The countdown will stop and the session will not be resumed.</string>
     <string name="timer_stop_confirm">End</string>
     <string name="timer_stop_cancel">Keep going</string>
-
-    <string name="timer_finished_hint">The countdown has stopped and the notification is gone.</string>
 
     <string name="timer_notice_dismiss">Hide</string>
     <string name="timer_notice_understood">Got it</string>

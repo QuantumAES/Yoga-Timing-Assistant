@@ -26,6 +26,7 @@ private val KEY_DUCK_MUSIC = booleanPreferencesKey("duck_music_on_alert")
 private val KEY_SPEECH_RATE = intPreferencesKey("speech_rate_percent")
 private val KEY_KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
 private val KEY_AUTO_DIM = booleanPreferencesKey("auto_dim")
+private val KEY_SESSION_SETTINGS = booleanPreferencesKey("settings_from_session")
 private val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_completed")
 
 /**
@@ -63,6 +64,7 @@ class DataStoreSettingsStore
                         speechRatePercent = prefs[KEY_SPEECH_RATE] ?: defaults.speechRatePercent,
                         keepScreenOn = prefs[KEY_KEEP_SCREEN_ON] ?: defaults.keepScreenOn,
                         autoDimEnabled = prefs[KEY_AUTO_DIM] ?: defaults.autoDimEnabled,
+                        settingsFromSession = prefs[KEY_SESSION_SETTINGS] ?: defaults.settingsFromSession,
                         onboardingCompleted = prefs[KEY_ONBOARDING_DONE] ?: defaults.onboardingCompleted,
                     )
                 }
@@ -100,6 +102,10 @@ class DataStoreSettingsStore
 
         override suspend fun setAutoDim(enabled: Boolean) {
             context.userPrefs.edit { it[KEY_AUTO_DIM] = enabled }
+        }
+
+        override suspend fun setSettingsFromSession(enabled: Boolean) {
+            context.userPrefs.edit { it[KEY_SESSION_SETTINGS] = enabled }
         }
 
         override suspend fun setOnboardingCompleted(completed: Boolean) {

@@ -234,6 +234,77 @@ class ProfileEditorViewModelTest {
                 .isEqualTo(AlertPresets.vibrationOnly())
         }
 
+    /**
+     * Полевая проверка 2026-07-31, замечание 8: правки терялись молча.
+     *
+     * Признак — снимок последней записи, а не флаг «трогали форму»: правку
+     * легко вернуть руками, и спрашивать после этого не о чем.
+     */
+    @Test
+    fun `правка отмечается несохранённой, а возврат к исходному — нет`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+
+            viewModel.setName("Хатха 90 мин")
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isTrue()
+
+            viewModel.setName("Хатха 60 мин")
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+        }
+
+    @Test
+    fun `после сохранения несохранённых правок не остаётся`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.removeStage(12)
+            viewModel.setName("Хатха 90 мин")
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isTrue()
+
+            viewModel.save()
+            testScheduler.runCurrent()
+
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+        }
+
+    /**
+     * Пустой новый профиль — не «несохранённые правки»: спрашивать при выходе
+     * с формы, которой не касались, значит требовать решения на пустом месте.
+     */
+    @Test
+    fun `нетронутый новый профиль не считается изменённым`() =
+        runTest(dispatcher) {
+            assertThat(viewModel(profileId = NEW_ENTITY_ID).uiState.value.hasUnsavedChanges).isFalse()
+        }
+
+    /** Этапы правит соседний экран: вернувшись, редактор не должен считать их своими правками. */
+    @Test
+    fun `этапы, прочитанные заново, не считаются несохранёнными`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            val stored = requireNotNull(repository.getProfile(PROFILE_ID))
+            repository.saveProfile(
+                stored.copy(
+                    stages =
+                        stored.stages +
+                            Stage(
+                                profileId = PROFILE_ID,
+                                name = "Пранаяма",
+                                durationSec = FIVE_MINUTES_SEC,
+                            ),
+                ),
+            )
+            testScheduler.runCurrent()
+
+            viewModel.refreshStages()
+            testScheduler.runCurrent()
+
+            assertThat(viewModel.uiState.value.stages).hasSize(4)
+            assertThat(viewModel.uiState.value.hasUnsavedChanges).isFalse()
+        }
+
     @Test
     fun `поля, которых нет в форме, переживают сохранение`() =
         runTest(dispatcher) {
