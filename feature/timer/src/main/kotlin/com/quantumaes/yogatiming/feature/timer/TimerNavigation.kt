@@ -43,6 +43,7 @@ fun NavGraphBuilder.timerScreens(
     composable<SessionFinishedRoute> { entry ->
         val route = entry.toRoute<SessionFinishedRoute>()
         SessionFinishedScreen(
+            profileId = route.profileId,
             onRepeat = { onRepeat(route.profileId) },
             onExit = onExitToProfiles,
         )

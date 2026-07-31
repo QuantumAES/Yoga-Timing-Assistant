@@ -1,16 +1,19 @@
 package com.quantumaes.yogatiming.feature.timer
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
@@ -27,7 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +56,16 @@ private const val FOCUS_HINT_MS = 3_000L
 private val LANDSCAPE_RING_PADDING = 8.dp
 
 /**
+ * Кольцо доходит почти до края экрана, а не до общего поля в 16 dp.
+ *
+ * Диаметр в портрете упирается в ширину экрана, а не в высоту, — значит
+ * каждые отданные полю четыре dp это четыре dp диаметра и, через него, кегля
+ * цифр (полевая проверка 2026-07-31, замечание 1). Остальные элементы экрана
+ * поле сохраняют: строка текста, прижатая к краю, читается хуже.
+ */
+private val RING_SIDE_PADDING = 4.dp
+
+/**
  * Высота полосы под кольцом — «Далее: …» и заметка инструктору.
  *
  * Фиксированная, а не по содержимому (полевая проверка 2026-07-31,
@@ -58,6 +74,28 @@ private val LANDSCAPE_RING_PADDING = 8.dp
  * каждом переходе, и глаз, привыкший к размеру цифр, каждый раз перенастраивался.
  */
 private val FOOTER_HEIGHT = 72.dp
+
+// ─── Геометрия содержимого кольца ────────────────────────────────────────────
+//
+// Текст внутри круга раскладывается по прямоугольнику, а круг сужается к краям
+// — отсюда и наползание названия этапа на дугу (полевая проверка 2026-07-31,
+// замечание 1). Ширина строки поэтому задаётся долей диаметра, и доля зависит
+// от того, где строка стоит по высоте: половина хорды на удалении y от центра
+// равна √(r² − y²).
+//
+// Полоса содержимого занимает 72% высоты, то есть её край отстоит от центра на
+// 0,36 d. Там хорда — 0,59 d, и всё, что уже 0,58 d, гарантированно внутри
+// круга. По центру круг шире: цифрам достаётся 0,84 d.
+
+private const val RING_CONTENT_HEIGHT = 0.72f
+private const val RING_EDGE_WIDTH = 0.58f
+private const val RING_CENTER_WIDTH = 0.84f
+
+/** Скруглённая плашка ручной поправки под цифрами. */
+private val ADJUSTMENT_CORNER = 12.dp
+
+/** Насколько плашка поправки светлее фона. Акцент, а не заливка. */
+private const val ADJUSTMENT_BACKGROUND_ALPHA = 0.18f
 
 // Раскладки рабочего экрана: портрет, ландшафт и режим фокуса. Отделены от
 // TimerScreen намеренно — тот отвечает за состояние и жесты, эти функции
@@ -81,6 +119,10 @@ internal fun PortraitContent(
     onStopRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Боковое поле накладывается на элементы по отдельности: кольцу оно почти
+    // не положено (см. RING_SIDE_PADDING), остальным — как везде.
+    val sides = Modifier.padding(horizontal = Spacing.m)
+
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         SessionTopBar(
             title = snapshot?.profileName.orEmpty(),
@@ -89,6 +131,7 @@ internal fun PortraitContent(
             onOpenSettings = onOpenSettings,
             onLock = { onModeChange(SessionMode.LOCK) },
             onStop = onStopRequest,
+            modifier = sides,
         )
 
         notices.forEach { restriction ->
@@ -97,6 +140,7 @@ internal fun PortraitContent(
                 palette = palette,
                 onAction = { onNoticeAction(restriction) },
                 onDismiss = { onNoticeDismiss(restriction) },
+                modifier = sides,
             )
         }
 
@@ -104,10 +148,14 @@ internal fun PortraitContent(
             snapshot = snapshot,
             palette = palette,
             onEnterFocus = { onModeChange(SessionMode.FOCUS) },
-            modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = Spacing.s),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = RING_SIDE_PADDING, vertical = Spacing.s),
         )
 
-        StageFooter(snapshot = snapshot, palette = palette)
+        StageFooter(snapshot = snapshot, palette = palette, modifier = sides)
 
         SessionControls(
             paused = snapshot?.runState == RunState.PAUSED,
@@ -117,7 +165,11 @@ internal fun PortraitContent(
             onPrevious = onPrevious,
             onAddTime = onAddTime,
             onSubtractTime = onSubtractTime,
-            modifier = Modifier.padding(top = Spacing.s),
+            // Блок опущен ниже кольца, а не прижат к нему (полевая проверка
+            // 2026-07-31, замечание 5): у кнопок своя зона внизу экрана, и
+            // пустая полоса между ней и кольцом — граница между «смотреть»
+            // и «нажимать».
+            modifier = sides.padding(top = Spacing.l),
         )
     }
 }
@@ -150,7 +202,7 @@ internal fun LandscapeContent(
         )
 
         Column(
-            modifier = Modifier.weight(1f).fillMaxSize(),
+            modifier = Modifier.weight(1f).fillMaxSize().padding(end = Spacing.m),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -194,6 +246,11 @@ internal fun LandscapeContent(
  *
  * Вся зона — одна большая цель для тапа (docs/03-GESTURES.md §2): попасть в
  * неё с коврика можно не глядя, в отличие от кнопки «фокус» где-нибудь в углу.
+ *
+ * Содержимое вписано в круг по хорде, а не по квадрату кольца, и ширина каждой
+ * строки задана долей диаметра (см. «Геометрия содержимого кольца» выше).
+ * Цифры получают `weight`, поэтому строки под ними не могут быть вытеснены за
+ * пределы круга даже системным шрифтом в 200%.
  */
 @Composable
 private fun StageRing(
@@ -216,7 +273,11 @@ private fun StageRing(
                     .aspectRatio(1f)
                     .tapTarget(label = focusLabel, onTap = onEnterFocus),
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(RING_CONTENT_HEIGHT),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
                 Text(
                     text = snapshot?.currentStageName ?: stringResource(R.string.timer_idle),
                     style = YtaTextStyles.stageTitle,
@@ -224,12 +285,20 @@ private fun StageRing(
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(RING_EDGE_WIDTH),
                 )
+                // `fill = false`: цифры берут из полосы столько, сколько им нужно
+                // по ширине, и не растягивают столбец. Строки под ними при этом
+                // остаются внутри круга — вытеснить их цифрам больше нечем.
                 TimerDisplay(
                     text = remainingText(snapshot),
                     color = snapshot.accent(palette),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(RING_CENTER_WIDTH).weight(1f, fill = false),
                 )
+                // Ручная поправка — плашкой под цифрами, а не строкой в общем
+                // столбце: «+0:30» относится к текущему этапу, читается одним
+                // взглядом и не спорит по ширине с остатком занятия.
+                StageAdjustment(snapshot = snapshot, palette = palette)
                 // Две строки, а не одна: «Этап 2/6» и остаток занятия читаются
                 // с трёх метров по отдельности и не ужимаются под ширину кольца.
                 Text(
@@ -238,6 +307,7 @@ private fun StageRing(
                     color = palette.onBackgroundMuted,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
+                    modifier = Modifier.fillMaxWidth(RING_EDGE_WIDTH),
                 )
                 Text(
                     text = totalRemainingText(snapshot),
@@ -245,21 +315,38 @@ private fun StageRing(
                     color = palette.onBackgroundMuted,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
+                    modifier = Modifier.fillMaxWidth(RING_EDGE_WIDTH),
                 )
-                // Ручная поправка — третьей строкой, а не хвостом ко второй:
-                // «Осталось 45:45 · +0:30» упиралась в дугу кольца.
-                stageAdjustmentText(snapshot)?.let { adjustment ->
-                    Text(
-                        text = adjustment,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = snapshot.accent(palette),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                    )
-                }
             }
         }
     }
+}
+
+/** «+0:30» — накопленная правка ±30 с текущего этапа. */
+@Composable
+private fun StageAdjustment(
+    snapshot: SessionSnapshot?,
+    palette: TimerPalette,
+) {
+    val adjustment = snapshot?.stageAdjustmentMs?.takeIf { it != 0L } ?: return
+    val accent = snapshot.accent(palette)
+    val description = stageAdjustmentText(adjustment)
+
+    Text(
+        text = signedClock(adjustment),
+        style = MaterialTheme.typography.titleMedium,
+        color = accent,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        modifier =
+            Modifier
+                .padding(vertical = Spacing.xxs)
+                .clip(RoundedCornerShape(ADJUSTMENT_CORNER))
+                .background(accent.copy(alpha = ADJUSTMENT_BACKGROUND_ALPHA))
+                .padding(horizontal = Spacing.s, vertical = Spacing.xxs)
+                // Вслух — целиком: «+0:30» само по себе не сообщает, к чему оно.
+                .semantics { contentDescription = description },
+    )
 }
 
 /**
@@ -372,6 +459,10 @@ internal fun FocusContent(
         hintVisible = false
     }
 
+    // Цифры идут во всю ширину экрана, текст — с полем: в фокусе кроме цифр
+    // смотреть не на что, и каждый отданный им dp виден с другого конца зала.
+    val sides = Modifier.padding(horizontal = Spacing.m)
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -384,6 +475,7 @@ internal fun FocusContent(
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            modifier = sides,
         )
         TimerDisplay(
             text = remainingText(snapshot),
@@ -398,6 +490,7 @@ internal fun FocusContent(
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = sides,
             )
         }
         AnimatedVisibility(visible = hintVisible) {
@@ -406,7 +499,7 @@ internal fun FocusContent(
                 style = MaterialTheme.typography.bodyMedium,
                 color = palette.onBackgroundMuted,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = Spacing.m),
+                modifier = sides.padding(top = Spacing.m),
             )
         }
     }

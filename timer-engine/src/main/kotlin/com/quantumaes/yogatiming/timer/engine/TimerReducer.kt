@@ -32,7 +32,7 @@ fun reduce(
         TimerCommand.Next -> next(state, now)
         TimerCommand.Previous -> previous(state, now)
         is TimerCommand.Adjust -> adjust(state, command.deltaMs, now)
-        TimerCommand.Stop -> stop(state)
+        TimerCommand.Stop -> stop(state, now)
     }
 
 /**
@@ -163,11 +163,26 @@ private fun adjust(
     }
 }
 
-/** Полный сброс к загруженному плану. Сессия считается брошенной, а не завершённой. */
-private fun stop(state: SessionState): Reduction {
+/**
+ * Полный сброс к загруженному плану. Сессия считается брошенной, а не завершённой.
+ *
+ * Итоги считаются здесь и уходят событием [TimerEvent.SessionStopped]: в
+ * состоянии после сброса их уже нет, а тому, кто нажал «Стоп» на сороковой
+ * минуте, полагается увидеть эти сорок минут, а не пустой экран.
+ */
+private fun stop(
+    state: SessionState,
+    now: Long,
+): Reduction {
     if (state.runState == RunState.IDLE) return Reduction.unchanged(state)
     return Reduction(
         SessionState.initial(state.plan),
-        listOf(TimerEvent.RunStateChanged(from = state.runState, to = RunState.IDLE)),
+        listOf(
+            TimerEvent.SessionStopped(
+                totalElapsedMs = state.totalElapsedMs(now),
+                stagesCompleted = state.currentIndex,
+            ),
+            TimerEvent.RunStateChanged(from = state.runState, to = RunState.IDLE),
+        ),
     )
 }

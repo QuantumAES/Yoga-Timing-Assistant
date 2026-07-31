@@ -121,7 +121,8 @@ internal fun TimerScreen(
     val viewModel: TimerViewModel = hiltViewModel()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     val notices by viewModel.notices.collectAsStateWithLifecycle()
-    val finished by viewModel.finished.collectAsStateWithLifecycle()
+    val ended by viewModel.ended.collectAsStateWithLifecycle()
+    val started by viewModel.started.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
 
     // Экран не гаснет и не приглушается системой, пока идёт занятие: инструктор
@@ -137,10 +138,11 @@ internal fun TimerScreen(
     // сигнала об изменении система не присылает.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshRestrictions() }
 
-    // Только собственное занятие этого экрана: `FINISHED` от предыдущего
-    // отсеивается моделью (см. `TimerViewModel.finished`).
-    LaunchedEffect(finished) {
-        if (finished) onFinish()
+    // Любой конец занятия — свой, чужой, из шторки — ведёт на экран итогов.
+    // Только собственное занятие этого экрана: состояние предыдущего
+    // отсеивается моделью (см. `TimerViewModel.ended`).
+    LaunchedEffect(ended) {
+        if (ended) onFinish()
     }
 
     var mode by rememberSaveable { mutableStateOf(SessionMode.NORMAL) }
@@ -180,7 +182,10 @@ internal fun TimerScreen(
             onConfirm = {
                 stopRequested = false
                 viewModel.stop()
-                onExit()
+                // Занятие, которое успело начаться, уходит на экран итогов по
+                // `ended` — с профилем и длительностью. Не начавшееся показывать
+                // нечем: профиль без этапов или упавший запуск сервиса.
+                if (!started) onExit()
             },
             onDismiss = { stopRequested = false },
         )
@@ -234,11 +239,14 @@ private fun SessionScreen(
                 .fillMaxSize()
                 .background(palette.background),
     ) {
+        // Боковое поле здесь не задаётся: его накладывают сами раскладки, по
+        // элементам. Кольцо и цифры доходят почти до края экрана — там каждый
+        // dp виден с трёх метров, — а строки текста поле сохраняют.
         val content =
             Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .padding(Spacing.m)
+                .padding(vertical = Spacing.m)
 
         when {
             mode.isFocus -> {

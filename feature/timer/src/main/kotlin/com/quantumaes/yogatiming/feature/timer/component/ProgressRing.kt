@@ -10,7 +10,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -117,10 +116,14 @@ fun ProgressRing(
             }
         }
 
-        // Отступ в две толщины кольца: цифры не должны наезжать на дугу даже
-        // при самом длинном названии этапа.
+        // Содержимое получает весь квадрат кольца без отступов, и вписывает
+        // себя в круг само (см. `StageRing`). Отступ фиксированной толщины
+        // здесь был бы неверен по существу: у круга свободная ширина зависит
+        // от высоты строки — у верхнего края её втрое меньше, чем по центру,
+        // и любой единый отступ либо пускает заголовок на дугу, либо ужимает
+        // цифры до размера, который с трёх метров уже не читается.
         Box(
-            modifier = Modifier.padding(strokeWidth * 2).fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
             content = content,
         )

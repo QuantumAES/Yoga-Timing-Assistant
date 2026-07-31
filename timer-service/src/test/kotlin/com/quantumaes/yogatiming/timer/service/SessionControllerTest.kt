@@ -2,7 +2,9 @@ package com.quantumaes.yogatiming.timer.service
 
 import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
+import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.session.SessionPlanFactory
+import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerEvent
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
 import com.quantumaes.yogatiming.timer.engine.model.RunState
@@ -126,12 +128,80 @@ class SessionControllerTest {
             controller.startSession(PROFILE_ID)
             testScheduler.runCurrent()
 
-            controller.submit(com.quantumaes.yogatiming.timer.engine.TimerCommand.Stop)
+            controller.submit(TimerCommand.Stop)
             testScheduler.runCurrent()
 
             assertThat(store.saved).isNull()
             assertThat(watchdog.armedAt).isNull()
             assertThat(watchdog.cancelled).isTrue()
+        }
+
+    /**
+     * Итоги брошенного занятия (полевая проверка 2026-07-31, замечания 6 и 7).
+     *
+     * Занятие, остановленное из шторки, обязано оставить после себя итоги:
+     * экран, на котором его застало «Стоп», уходит на «Занятие остановлено», и
+     * показать там нечего, если считать длительность после сброса состояния.
+     */
+    @Test
+    fun `остановленное занятие оставляет итоги`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            time.elapsedMs += 4 * MINUTE_MS
+            time.wallMs += 4 * MINUTE_MS
+            controller.submit(TimerCommand.Stop)
+            testScheduler.runCurrent()
+
+            val summary = requireNotNull(controller.lastSummary.value)
+            assertThat(summary.outcome).isEqualTo(SessionOutcome.STOPPED)
+            assertThat(summary.profileName).isEqualTo("Хатха 60 мин")
+            assertThat(summary.actualDurationMs).isEqualTo(4 * MINUTE_MS)
+            assertThat(summary.plannedDurationMs).isEqualTo(30 * MINUTE_MS)
+            assertThat(summary.stagesCompleted).isEqualTo(0)
+            assertThat(summary.stageCount).isEqualTo(3)
+            assertThat(summary.startedAtWallMs).isEqualTo(WALL_MS)
+            assertThat(summary.finishedAtWallMs).isEqualTo(WALL_MS + 4 * MINUTE_MS)
+        }
+
+    @Test
+    fun `дошедшее до конца занятие оставляет итоги целиком`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            // Три этапа по десять минут: занятие доходит до конца само.
+            time.elapsedMs += 30 * MINUTE_MS
+            time.wallMs += 30 * MINUTE_MS
+            controller.wake()
+            testScheduler.runCurrent()
+
+            val summary = requireNotNull(controller.lastSummary.value)
+            assertThat(summary.outcome).isEqualTo(SessionOutcome.COMPLETED)
+            assertThat(summary.stagesCompleted).isEqualTo(3)
+            assertThat(summary.actualDurationMs).isEqualTo(30 * MINUTE_MS)
+            assertThat(summary.deviationMs).isEqualTo(0L)
+        }
+
+    /** Начало занятия переживает смерть процесса: без него итоги врут о времени. */
+    @Test
+    fun `восстановленное занятие помнит своё начало`() =
+        runTest {
+            store.saved = savedSession().copy(startedAtWallMs = WALL_MS - 20 * MINUTE_MS)
+            val controller = controller()
+            testScheduler.runCurrent()
+
+            controller.restoreSession()
+            testScheduler.runCurrent()
+            controller.submit(TimerCommand.Stop)
+            testScheduler.runCurrent()
+
+            assertThat(controller.lastSummary.value?.startedAtWallMs).isEqualTo(WALL_MS - 20 * MINUTE_MS)
         }
 
     /**

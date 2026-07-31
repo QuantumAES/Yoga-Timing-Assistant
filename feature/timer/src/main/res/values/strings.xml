@@ -8,18 +8,42 @@
     <string name="timer_stop">Stop</string>
     <string name="timer_add_30">+30 s</string>
     <string name="timer_subtract_30">−30 s</string>
-    <!-- Две строки под таймером: «Этап 3/6» и «Осталось 42:10 · +0:30». -->
+    <!-- Две строки под таймером: «Этап 3/6» и «Осталось 42:10». -->
     <string name="timer_stage_position">Stage %1$d/%2$d</string>
     <string name="timer_total_remaining">Remaining %1$s</string>
     <string name="timer_total_at_least">≥ %1$s</string>
-    <!-- The manual ±30 s adjustment. Its own line: it does not fit the remaining-time one. -->
+    <!--
+      The manual ±30 s adjustment. On screen only the sign and the time show:
+      the chip sits under the digits, so "to this stage" is clear from where it
+      is. This string is what the screen reader says — placement tells a blind
+      user nothing.
+    -->
     <string name="timer_stage_adjustment">%1$s to this stage</string>
 
     <string name="timer_finished_title">Class complete</string>
+    <!-- A class stopped by hand is not a class completed. -->
+    <string name="timer_stopped_title">Class stopped</string>
     <string name="timer_finished_repeat">Repeat</string>
     <string name="timer_finished_exit">Back to profiles</string>
 
-    <!-- A parting line on the summary screen, picked at random after every class. -->
+    <!-- Class totals (field check 2026-07-31, note 7). -->
+    <string name="timer_summary_actual">actual duration</string>
+    <string name="timer_summary_stages">Stages</string>
+    <string name="timer_summary_stages_value">%1$d of %2$d</string>
+    <string name="timer_summary_planned">Planned</string>
+    <string name="timer_summary_deviation">Difference</string>
+    <string name="timer_summary_time">Time</string>
+    <string name="timer_summary_time_value">%1$s → %2$s</string>
+
+    <string name="timer_finished_quote_author">— %1$s</string>
+
+    <!--
+      A parting line on the summary screen, picked at random after every class.
+
+      IMPORTANT: timer_finished_quote_authors runs line for line with this
+      array. A line with no author gets an empty item, not a missing one —
+      the index is shared.
+    -->
     <string-array name="timer_finished_quotes">
         <item>Yoga begins where the hurry ends.</item>
         <item>Your body is not a burden you carry — it is the home you live in.</item>
@@ -36,6 +60,65 @@
         <item>The quieter the practice, the deeper the change.</item>
         <item>The body remembers care better than promises.</item>
         <item>The best time to practise is the one that has already come.</item>
+        <item>Yoga is the stilling of the fluctuations of the mind.</item>
+        <item>Posture should be steady and comfortable.</item>
+        <item>Yoga is a light which, once lit, will never dim. The better your practice, the brighter the flame.</item>
+        <item>The body is my temple, asanas are my prayers.</item>
+        <item>Health is a state of complete harmony of the body, mind and spirit.</item>
+        <item>Practice, and all is coming.</item>
+        <item>Yoga is ninety-nine per cent practice and one per cent theory.</item>
+        <item>When the breath wanders, the mind is unsteady; when the breath is still, so is the mind.</item>
+        <item>You can\'t stop the waves, but you can learn to surf.</item>
+        <item>Strength does not come from physical capacity. It comes from an indomitable will.</item>
+        <item>All that we are is the result of what we have thought.</item>
+        <item>Yoga is not about touching your toes — it is about what you learn on the way down.</item>
+        <item>The success of yoga lies not in how you perform the postures, but in how it changes your life and your relationships.</item>
+        <item>The mat does not judge — it simply waits for you tomorrow.</item>
+        <item>Every exhale is a chance to let go of what you no longer carry.</item>
+        <item>The class is over — the practice goes on.</item>
+        <item>An hour of quiet is worth putting in the calendar.</item>
+        <item>Tomorrow the body remembers what you did for it today.</item>
+        <item>A calm breath outlasts any posture.</item>
+        <item>Coming back to the mat matters more than staying on it longer.</item>
+    </string-array>
+
+    <!-- Quote authors: line for line with timer_finished_quotes; empty means anonymous. -->
+    <string-array name="timer_finished_quote_authors">
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item>Patanjali, Yoga Sutras I.2</item>
+        <item>Patanjali, Yoga Sutras II.46</item>
+        <item>B. K. S. Iyengar</item>
+        <item>B. K. S. Iyengar</item>
+        <item>B. K. S. Iyengar</item>
+        <item>Sri K. Pattabhi Jois</item>
+        <item>Sri K. Pattabhi Jois</item>
+        <item>Hatha Yoga Pradipika</item>
+        <item>Jon Kabat-Zinn</item>
+        <item>Mahatma Gandhi</item>
+        <item>Dhammapada</item>
+        <item>Jigar Gor</item>
+        <item>T. K. V. Desikachar</item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
     </string-array>
 
     <!-- Верхний бар и режимы рабочего экрана (docs/03-GESTURES.md). -->
@@ -49,7 +132,7 @@
     <string name="timer_last_stage">Last stage</string>
 
     <string name="timer_stop_title">End the session?</string>
-    <string name="timer_stop_message">The countdown will stop and the session will not be resumed.</string>
+    <string name="timer_stop_message">The countdown will stop and the session will not be resumed. The totals stay on screen.</string>
     <string name="timer_stop_confirm">End</string>
     <string name="timer_stop_cancel">Keep going</string>
 

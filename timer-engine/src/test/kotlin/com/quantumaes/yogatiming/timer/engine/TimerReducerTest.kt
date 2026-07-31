@@ -289,7 +289,50 @@ class TimerReducerTest {
 
         assertThat(harness.state).isEqualTo(SessionState.initial(harness.state.plan))
         assertThat(harness.drainEvents())
-            .containsExactly(TimerEvent.RunStateChanged(RunState.RUNNING, RunState.IDLE))
+            .containsExactly(
+                TimerEvent.SessionStopped(totalElapsedMs = 3 * MINUTE_MS, stagesCompleted = 0),
+                TimerEvent.RunStateChanged(RunState.RUNNING, RunState.IDLE),
+            ).inOrder()
+    }
+
+    /**
+     * Итоги брошенного занятия считаются до сброса состояния: после него в
+     * движке остаётся чистый план, и сказать, сколько занятие шло, уже нечем
+     * (полевая проверка 2026-07-31, замечания 6 и 7).
+     */
+    @Test
+    fun `стоп сообщает пройденное время и число законченных этапов`() {
+        val harness =
+            ReducerHarness(sixStagePlan())
+                .submit(TimerCommand.Start)
+                .advance(10 * MINUTE_MS)
+                .advance(10 * MINUTE_MS)
+                .advance(4 * MINUTE_MS)
+        harness.drainEvents()
+
+        harness.submit(TimerCommand.Stop)
+
+        val stopped = harness.drainEvents().filterIsInstance<TimerEvent.SessionStopped>().single()
+        // Два этапа по десять минут пройдены целиком, третий идёт четвёртую минуту.
+        assertThat(stopped.totalElapsedMs).isEqualTo(24 * MINUTE_MS)
+        assertThat(stopped.stagesCompleted).isEqualTo(2)
+    }
+
+    /** Пауза не идёт в зачёт: итог — время практики, а не время между «начали» и «бросили». */
+    @Test
+    fun `пауза не входит в пройденное время брошенного занятия`() {
+        val harness =
+            ReducerHarness(sixStagePlan())
+                .submit(TimerCommand.Start)
+                .advance(2 * MINUTE_MS)
+                .submit(TimerCommand.Pause)
+                .advance(5 * MINUTE_MS)
+        harness.drainEvents()
+
+        harness.submit(TimerCommand.Stop)
+
+        val stopped = harness.drainEvents().filterIsInstance<TimerEvent.SessionStopped>().single()
+        assertThat(stopped.totalElapsedMs).isEqualTo(2 * MINUTE_MS)
     }
 
     @Test

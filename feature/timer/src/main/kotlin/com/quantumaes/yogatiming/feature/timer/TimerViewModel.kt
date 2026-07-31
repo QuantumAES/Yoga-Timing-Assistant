@@ -19,6 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
@@ -69,12 +70,23 @@ class TimerViewModel
          * завершено» — по чужому состоянию, пока сервис только поднимает новую
          * сессию (полевая проверка 2026-07-30, замечание 4).
          */
-        private val started = MutableStateFlow(false)
+        private val _started = MutableStateFlow(false)
 
-        /** Занятие этого экрана дошло до конца. Только по нему открывается экран итогов. */
-        val finished: StateFlow<Boolean> =
-            combine(controller.snapshot, started) { snapshot, started ->
-                started && snapshot?.runState == RunState.FINISHED
+        /** Поднялось ли занятие этого экрана вообще. */
+        val started: StateFlow<Boolean> = _started.asStateFlow()
+
+        /**
+         * Занятие этого экрана закончилось — само или командой «Стоп».
+         *
+         * Не только `FINISHED`: остановка из шторки сбрасывает движок в `IDLE`,
+         * и по одному лишь `FINISHED` экран оставался бы с застывшими цифрами
+         * уже несуществующего занятия и снова спрашивал бы, завершать ли его
+         * (полевая проверка 2026-07-31, замечание 6). Оба конца ведут на экран
+         * итогов: там сказано, что именно закончилось и с каким результатом.
+         */
+        val ended: StateFlow<Boolean> =
+            combine(controller.snapshot, _started) { snapshot, started ->
+                started && snapshot != null && !snapshot.runState.isActive
             }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(NOTICES_SUBSCRIPTION_TIMEOUT_MS),
@@ -122,7 +134,7 @@ class TimerViewModel
             viewModelScope.launch {
                 controller.snapshot.filterNotNull().collect { snapshot ->
                     if (snapshot.profileId == sessionProfileId && snapshot.runState.isActive) {
-                        started.value = true
+                        _started.value = true
                     }
                 }
             }
@@ -142,10 +154,10 @@ class TimerViewModel
             sessionProfileId = profileId
             val current = controller.snapshot.value
             if (current?.profileId == profileId && current.runState.isActive) {
-                started.value = true
+                _started.value = true
                 return
             }
-            started.value = false
+            _started.value = false
             launcher.start(profileId)
         }
 

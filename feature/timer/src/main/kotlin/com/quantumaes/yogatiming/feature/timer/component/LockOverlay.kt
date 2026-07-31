@@ -1,10 +1,12 @@
 package com.quantumaes.yogatiming.feature.timer.component
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,11 +44,22 @@ import androidx.compose.ui.unit.dp
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.TimerPalette
 import com.quantumaes.yogatiming.feature.timer.R
+import kotlinx.coroutines.delay
 
 /** Сколько держать до разблокировки (docs/03-GESTURES.md §4). */
 private const val UNLOCK_HOLD_MS = 1_000
 
-private val LOCK_BORDER = 3.dp
+/** Сколько подсказка висит после того, как палец убрали. */
+private const val HINT_LINGER_MS = 2_500L
+
+/** Как плавно проявляется и гаснет подсказка. */
+private const val HINT_FADE_MS = 250
+
+/** Насколько блокировка притемняет экран. Цифры остаются читаемыми. */
+private const val LOCK_SCRIM_ALPHA = 0.28f
+
+/** Пастельная вуаль поверх притемнения: цвет говорит «заблокировано» без слов. */
+private const val LOCK_TINT_ALPHA = 0.10f
 
 /** Высота плашки разблокировки: та же цель для пальца, что и у кнопок экрана. */
 private val PILL_HEIGHT = 64.dp
@@ -67,15 +80,18 @@ private const val PILL_FILL_ALPHA = 0.35f
  * между занимающимися, и любое касание одеждой не должно ни ставить занятие на
  * паузу, ни промотать этап.
  *
- * Разблокировка — удержание секунду, а не двойной тап из ТЗ §6.3: двойной тап
- * в этих условиях повторяется случайно, удержание — нет. Отпускание раньше
- * срока откатывает индикатор, то есть жест видно и его можно передумать.
+ * Что экран заблокирован, видно по нему самому: лёгкое притемнение и пастельная
+ * вуаль поверх (полевая проверка 2026-07-31, замечание 4). Это состояние, а не
+ * сообщение, — его показывают тоном, а не текстом, который придётся читать
+ * каждый раз, когда взгляд упал на таймер. Цифры сквозь вуаль читаются:
+ * притемнение мягкое, а вуаль почти прозрачна.
  *
- * Подсказка живёт в плашке внизу экрана и видна всегда (полевая проверка
- * 2026-07-31, замечание 10). Раньше она возникала по касанию в центре экрана —
- * поверх названия этапа и цифр — и то появлялась, то исчезала: текст прыгал
- * и сливался с тем, что под ним. Теперь у неё постоянное место, непрозрачная
- * подложка и собственный индикатор удержания, а цифры таймера остаются видны.
+ * Подсказка «Удерживайте, чтобы разблокировать» появляется по касанию и гаснет
+ * через пару секунд после того, как палец убрали: она нужна ровно тому, кто уже
+ * тянется к экрану. Разблокировка — удержание секунду, а не двойной тап из
+ * ТЗ §6.3: двойной тап в этих условиях повторяется случайно, удержание — нет.
+ * Отпускание раньше срока откатывает индикатор, то есть жест видно и его можно
+ * передумать.
  */
 @Composable
 fun LockOverlay(
@@ -84,6 +100,7 @@ fun LockOverlay(
     modifier: Modifier = Modifier,
 ) {
     var holding by remember { mutableStateOf(false) }
+    var hintVisible by remember { mutableStateOf(false) }
     val progress = remember { mutableFloatStateOf(0f) }
     val hint = stringResource(R.string.timer_unlock_hint)
 
@@ -106,15 +123,24 @@ fun LockOverlay(
         }
     }
 
+    // Подсказка гаснет сама, но только когда палец уже убран: держать пальцем
+    // и смотреть, как исчезает объяснение происходящего, незачем.
+    LaunchedEffect(holding, hintVisible) {
+        if (holding || !hintVisible) return@LaunchedEffect
+        delay(HINT_LINGER_MS)
+        hintVisible = false
+    }
+
     Box(
         modifier =
             modifier
                 .fillMaxSize()
-                .border(LOCK_BORDER, palette.running)
+                .background(palette.lockScrim.copy(alpha = LOCK_SCRIM_ALPHA))
                 .semantics { contentDescription = hint }
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onPress = {
+                            hintVisible = true
                             holding = true
                             tryAwaitRelease()
                             holding = false
@@ -123,15 +149,25 @@ fun LockOverlay(
                 },
         contentAlignment = Alignment.BottomCenter,
     ) {
-        UnlockPill(
-            hint = hint,
-            progress = progress.floatValue,
-            palette = palette,
-            modifier =
-                Modifier
-                    .safeDrawingPadding()
-                    .padding(horizontal = Spacing.l, vertical = Spacing.xl),
-        )
+        // Вуаль отдельным слоем поверх притемнения: смешивать цвет с чёрным в
+        // одну краску значит подбирать её заново для каждой темы.
+        Box(Modifier.fillMaxSize().background(palette.lockTint.copy(alpha = LOCK_TINT_ALPHA)))
+
+        AnimatedVisibility(
+            visible = hintVisible,
+            enter = fadeIn(tween(HINT_FADE_MS)),
+            exit = fadeOut(tween(HINT_FADE_MS)),
+        ) {
+            UnlockPill(
+                hint = hint,
+                progress = progress.floatValue,
+                palette = palette,
+                modifier =
+                    Modifier
+                        .safeDrawingPadding()
+                        .padding(horizontal = Spacing.l, vertical = Spacing.xl),
+            )
+        }
     }
 }
 
@@ -158,8 +194,7 @@ private fun UnlockPill(
                 .widthIn(max = PILL_MAX_WIDTH)
                 .heightIn(min = PILL_HEIGHT)
                 .clip(shape)
-                .background(palette.background.copy(alpha = PILL_BACKGROUND_ALPHA))
-                .border(width = 1.dp, color = palette.running, shape = shape),
+                .background(palette.background.copy(alpha = PILL_BACKGROUND_ALPHA)),
         contentAlignment = Alignment.CenterStart,
     ) {
         Box(

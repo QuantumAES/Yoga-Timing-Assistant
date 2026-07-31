@@ -24,6 +24,9 @@ import kotlin.math.abs
  * @param savedAtWallMs стенные часы — только для перекрёстной проверки.
  * @param savedAtElapsedMs монотонные часы — по ним и детект перезагрузки,
  *   и возраст снимка.
+ * @param startedAtWallMs когда занятие началось по стенным часам. Отсчёту не
+ *   нужно, нужно итогам: «18:05 → 19:03» на экране завершения переживает смерть
+ *   процесса только так. `0` — снимок старой версии, начало неизвестно.
  */
 @Serializable
 data class PersistedSession(
@@ -31,6 +34,7 @@ data class PersistedSession(
     val profileId: Long,
     val savedAtWallMs: Long,
     val savedAtElapsedMs: Long,
+    val startedAtWallMs: Long = 0L,
     val runState: RunState,
     val currentIndex: Int,
     val stageElapsedAtResumeMs: Long,

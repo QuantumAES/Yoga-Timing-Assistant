@@ -74,15 +74,17 @@ internal fun totalRemainingText(snapshot: SessionSnapshot?): String {
     return stringResource(R.string.timer_total_remaining, total)
 }
 
+/** «+0:30» — накопленная правка ±30 с в том виде, в каком она стоит на экране. */
+internal fun signedClock(adjustmentMs: Long): String = TimeFormatter.signedClock(adjustmentMs)
+
 /**
- * «+0:30 к этапу» — ручная поправка ±30 с отдельной строкой.
+ * «+0:30 к этапу» — та же поправка словами, для TalkBack.
  *
- * Раньше она дописывалась хвостом к остатку занятия и на узком экране
- * наезжала на дугу кольца (полевая проверка 2026-07-31, замечание 4).
- * `null` — поправки не было: пустой строки в разметке кольца тоже не место.
+ * На экране она сокращена до знака и времени: место внутри кольца дорого, а
+ * «к этапу» ясно из того, где плашка стоит (полевая проверка 2026-07-31,
+ * замечание 1). Незрячему пользователю положение плашки не говорит ничего,
+ * поэтому вслух читается полная фраза.
  */
 @Composable
-internal fun stageAdjustmentText(snapshot: SessionSnapshot?): String? {
-    val adjustment = snapshot?.stageAdjustmentMs?.takeIf { it != 0L } ?: return null
-    return stringResource(R.string.timer_stage_adjustment, TimeFormatter.signedClock(adjustment))
-}
+internal fun stageAdjustmentText(adjustmentMs: Long): String =
+    stringResource(R.string.timer_stage_adjustment, signedClock(adjustmentMs))

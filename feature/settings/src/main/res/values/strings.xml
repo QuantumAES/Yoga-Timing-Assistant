@@ -52,8 +52,8 @@
     -->
     <string name="settings_about_donate_url" translatable="false">https://boosty.to/quantumaes</string>
 
-    <string name="onboarding_profiles_title">A profile is a class</string>
-    <string name="onboarding_profiles_text">A class is built from stages: warm-up, asanas, savasana. Every class keeps its own durations and its own cues — set them once and teach it week after week.</string>
+    <string name="onboarding_profiles_title">Class profiles</string>
+    <string name="onboarding_profiles_text">Flexible setup of class stages, durations and cues. Set it up once — and teach it week after week.</string>
     <string name="onboarding_session_title">Teach without watching the screen</string>
     <string name="onboarding_session_text">Digits large enough to read from across the room, and a countdown that stops for nothing — neither a locked screen nor a backgrounded app.</string>
     <string name="onboarding_alerts_title">Cues that fit each stage</string>

@@ -11,17 +11,37 @@
     <string name="timer_stage_position">Этап %1$d/%2$d</string>
     <string name="timer_total_remaining">Осталось %1$s</string>
     <string name="timer_total_at_least">≥ %1$s</string>
-    <!-- Ручная поправка ±30 с. Отдельной строкой: в строку остатка она не влезает. -->
+    <!--
+      Ручная поправка ±30 с. На экране от неё видны только знак и время —
+      плашка стоит под цифрами, и «к этапу» ясно из её места. Эта строка
+      читается вслух: незрячему пользователю место плашки не говорит ничего.
+    -->
     <string name="timer_stage_adjustment">%1$s к этапу</string>
 
     <string name="timer_finished_title">Занятие завершено</string>
+    <!-- Остановленное вручную занятие завершённым не называется. -->
+    <string name="timer_stopped_title">Занятие остановлено</string>
     <string name="timer_finished_repeat">Повторить</string>
     <string name="timer_finished_exit">К списку профилей</string>
+
+    <!-- Итоги занятия (полевая проверка 2026-07-31, замечание 7). -->
+    <string name="timer_summary_actual">фактическая длительность</string>
+    <string name="timer_summary_stages">Этапы</string>
+    <string name="timer_summary_stages_value">%1$d из %2$d</string>
+    <string name="timer_summary_planned">План</string>
+    <string name="timer_summary_deviation">Отклонение</string>
+    <string name="timer_summary_time">Время</string>
+    <string name="timer_summary_time_value">%1$s → %2$s</string>
+
+    <string name="timer_finished_quote_author">— %1$s</string>
 
     <!--
       Напутствие на экране итогов. Одна фраза выбирается случайно при каждом
       завершении: сообщать здесь нечего — отсчёт остановлен и без объяснений, —
       а вот попрощаться с тем, кто только что провёл занятие, есть чем.
+
+      ВАЖНО: массив timer_finished_quote_authors идёт строка в строку с этим.
+      У фразы без автора — пустой элемент, а не пропуск: индекс общий.
     -->
     <string-array name="timer_finished_quotes">
         <item>Йога начинается там, где заканчивается спешка.</item>
@@ -39,6 +59,65 @@
         <item>Чем тише практика, тем глубже перемены.</item>
         <item>Тело помнит заботу лучше, чем обещания.</item>
         <item>Лучшее время для практики — то, которое уже наступило.</item>
+        <item>Йога — это прекращение колебаний ума.</item>
+        <item>Поза должна быть устойчивой и удобной.</item>
+        <item>Йога — свет, который однажды зажжён, никогда не погаснет. Чем лучше практика, тем ярче пламя.</item>
+        <item>Тело — мой храм, асаны — мои молитвы.</item>
+        <item>Здоровье — состояние полного согласия тела, ума и души.</item>
+        <item>Практикуй — и всё придёт.</item>
+        <item>Йога на девяносто девять процентов практика и на один процент теория.</item>
+        <item>Когда дыхание неровно, ум мечется; когда дыхание спокойно, спокоен и ум.</item>
+        <item>Волны не остановить, но можно научиться держаться на них.</item>
+        <item>Сила рождается не из физических возможностей, а из несгибаемой воли.</item>
+        <item>Всё, чем мы являемся, рождается из наших мыслей.</item>
+        <item>Йога не о том, чтобы дотянуться до носков, а о том, что вы узнаёте по пути вниз.</item>
+        <item>Успех йоги не в том, как вы выполняете позы, а в том, как меняются ваша жизнь и ваши отношения.</item>
+        <item>Коврик не судит — он просто ждёт вас завтра.</item>
+        <item>Каждый выдох — возможность отпустить лишнее.</item>
+        <item>Занятие закончено — практика продолжается.</item>
+        <item>Час тишины стоит того, чтобы его назначить.</item>
+        <item>Тело помнит завтра то, что вы сделали для него сегодня.</item>
+        <item>Спокойное дыхание переживает любую позу.</item>
+        <item>Возвращаться на коврик важнее, чем оставаться на нём дольше.</item>
+    </string-array>
+
+    <!-- Авторы фраз: строка в строку с timer_finished_quotes, пусто — без автора. -->
+    <string-array name="timer_finished_quote_authors">
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item>Патанджали, «Йога-сутры» I.2</item>
+        <item>Патанджали, «Йога-сутры» II.46</item>
+        <item>Б. К. С. Айенгар</item>
+        <item>Б. К. С. Айенгар</item>
+        <item>Б. К. С. Айенгар</item>
+        <item>Шри Кришна Паттабхи Джойс</item>
+        <item>Шри Кришна Паттабхи Джойс</item>
+        <item>«Хатха-йога прадипика»</item>
+        <item>Джон Кабат-Зинн</item>
+        <item>Махатма Ганди</item>
+        <item>«Дхаммапада»</item>
+        <item>Джигар Гор</item>
+        <item>Т. К. В. Дешикачар</item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
     </string-array>
 
     <!-- Верхний бар и режимы рабочего экрана (docs/03-GESTURES.md). -->
@@ -52,7 +131,7 @@
     <string name="timer_last_stage">Последний этап</string>
 
     <string name="timer_stop_title">Завершить занятие?</string>
-    <string name="timer_stop_message">Отсчёт остановится, и продолжить занятие будет нельзя.</string>
+    <string name="timer_stop_message">Отсчёт остановится, и продолжить занятие будет нельзя. Итоги останутся на экране.</string>
     <string name="timer_stop_confirm">Завершить</string>
     <string name="timer_stop_cancel">Продолжить занятие</string>
 

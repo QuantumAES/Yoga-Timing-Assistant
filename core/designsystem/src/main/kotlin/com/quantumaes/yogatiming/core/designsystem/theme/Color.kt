@@ -124,6 +124,21 @@ data class TimerPalette(
     val paused: Color,
     /** Незаполненная часть прогресс-кольца. */
     val ringTrack: Color,
+    /**
+     * Притемнение экрана под блокировкой.
+     *
+     * Что экран заблокирован, показывается тоном, а не текстом: сообщение
+     * пришлось бы читать каждый раз, когда взгляд упал на таймер, а тон
+     * считывается боковым зрением (полевая проверка 2026-07-31, замечание 4).
+     */
+    val lockScrim: Color,
+    /**
+     * Пастельная вуаль поверх притемнения — тот самый сдвиг оттенка.
+     *
+     * Отдельным слоем, а не смешанной с [lockScrim] краской: смешивать значит
+     * подбирать цвет заново для каждой темы и каждой прозрачности.
+     */
+    val lockTint: Color,
 ) {
     companion object {
         /** Тёмный зал: минимум засветки, максимум контраста. */
@@ -137,6 +152,8 @@ data class TimerPalette(
                 danger = Color(0xFFFF6B6B),
                 paused = Color(0xFF9AA5B1),
                 ringTrack = Color(0xFF1E252E),
+                lockScrim = Color(0xFF000000),
+                lockTint = Color(0xFFB7C6F2),
             )
 
         /** Дневной зал: те же роли, тот же порог контраста, инвертированный. */
@@ -150,6 +167,8 @@ data class TimerPalette(
                 danger = Color(0xFFA01810),
                 paused = Color(0xFF4A5560),
                 ringTrack = Color(0xFFDCE3DA),
+                lockScrim = Color(0xFF1A2430),
+                lockTint = Color(0xFF8FA3D6),
             )
     }
 }

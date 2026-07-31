@@ -2,7 +2,9 @@ package com.quantumaes.yogatiming.timer.service
 
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.session.SessionPlanFactory
+import com.quantumaes.yogatiming.domain.session.SessionSummary
 import com.quantumaes.yogatiming.domain.session.domainAlert
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
@@ -22,8 +24,10 @@ import com.quantumaes.yogatiming.timer.engine.persist.restoreInto
 import com.quantumaes.yogatiming.timer.service.di.TimerSessionScope
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -69,15 +73,29 @@ class SessionController
         private val watchdog: Watchdog,
         private val time: TimeSource,
         @TimerSessionScope scope: CoroutineScope,
-    ) : ActiveSessionSource {
+    ) : ActiveSessionSource,
+        SessionSummarySource {
         private val engine = TimerEngine(time, scope, ::onEffect)
 
         /** `null` — занятие не загружено. */
         override val snapshot: StateFlow<SessionSnapshot?> get() = engine.snapshot
 
+        private val _lastSummary = MutableStateFlow<SessionSummary?>(null)
+
+        override val lastSummary: StateFlow<SessionSummary?> = _lastSummary.asStateFlow()
+
         val events: SharedFlow<TimerEvent> get() = engine.events
 
         val hasSession: Boolean get() = engine.currentState != null
+
+        /**
+         * Стенные часы старта занятия — единственное, чего нет в состоянии движка.
+         *
+         * Движок стенных часов не знает вовсе (принцип П-3), а показать «18:05 →
+         * 19:03» без них нельзя. Метка переживает смерть процесса вместе со
+         * снимком сессии, поэтому восстановленное занятие помнит, когда началось.
+         */
+        private var startedAtWallMs: Long? = null
 
         init {
             engine.start()
@@ -126,7 +144,10 @@ class SessionController
                     .getProfile(saved.profileId)
                     ?.let(SessionPlanFactory::create)
                     ?.let(saved::restoreInto)
-            restored?.let(engine::restore)
+            restored?.let {
+                startedAtWallMs = saved.startedAtWallMs.takeIf { start -> start > 0L }
+                engine.restore(it)
+            }
             return if (restored == null) RestoreOutcome.PROFILE_GONE else RestoreOutcome.RESTORED
         }
 
@@ -163,11 +184,32 @@ class SessionController
                 }
 
                 is TimerEvent.RunStateChanged -> {
+                    // Занятие началось: стенные часы читаются один раз, на входе
+                    // в RUNNING откуда угодно, кроме паузы. Возврат с паузы —
+                    // продолжение того же занятия, и начало у него прежнее.
+                    if (event.to == RunState.RUNNING && event.from != RunState.PAUSED) {
+                        startedAtWallMs = time.wall()
+                    }
                     if (event.to == RunState.IDLE) forget() else save(state)
                 }
 
                 is TimerEvent.SessionFinished -> {
+                    publishSummary(
+                        state = state,
+                        outcome = SessionOutcome.COMPLETED,
+                        actualDurationMs = event.totalElapsedMs,
+                        stagesCompleted = state.plan.stages.size,
+                    )
                     forget()
+                }
+
+                is TimerEvent.SessionStopped -> {
+                    publishSummary(
+                        state = state,
+                        outcome = SessionOutcome.STOPPED,
+                        actualDurationMs = event.totalElapsedMs,
+                        stagesCompleted = event.stagesCompleted,
+                    )
                 }
 
                 is TimerEvent.PlayAlert, is TimerEvent.DriftDetected -> {
@@ -177,8 +219,38 @@ class SessionController
             }
         }
 
+        /**
+         * Итоги закончившегося занятия.
+         *
+         * Начало берётся из метки старта, а если её нет — вычитанием факта из
+         * конца. Метки нет ровно в одном случае: занятие подняли из снимка,
+         * сохранённого версией без неё. Приблизительное начало здесь лучше
+         * пустого места: пауз в занятии обычно нет, и ошибка равна их длине.
+         */
+        private fun publishSummary(
+            state: SessionState,
+            outcome: SessionOutcome,
+            actualDurationMs: Long,
+            stagesCompleted: Int,
+        ) {
+            val finishedAtWallMs = time.wall()
+            _lastSummary.value =
+                SessionSummary(
+                    profileId = state.plan.profileId,
+                    profileName = state.plan.profileName,
+                    outcome = outcome,
+                    startedAtWallMs = startedAtWallMs ?: (finishedAtWallMs - actualDurationMs),
+                    finishedAtWallMs = finishedAtWallMs,
+                    plannedDurationMs = state.plan.plannedDurationMs,
+                    actualDurationMs = actualDurationMs,
+                    stagesCompleted = stagesCompleted,
+                    stageCount = state.plan.stages.size,
+                )
+            startedAtWallMs = null
+        }
+
         private suspend fun save(state: SessionState) {
-            sessionStore.save(state.persist(time))
+            sessionStore.save(state.persist(time).copy(startedAtWallMs = startedAtWallMs ?: time.wall()))
             watchdog.rearm(engine.currentStageEndMs)
         }
 
