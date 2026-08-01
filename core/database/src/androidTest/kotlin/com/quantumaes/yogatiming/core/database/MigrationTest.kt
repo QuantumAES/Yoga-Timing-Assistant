@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.core.database.migration.MIGRATION_1_2
+import com.quantumaes.yogatiming.core.database.migration.MIGRATION_2_3
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,8 +48,9 @@ class MigrationTest {
                         }
                     }
 
-            // Ровно две таблицы: конфиги оповещений лежат JSON-колонкой (ADR-002).
-            assertThat(tables).containsAtLeast("profiles", "stages")
+            // Три таблицы: конфиги оповещений лежат JSON-колонкой (ADR-002),
+            // отдельных таблиц под них нет и не будет.
+            assertThat(tables).containsAtLeast("profiles", "stages", "session_log")
             assertThat(tables).doesNotContain("alert_configs")
             assertThat(tables).doesNotContain("alerts")
         }
@@ -89,6 +91,43 @@ class MigrationTest {
                 assertThat(cursor.moveToFirst()).isTrue()
                 assertThat(cursor.getString(0)).isEqualTo("Шавасана")
                 assertThat(cursor.isNull(1)).isTrue()
+            }
+        }
+    }
+
+    /**
+     * v2 → v3: журнал занятий (docs/09-STATISTICS.md, фаза S1).
+     *
+     * Миграция добавляет таблицу и не трогает ни одной существующей — профили
+     * инструктора переживают обновление в неизменном виде. Что структура новой
+     * таблицы совпала с экспортированной схемой, проверяет сам
+     * `runMigrationsAndValidate`: расхождение хоть в имени индекса роняет тест.
+     */
+    @Test
+    fun миграция_2_3_добавляет_журнал_и_не_трогает_профили() {
+        helper.createDatabase(TEST_DB, 2).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (
+                    id, uuid, name, name_normalized, category, color_tag, icon_id,
+                    total_duration_mode, fixed_total_sec, is_favorite, sort_order,
+                    default_alert_config, created_at, updated_at
+                ) VALUES (
+                    1, 'uuid-1', 'Хатха 60 мин', 'хатха 60 мин', 'HATHA', '#4CAF50', NULL,
+                    'SUM', NULL, 0, 0, '{}', 0, 0
+                )
+                """.trimIndent(),
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 3, true, MIGRATION_2_3).use { db ->
+            db.query("SELECT name FROM profiles WHERE id = 1", emptyArray()).use { cursor ->
+                assertThat(cursor.moveToFirst()).isTrue()
+                assertThat(cursor.getString(0)).isEqualTo("Хатха 60 мин")
+            }
+            db.query("SELECT COUNT(*) FROM session_log", emptyArray()).use { cursor ->
+                assertThat(cursor.moveToFirst()).isTrue()
+                assertThat(cursor.getInt(0)).isEqualTo(0)
             }
         }
     }

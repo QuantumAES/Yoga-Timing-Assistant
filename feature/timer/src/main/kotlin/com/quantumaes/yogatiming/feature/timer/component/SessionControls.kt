@@ -27,11 +27,18 @@ import com.quantumaes.yogatiming.feature.timer.R
 /** Ранг 1 карты жестов: «Пауза» должна попадаться вслепую (docs/03-GESTURES.md §2). */
 private val PRIMARY_HEIGHT = 88.dp
 
-/** Ранг 2–3: «След.» и «±30 с». */
-private val SECONDARY_HEIGHT = 64.dp
+/**
+ * Ранг 2–3: «След.» и «±30 с».
+ *
+ * Восемь dp отданы кольцу (полевая проверка 2026-07-31, третий круг,
+ * замечание 1): высота блока кнопок вычитается из диаметра напрямую, а у этих
+ * кнопок остаётся полтора минимальных тач-таргета — попасть в них с коврика
+ * по-прежнему можно не глядя.
+ */
+private val SECONDARY_HEIGHT = 56.dp
 
 /** Ранг 4: «Пред. этап». Ниже остальных ровно настолько, чтобы это было видно. */
-private val TERTIARY_HEIGHT = 52.dp
+private val TERTIARY_HEIGHT = 48.dp
 
 private val PRIMARY_TEXT_SIZE = 22.sp
 

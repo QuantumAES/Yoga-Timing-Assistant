@@ -4,11 +4,14 @@ import android.content.Context
 import androidx.room.Room
 import com.quantumaes.yogatiming.core.database.YtaDatabase
 import com.quantumaes.yogatiming.core.database.dao.ProfileDao
+import com.quantumaes.yogatiming.core.database.dao.SessionLogDao
 import com.quantumaes.yogatiming.core.database.dao.StageDao
 import com.quantumaes.yogatiming.core.database.migration.YTA_MIGRATIONS
 import com.quantumaes.yogatiming.core.database.repository.ProfileRepositoryImpl
+import com.quantumaes.yogatiming.core.database.repository.SessionLogRepositoryImpl
 import com.quantumaes.yogatiming.core.database.seed.DemoSeedCallback
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.domain.repository.SessionLogRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -40,6 +43,9 @@ object DatabaseModule {
 
     @Provides
     fun provideStageDao(database: YtaDatabase): StageDao = database.stageDao()
+
+    @Provides
+    fun provideSessionLogDao(database: YtaDatabase): SessionLogDao = database.sessionLogDao()
 }
 
 @Module
@@ -47,4 +53,7 @@ object DatabaseModule {
 abstract class RepositoryModule {
     @Binds
     abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
+
+    @Binds
+    abstract fun bindSessionLogRepository(impl: SessionLogRepositoryImpl): SessionLogRepository
 }

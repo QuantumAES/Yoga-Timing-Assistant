@@ -1,11 +1,14 @@
 package com.quantumaes.yogatiming.timer.service
 
+import android.util.Log
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.domain.repository.SessionLogRepository
 import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.session.SessionPlanFactory
 import com.quantumaes.yogatiming.domain.session.SessionSummary
 import com.quantumaes.yogatiming.domain.session.domainAlert
+import com.quantumaes.yogatiming.domain.stats.SessionLog
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerEngine
@@ -28,8 +31,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "SessionController"
 
 /** Чем закончилась попытка поднять сохранённую сессию. */
 enum class RestoreOutcome {
@@ -69,6 +75,7 @@ class SessionController
     @Inject
     constructor(
         private val profileRepository: ProfileRepository,
+        private val sessionLog: SessionLogRepository,
         private val sessionStore: SessionStore,
         private val watchdog: Watchdog,
         private val time: TimeSource,
@@ -220,21 +227,21 @@ class SessionController
         }
 
         /**
-         * Итоги закончившегося занятия.
+         * Итоги закончившегося занятия — на экран и в журнал.
          *
          * Начало берётся из метки старта, а если её нет — вычитанием факта из
          * конца. Метки нет ровно в одном случае: занятие подняли из снимка,
          * сохранённого версией без неё. Приблизительное начало здесь лучше
          * пустого места: пауз в занятии обычно нет, и ошибка равна их длине.
          */
-        private fun publishSummary(
+        private suspend fun publishSummary(
             state: SessionState,
             outcome: SessionOutcome,
             actualDurationMs: Long,
             stagesCompleted: Int,
         ) {
             val finishedAtWallMs = time.wall()
-            _lastSummary.value =
+            val summary =
                 SessionSummary(
                     profileId = state.plan.profileId,
                     profileName = state.plan.profileName,
@@ -246,7 +253,30 @@ class SessionController
                     stagesCompleted = stagesCompleted,
                     stageCount = state.plan.stages.size,
                 )
+            _lastSummary.value = summary
             startedAtWallMs = null
+            record(summary)
+        }
+
+        /**
+         * Запись занятия в журнал (docs/09-STATISTICS.md, фаза S1).
+         *
+         * Здесь же, в обработчике конца занятия, а не отдельной корутиной
+         * «когда-нибудь потом» (R-S3): между концом занятия и записью процесс
+         * может умереть, и чем короче этот промежуток, тем меньше вероятность
+         * потерять занятие.
+         *
+         * Зона — системная на момент записи: день занятия фиксируется тем, где
+         * инструктор его провёл, а не тем, где он потом откроет статистику
+         * (D-S4).
+         *
+         * Ошибка записи гасится: журнал — вторичная функция, и падение базы не
+         * имеет права уронить цикл событий движка вместе с идущим занятием.
+         */
+        private suspend fun record(summary: SessionSummary) {
+            val entry = SessionLog.entryFor(summary, ZoneId.systemDefault()) ?: return
+            runCatching { sessionLog.record(entry) }
+                .onFailure { error -> Log.w(TAG, "Занятие не попало в журнал", error) }
         }
 
         private suspend fun save(state: SessionState) {

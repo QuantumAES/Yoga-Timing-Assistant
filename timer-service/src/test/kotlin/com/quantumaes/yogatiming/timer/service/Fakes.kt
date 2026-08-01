@@ -6,12 +6,18 @@ import com.quantumaes.yogatiming.domain.model.Stage
 import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
 import com.quantumaes.yogatiming.domain.repository.ProfileFilter
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
+import com.quantumaes.yogatiming.domain.repository.SessionLogRepository
+import com.quantumaes.yogatiming.domain.stats.ProfileTotals
+import com.quantumaes.yogatiming.domain.stats.SessionDay
+import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
+import com.quantumaes.yogatiming.domain.stats.SessionTotals
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.engine.persist.PersistedSession
 import com.quantumaes.yogatiming.timer.engine.persist.SessionStore
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import java.time.LocalDate
 
 private const val TEN_MINUTES_SEC = 600
 
@@ -82,6 +88,48 @@ class FakeProfileRepository(
         id: Long,
         isFavorite: Boolean,
     ) = Unit
+}
+
+/**
+ * Журнал в памяти: список записанных занятий и, при необходимости, отказ базы.
+ *
+ * Отказ нужен отдельным полем — запись в журнал не имеет права уронить занятие,
+ * и проверить это можно только заставив хранилище упасть.
+ */
+class FakeSessionLogRepository(
+    var failing: Boolean = false,
+) : SessionLogRepository {
+    val recorded = mutableListOf<SessionLogEntry>()
+
+    override suspend fun record(entry: SessionLogEntry): Long {
+        check(!failing) { "журнал недоступен" }
+        recorded += entry
+        return recorded.size.toLong()
+    }
+
+    override suspend fun delete(id: Long) {
+        recorded.removeAll { it.id == id }
+    }
+
+    override fun observeSessions(
+        from: LocalDate,
+        to: LocalDate,
+    ): Flow<List<SessionLogEntry>> = flowOf(recorded.toList())
+
+    override fun observeDays(
+        from: LocalDate,
+        to: LocalDate,
+    ): Flow<List<SessionDay>> = flowOf(emptyList())
+
+    override fun observeTotals(
+        from: LocalDate,
+        to: LocalDate,
+    ): Flow<SessionTotals> = flowOf(SessionTotals())
+
+    override fun observeByProfile(
+        from: LocalDate,
+        to: LocalDate,
+    ): Flow<List<ProfileTotals>> = flowOf(emptyList())
 }
 
 fun demoProfile(

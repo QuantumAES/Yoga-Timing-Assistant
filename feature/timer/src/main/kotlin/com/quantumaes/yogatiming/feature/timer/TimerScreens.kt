@@ -76,11 +76,8 @@ import kotlin.math.abs
 /** Через сколько бездействия гаснет экран в режиме фокуса (ТЗ, Экран 4). */
 private const val IDLE_DIM_MS = 15_000L
 
-/** Смена этапа подсвечивает экран независимо от таймера бездействия. */
-private const val STAGE_FLASH_MS = 2_000L
-
 /** До какой яркости приглушать окно. Не в ноль: цифры должны остаться видны. */
-private const val DIM_BRIGHTNESS = 0.1f
+private const val DIM_BRIGHTNESS = 0.05f
 
 /**
  * Плотность затемняющей пелены поверх экрана.
@@ -90,8 +87,12 @@ private const val DIM_BRIGHTNESS = 0.1f
  * приглушение попросту не видно (полевая проверка 2026-07-31, замечание 3).
  * Пелена же затемняет ровно относительно текущего вида и работает на любом
  * устройстве, что бы оболочка ни делала с яркостью окна.
+ *
+ * Две трети, а не половина (третий круг, замечание 2): при 0,55 белые цифры на
+ * почти чёрном фоне гасли до 45% — заметно на снимке экрана и почти незаметно
+ * глазу, который к этому моменту уже пятнадцать секунд смотрит на тот же экран.
  */
-private const val DIM_SCRIM_ALPHA = 0.55f
+private const val DIM_SCRIM_ALPHA = 0.66f
 
 /** Насколько плавно гаснет и возвращается экран. Резкая смена бьёт по глазам. */
 private const val DIM_FADE_MS = 700
@@ -217,20 +218,19 @@ private fun SessionScreen(
     onStopRequest: () -> Unit,
 ) {
     val palette = timerPalette
-    var interactions by remember { mutableIntStateOf(0) }
 
     // Ландшафт определяется по размеру окна, а не по ориентации устройства:
     // в многооконном режиме телефон стоит вертикально, а окно шире, чем выше.
     val window = LocalWindowInfo.current.containerSize
     val landscape = window.width > window.height
 
-    val dimmed =
-        isDimmed(
-            mode = mode,
-            enabled = autoDimEnabled,
-            interactions = interactions,
-            stageIndex = snapshot?.currentIndex,
-        )
+    // Счётчик поводов светить полной яркостью: касание экрана и смена этапа.
+    // Один счётчик на оба повода — см. `isDimmed`.
+    var wakeUps by remember { mutableIntStateOf(0) }
+    val stageIndex = snapshot?.currentIndex
+    LaunchedEffect(stageIndex) { wakeUps++ }
+
+    val dimmed = isDimmed(focus = mode.isFocus, enabled = autoDimEnabled, wakeUps = wakeUps)
     WindowBrightness(level = if (dimmed) DIM_BRIGHTNESS else null)
 
     Box(
@@ -246,7 +246,10 @@ private fun SessionScreen(
             Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .padding(vertical = Spacing.m)
+                // Вертикальное поле — половинное: системные отступы уже учтены
+                // `safeDrawingPadding`, а каждые восемь dp сверху и снизу это
+                // шестнадцать dp диаметра кольца в портрете.
+                .padding(vertical = Spacing.s)
 
         when {
             mode.isFocus -> {
@@ -258,7 +261,7 @@ private fun SessionScreen(
                             onExit = { onModeChange(SessionMode.NORMAL) },
                             onNext = onNext,
                             onPrevious = onPrevious,
-                            onInteraction = { interactions++ },
+                            onInteraction = { wakeUps++ },
                         ),
                 )
             }
@@ -324,36 +327,36 @@ private fun SessionScreen(
 /**
  * Пора ли гасить экран в режиме фокуса (ТЗ, Экран 4).
  *
- * Два независимых повода светить полной яркостью: касание и смена этапа.
- * Касание перезапускает пятнадцатисекундный отсчёт бездействия, смена этапа
- * подсвечивает экран на две секунды — за них инструктор успевает поднять
- * глаза и увидеть, что началось.
+ * Один таймер и один флаг: пятнадцать секунд без повода светить — гасим, любой
+ * повод — зажигаем и отсчитываем заново. Поводов два, касание и смена этапа, и
+ * оба приходят одним счётчиком [wakeUps].
+ *
+ * Раньше поводов было два и флага тоже два: `idle` от бездействия и `stageFlash`
+ * на две секунды от смены этапа, а решение принималось как `idle && !stageFlash`.
+ * Схема разваливалась молча: эффект подсветки перезапускался по индексу этапа, и
+ * если индекс успевал стать `null` (снимок занятия между сессиями), корутина
+ * снималась с уже поднятым `stageFlash` и опустить его было некому. Экран после
+ * этого не гас никогда, и понять почему, глядя на него, нельзя было (полевая
+ * проверка 2026-07-31, третий круг, замечание 2). Одно состояние, которое
+ * некуда рассинхронизировать, стоит дешевле двухсекундной подсветки: смена
+ * этапа теперь просто заводит те же пятнадцать секунд заново.
  */
 @Composable
 private fun isDimmed(
-    mode: SessionMode,
+    focus: Boolean,
     enabled: Boolean,
-    interactions: Int,
-    stageIndex: Int?,
+    wakeUps: Int,
 ): Boolean {
-    var idle by remember { mutableStateOf(false) }
-    var stageFlash by remember { mutableStateOf(false) }
+    var dimmed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(mode, enabled, interactions) {
-        idle = false
-        if (!mode.isFocus || !enabled) return@LaunchedEffect
+    LaunchedEffect(focus, enabled, wakeUps) {
+        dimmed = false
+        if (!focus || !enabled) return@LaunchedEffect
         delay(IDLE_DIM_MS)
-        idle = true
+        dimmed = true
     }
 
-    LaunchedEffect(stageIndex) {
-        if (stageIndex == null) return@LaunchedEffect
-        stageFlash = true
-        delay(STAGE_FLASH_MS)
-        stageFlash = false
-    }
-
-    return idle && !stageFlash
+    return dimmed
 }
 
 /**

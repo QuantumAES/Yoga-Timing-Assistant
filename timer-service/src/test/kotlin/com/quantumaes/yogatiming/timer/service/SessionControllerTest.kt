@@ -13,6 +13,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 private const val PROFILE_ID = 7L
 private const val MINUTE_MS = 60_000L
@@ -32,10 +35,12 @@ class SessionControllerTest {
     private val store = FakeSessionStore()
     private val watchdog = FakeWatchdog()
     private val repository = FakeProfileRepository(demoProfile(PROFILE_ID))
+    private val sessionLog = FakeSessionLogRepository()
 
     private fun TestScope.controller() =
         SessionController(
             profileRepository = repository,
+            sessionLog = sessionLog,
             sessionStore = store,
             watchdog = watchdog,
             time = time,
@@ -205,6 +210,108 @@ class SessionControllerTest {
         }
 
     /**
+     * Журнал занятий (docs/09-STATISTICS.md, фаза S1).
+     *
+     * Брошенное занятие тоже состоялось (D-S2): оно попадает в журнал с
+     * пометкой, а не выбрасывается. День — локальный, зафиксированный при
+     * записи по началу занятия (D-S4).
+     */
+    @Test
+    fun `остановленное занятие попадает в журнал с пометкой`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            time.elapsedMs += 4 * MINUTE_MS
+            time.wallMs += 4 * MINUTE_MS
+            controller.submit(TimerCommand.Stop)
+            testScheduler.runCurrent()
+
+            val entry = sessionLog.recorded.single()
+            assertThat(entry.outcome).isEqualTo(SessionOutcome.STOPPED)
+            assertThat(entry.profileId).isEqualTo(PROFILE_ID)
+            assertThat(entry.profileName).isEqualTo("Хатха 60 мин")
+            assertThat(entry.durationMs).isEqualTo(4 * MINUTE_MS)
+            assertThat(entry.plannedMs).isEqualTo(30 * MINUTE_MS)
+            assertThat(entry.stagesCompleted).isEqualTo(0)
+            assertThat(entry.stageCount).isEqualTo(3)
+            assertThat(entry.startedAtMs).isEqualTo(WALL_MS)
+            assertThat(entry.finishedAtMs).isEqualTo(WALL_MS + 4 * MINUTE_MS)
+            assertThat(entry.localDate).isEqualTo(localDateOf(WALL_MS))
+        }
+
+    @Test
+    fun `дошедшее до конца занятие записано как завершённое`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            time.elapsedMs += 30 * MINUTE_MS
+            time.wallMs += 30 * MINUTE_MS
+            controller.wake()
+            testScheduler.runCurrent()
+
+            val entry = sessionLog.recorded.single()
+            assertThat(entry.outcome).isEqualTo(SessionOutcome.COMPLETED)
+            assertThat(entry.stagesCompleted).isEqualTo(3)
+            assertThat(entry.durationMs).isEqualTo(30 * MINUTE_MS)
+        }
+
+    /** Порог D-S3: проверка звука перед занятием — не занятие. */
+    @Test
+    fun `запуск короче минуты в журнал не попадает`() =
+        runTest {
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            time.elapsedMs += 40_000L
+            time.wallMs += 40_000L
+            controller.submit(TimerCommand.Stop)
+            testScheduler.runCurrent()
+
+            assertThat(sessionLog.recorded).isEmpty()
+            // Экран итогов при этом показывается: он про занятие, а не про журнал.
+            assertThat(controller.lastSummary.value).isNotNull()
+        }
+
+    /**
+     * Журнал вторичен по отношению к занятию.
+     *
+     * Запись идёт в том же обработчике, что и сброс сессии (R-S3), а обработчик
+     * — внутри цикла событий движка: исключение оттуда унесло бы вместе с собой
+     * идущее занятие. Поэтому отказ базы гасится, а итоги на экране остаются.
+     */
+    @Test
+    fun `отказ журнала не роняет занятие`() =
+        runTest {
+            sessionLog.failing = true
+            val controller = controller()
+            testScheduler.runCurrent()
+            controller.startSession(PROFILE_ID)
+            testScheduler.runCurrent()
+
+            time.elapsedMs += 4 * MINUTE_MS
+            time.wallMs += 4 * MINUTE_MS
+            controller.submit(TimerCommand.Stop)
+            testScheduler.runCurrent()
+
+            assertThat(sessionLog.recorded).isEmpty()
+            assertThat(controller.lastSummary.value?.actualDurationMs).isEqualTo(4 * MINUTE_MS)
+            // Занятие остановлено до конца: цикл событий движка пережил отказ.
+            assertThat(store.saved).isNull()
+            assertThat(watchdog.cancelled).isTrue()
+        }
+
+    private fun localDateOf(wallMs: Long): LocalDate =
+        Instant.ofEpochMilli(wallMs).atZone(ZoneId.systemDefault()).toLocalDate()
+
+    /**
      * Граница этапов: END уходящего и START приходящего срабатывают в один и
      * тот же момент. Если приходящий этап объявит себя сам — а стандартная
      * схема ТЗ §5.2 именно так и настроена, — то «далее: асаны» перед «асаны»
@@ -283,6 +390,7 @@ class SessionControllerTest {
             val emptyProfileController =
                 SessionController(
                     profileRepository = FakeProfileRepository(demoProfile(PROFILE_ID, stages = emptyList())),
+                    sessionLog = sessionLog,
                     sessionStore = store,
                     watchdog = watchdog,
                     time = time,

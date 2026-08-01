@@ -54,10 +54,10 @@ JDK 21 распаковывается в пользовательский кат
 | `:app` | сборка, DI-граф, навигационный граф |
 | `:core:common` | pure JVM: форматтеры времени, внутренние ссылки, утилиты |
 | `:core:designsystem` | тема M3, токены, компоненты |
-| `:core:database` | Room: сущности, DAO, репозиторий, демо-данные |
+| `:core:database` | Room: сущности, DAO, репозитории, миграции, демо-данные, журнал занятий |
 | `:core:datastore` | персист сессии, разовые подсказки, пользовательские настройки |
 | `:core:audio` | AlertPlayer: звук, TTS, вибрация, audio focus |
-| `:domain` | pure JVM: модели, use cases, резолвер оповещений |
+| `:domain` | pure JVM: модели, use cases, резолвер оповещений, периоды статистики |
 | `:timer-engine` | pure JVM: машина состояний отсчёта — **ключевой модуль** |
 | `:timer-service` | Android: FGS, WakeLock, watchdog-аларм, персист сессии |
 | `:feature:profiles` | список профилей: поиск, фильтры, избранное, удаление с отменой |
@@ -100,4 +100,6 @@ KSP 2.3.10 · Compose BOM 2026.06.01 · Hilt 2.60.1 · Room 2.8.4 ·
 | [`docs/05-PLAY-DECLARATIONS.md`](docs/05-PLAY-DECLARATIONS.md) | декларации для Google Play |
 | [`docs/06-MVP-SCOPE.md`](docs/06-MVP-SCOPE.md) | scope v1.0 и критерии приёмки |
 | [`docs/07-AUDIO-ASSETS.md`](docs/07-AUDIO-ASSETS.md) | звуковые пресеты: синтез, лицензии, громкость |
+| [`docs/08-STABILIZATION.md`](docs/08-STABILIZATION.md) | чек-листы прогонов, доступности и приёмки; журнал полевых проверок |
+| [`docs/09-STATISTICS.md`](docs/09-STATISTICS.md) | статистика занятий: решения, схема журнала, экран, фазы S1–S7 |
 | [`docs/adr/`](docs/adr) | архитектурные решения |
