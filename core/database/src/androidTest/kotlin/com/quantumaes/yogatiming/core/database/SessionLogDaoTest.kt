@@ -3,6 +3,7 @@ package com.quantumaes.yogatiming.core.database
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.core.database.dao.ProfileDao
 import com.quantumaes.yogatiming.core.database.dao.SessionLogDao
@@ -160,6 +161,42 @@ class SessionLogDaoTest {
             dao.delete(id)
 
             assertThat(dao.observeSessions("2026-11-01", "2026-11-30").first()).isEmpty()
+        }
+
+    /**
+     * Экран статистики обязан обновляться сам, без повторного открытия.
+     *
+     * Все остальные тесты читают поток через `first()` — то есть проверяют
+     * запрос, но не подписку. Занятие, проведённое при открытом экране, обязано
+     * попасть в сводку без единого действия пользователя: «количество занятий
+     * не меняется» — это ровно то, что здесь ловится (полевая проверка
+     * 2026-08-03).
+     */
+    @Test
+    fun сводка_обновляется_после_вставки_без_повторной_подписки() =
+        runTest {
+            dao.observeTotals("2026-11-01", "2026-11-30").test {
+                assertThat(awaitItem().sessionCount).isEqualTo(0)
+
+                dao.insert(entry(localDate = "2026-11-03", durationMs = HOUR_MS))
+
+                val updated = awaitItem()
+                assertThat(updated.sessionCount).isEqualTo(1)
+                assertThat(updated.durationMs).isEqualTo(HOUR_MS)
+            }
+        }
+
+    /** То же для календаря: новая отметка появляется на открытом экране. */
+    @Test
+    fun дни_обновляются_после_вставки_без_повторной_подписки() =
+        runTest {
+            dao.observeDays("2026-11-01", "2026-11-30").test {
+                assertThat(awaitItem()).isEmpty()
+
+                dao.insert(entry(localDate = "2026-11-03", durationMs = HOUR_MS))
+
+                assertThat(awaitItem().single().sessionCount).isEqualTo(1)
+            }
         }
 
     private fun entry(

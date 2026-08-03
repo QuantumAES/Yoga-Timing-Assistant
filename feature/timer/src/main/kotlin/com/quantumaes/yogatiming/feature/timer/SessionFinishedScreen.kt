@@ -47,6 +47,7 @@ import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.core.designsystem.theme.timerPalette
 import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.session.SessionSummary
+import com.quantumaes.yogatiming.domain.stats.SessionLog
 import java.util.Date
 
 private val ACTION_HEIGHT = 64.dp
@@ -265,6 +266,21 @@ private fun SessionTotals(
                         wallClock(summary.finishedAtWallMs),
                     ),
                 palette = palette,
+            )
+        }
+
+        // Порог журнала (D-S3) сказан вслух ровно там, где он сработал.
+        // Молчащее правило читается как поломка статистики: занятие проведено,
+        // а счётчик не изменился — именно так его и поняли в полевой проверке
+        // 2026-08-03. Строка появляется только у коротких занятий; у остальных
+        // сообщать не о чем — они в журнале.
+        if (!SessionLog.isRecordable(summary)) {
+            Text(
+                text = stringResource(R.string.timer_summary_not_logged),
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.onBackgroundMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = Spacing.s),
             )
         }
     }

@@ -50,6 +50,15 @@
         <item quantity="other">%1$d classes</item>
     </plurals>
 
+    <string name="stats_journal_title">Journal</string>
+    <!-- Строка журнала: «3 Nov · Hatha 60». -->
+    <string name="stats_journal_row_title">%1$s · %2$s</string>
+    <string name="stats_journal_delete">Delete the entry</string>
+    <string name="stats_journal_delete_title">Delete this class?</string>
+    <string name="stats_journal_delete_message">%1$s, %2$s will be removed from the journal. Totals for the period will be recalculated.</string>
+    <string name="stats_journal_delete_confirm">Delete</string>
+    <string name="stats_journal_delete_cancel">Keep</string>
+
     <string name="stats_empty_title">No classes in this period</string>
     <string name="stats_empty_hint">A class longer than a minute lands here on its own, the moment it ends.</string>
     <string name="stats_empty_action">Back to profiles</string>

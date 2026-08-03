@@ -32,6 +32,7 @@
     <string name="timer_summary_deviation">Отклонение</string>
     <string name="timer_summary_time">Время</string>
     <string name="timer_summary_time_value">%1$s → %2$s</string>
+    <string name="timer_summary_not_logged">Короче минуты — в журнал статистики не попало.</string>
 
     <string name="timer_finished_quote_author">— %1$s</string>
 

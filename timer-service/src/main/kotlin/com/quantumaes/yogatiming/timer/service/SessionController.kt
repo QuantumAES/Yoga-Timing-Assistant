@@ -1,5 +1,6 @@
 package com.quantumaes.yogatiming.timer.service
 
+import android.database.SQLException
 import android.util.Log
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
@@ -9,6 +10,7 @@ import com.quantumaes.yogatiming.domain.session.SessionPlanFactory
 import com.quantumaes.yogatiming.domain.session.SessionSummary
 import com.quantumaes.yogatiming.domain.session.domainAlert
 import com.quantumaes.yogatiming.domain.stats.SessionLog
+import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerEngine
@@ -26,6 +28,7 @@ import com.quantumaes.yogatiming.timer.engine.persist.restorability
 import com.quantumaes.yogatiming.timer.engine.persist.restoreInto
 import com.quantumaes.yogatiming.timer.service.di.TimerSessionScope
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -272,11 +275,22 @@ class SessionController
          *
          * Ошибка записи гасится: журнал — вторичная функция, и падение базы не
          * имеет права уронить цикл событий движка вместе с идущим занятием.
+         * Отмена корутины при этом пробрасывается: `runCatching` ловил и её —
+         * то есть глушил не только отказ базы, но и штатное сворачивание
+         * области, притворяясь, что занятие записано.
          */
         private suspend fun record(summary: SessionSummary) {
             val entry = SessionLog.entryFor(summary, ZoneId.systemDefault()) ?: return
-            runCatching { sessionLog.record(entry) }
-                .onFailure { error -> Log.w(TAG, "Занятие не попало в журнал", error) }
+            try {
+                sessionLog.record(entry)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (database: SQLException) {
+                logLostEntry(entry, database)
+            } catch (closed: IllegalStateException) {
+                // База закрыта — процесс сворачивается прямо сейчас.
+                logLostEntry(entry, closed)
+            }
         }
 
         private suspend fun save(state: SessionState) {
@@ -289,6 +303,15 @@ class SessionController
             sessionStore.clear()
         }
     }
+
+/**
+ * Уровень ошибки, а не предупреждения: потерянное занятие — это дыра в отчёте
+ * студии, и в багрепорте её должно быть видно с первого взгляда.
+ */
+private fun logLostEntry(
+    entry: SessionLogEntry,
+    error: Throwable,
+) = Log.e(TAG, "Занятие не попало в журнал: ${entry.localDate}, ${entry.durationMs} мс", error)
 
 /**
  * Назовёт ли этап своё имя, входя в занятие.

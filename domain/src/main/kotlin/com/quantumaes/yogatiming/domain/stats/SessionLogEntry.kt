@@ -55,6 +55,16 @@ object SessionLog {
     const val MIN_DURATION_MS = 60_000L
 
     /**
+     * Попадёт ли занятие в журнал.
+     *
+     * Отдельно от [entryFor] потому, что об этом спрашивает экран итогов:
+     * порог, о котором нигде не сказано, читается как «статистика не
+     * работает» — именно так он и был понят в первой же полевой проверке
+     * (2026-08-03). Правило осталось прежним, молчание — нет.
+     */
+    fun isRecordable(summary: SessionSummary): Boolean = summary.actualDurationMs >= MIN_DURATION_MS
+
+    /**
      * Строка журнала по итогам занятия — или `null`, если занятие короче порога.
      *
      * День берётся по началу занятия, а не по концу: занятие, начатое в 23:40
@@ -69,7 +79,7 @@ object SessionLog {
         summary: SessionSummary,
         zone: ZoneId,
     ): SessionLogEntry? {
-        if (summary.actualDurationMs < MIN_DURATION_MS) return null
+        if (!isRecordable(summary)) return null
         return SessionLogEntry(
             profileId = summary.profileId,
             profileName = summary.profileName,

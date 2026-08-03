@@ -28,4 +28,7 @@ dependencies {
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.truth)
     androidTestImplementation(libs.kotlinx.coroutines.test)
+    // Подписка на Flow журнала: без неё проверяется запрос, но не то, что
+    // экран статистики обновляется сам.
+    androidTestImplementation(libs.turbine)
 }

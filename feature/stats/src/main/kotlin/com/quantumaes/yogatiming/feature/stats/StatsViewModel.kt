@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
@@ -64,6 +65,7 @@ data class StatsUiState(
     val calendar: List<CalendarCell> = emptyList(),
     val selectedDay: LocalDate? = null,
     val daySessions: List<SessionLogEntry> = emptyList(),
+    val journal: List<SessionLogEntry> = emptyList(),
     val periodLengthDays: Int? = null,
     val canGoForward: Boolean = false,
     val isLoading: Boolean = true,
@@ -117,7 +119,10 @@ class StatsViewModel
                     repository.observeTotals(current.from, current.to),
                     repository.observeDays(grid.first, grid.second),
                     repository.observeByProfile(current.from, current.to),
-                ) { totals, days, byProfile -> PeriodData(current, totals, days, byProfile) }
+                    repository.observeSessions(current.from, current.to),
+                ) { totals, days, byProfile, journal ->
+                    PeriodData(current, totals, days, byProfile, journal)
+                }
             }
 
         /**
@@ -149,6 +154,7 @@ class StatsViewModel
                     calendar = data.calendar(today),
                     selectedDay = day.date,
                     daySessions = day.sessions,
+                    journal = data.journal,
                     periodLengthDays = data.period.lengthInDays(),
                     canGoForward = data.period.to.isBefore(today),
                     isLoading = false,
@@ -193,6 +199,18 @@ class StatsViewModel
             selectedDay.update { current -> if (current == date) null else date }
         }
 
+        /**
+         * Удаление строки журнала вручную (docs/09-STATISTICS.md §4).
+         *
+         * Порог в минуту отсеивает случайные запуски, но не проверочный прогон
+         * на пять минут — а в отчёте студии он лишний. Из списка строка исчезнет
+         * сама: журнал приходит потоком из базы, и подтверждать удаление
+         * подменой состояния в модели значило бы иметь две правды о нём.
+         */
+        fun deleteEntry(id: Long) {
+            viewModelScope.launch { repository.delete(id) }
+        }
+
         private fun StatsPeriod.anchor(): LocalDate = if (type == StatsPeriodType.ALL || today in this) today else from
     }
 
@@ -208,6 +226,7 @@ private data class PeriodData(
     val totals: SessionTotals,
     val days: List<SessionDay>,
     val byProfile: List<ProfileTotals>,
+    val journal: List<SessionLogEntry>,
 ) {
     /**
      * Сетка календаря — только для месяца.

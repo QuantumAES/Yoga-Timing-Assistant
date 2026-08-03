@@ -116,6 +116,13 @@ internal fun dayTitle(date: LocalDate): String {
     return remember(date, locale) { date.format("d MMMM", locale) }
 }
 
+/** «3 ноя» — дата в строке журнала: она повторяется у каждой строки. */
+@Composable
+internal fun dayShort(date: LocalDate): String {
+    val locale = currentLocale()
+    return remember(date, locale) { date.format("d MMM", locale) }
+}
+
 /**
  * Время по стенным часам в формате устройства.
  *

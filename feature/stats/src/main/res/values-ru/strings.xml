@@ -43,6 +43,14 @@
         <item quantity="other">%1$d занятия</item>
     </plurals>
 
+    <string name="stats_journal_title">Журнал</string>
+    <string name="stats_journal_row_title">%1$s · %2$s</string>
+    <string name="stats_journal_delete">Удалить строку</string>
+    <string name="stats_journal_delete_title">Удалить занятие?</string>
+    <string name="stats_journal_delete_message">%1$s, %2$s — строка исчезнет из журнала, а сводка за период пересчитается.</string>
+    <string name="stats_journal_delete_confirm">Удалить</string>
+    <string name="stats_journal_delete_cancel">Оставить</string>
+
     <string name="stats_empty_title">За этот период занятий нет</string>
     <string name="stats_empty_hint">Занятие длиннее минуты попадает сюда само, сразу по окончании.</string>
     <string name="stats_empty_action">К списку профилей</string>

@@ -3,14 +3,14 @@ package com.quantumaes.yogatiming.feature.stats
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -29,6 +29,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,6 +86,7 @@ internal fun StatsScreen(
         onPrevious = viewModel::showPrevious,
         onNext = viewModel::showNext,
         onSelectDay = viewModel::selectDay,
+        onDeleteEntry = viewModel::deleteEntry,
         onBack = onBack,
     )
 }
@@ -95,8 +99,12 @@ internal fun StatsScreen(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onSelectDay: (LocalDate) -> Unit,
+    onDeleteEntry: (Long) -> Unit,
     onBack: () -> Unit,
 ) {
+    // Строка, которую свайпнули: удаление спрашивает, а не делает молча.
+    var pendingDelete: SessionLogEntry? by remember { mutableStateOf(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -112,48 +120,80 @@ internal fun StatsScreen(
             )
         },
     ) { innerPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.m)
-                    .padding(bottom = Spacing.xl),
+        // `LazyColumn`, а не прокручиваемый `Column`: журнал за «всё время» это
+        // тысячи строк, и обычный столбец собирал бы их все на каждый кадр
+        // (R-S4). Разделы сводки при этом остаются обычными элементами списка.
+        LazyColumn(
+            modifier = Modifier.padding(innerPadding).fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = Spacing.m,
+                    end = Spacing.m,
+                    bottom = Spacing.xl,
+                ),
             verticalArrangement = Arrangement.spacedBy(Spacing.m),
         ) {
-            PeriodSelector(selected = uiState.period.type, onSelect = onPeriodTypeChange)
+            item(key = "period") {
+                PeriodSelector(selected = uiState.period.type, onSelect = onPeriodTypeChange)
+            }
 
-            PeriodNavigator(
-                title = periodTitle(uiState.period, uiState.today),
-                navigable = uiState.period.type.isNavigable,
-                canGoForward = uiState.canGoForward,
-                onPrevious = onPrevious,
-                onNext = onNext,
-            )
+            item(key = "navigator") {
+                PeriodNavigator(
+                    title = periodTitle(uiState.period, uiState.today),
+                    navigable = uiState.period.type.isNavigable,
+                    canGoForward = uiState.canGoForward,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                )
+            }
 
             // Пока журнал читается, под шапкой нет ничего: спиннер на четверть
             // секунды мигает чаще, чем сообщает.
             when {
                 uiState.isEmpty -> {
-                    EmptyState(onBack = onBack)
+                    item(key = "empty") { EmptyState(onBack = onBack) }
                 }
 
                 !uiState.isLoading -> {
-                    TotalsGrid(totals = uiState.totals, periodLengthDays = uiState.periodLengthDays)
-                    WeekdaySection(weekdays = uiState.weekdays)
-                    if (uiState.calendar.isNotEmpty()) {
-                        CalendarSection(
-                            cells = uiState.calendar,
-                            selectedDay = uiState.selectedDay,
-                            daySessions = uiState.daySessions,
-                            onSelectDay = onSelectDay,
-                        )
+                    item(key = "totals") {
+                        TotalsGrid(totals = uiState.totals, periodLengthDays = uiState.periodLengthDays)
                     }
-                    if (uiState.byProfile.isNotEmpty()) ProfilesSection(profiles = uiState.byProfile)
+                    item(key = "weekdays") { WeekdaySection(weekdays = uiState.weekdays) }
+                    if (uiState.calendar.isNotEmpty()) {
+                        item(key = "calendar") {
+                            CalendarSection(
+                                cells = uiState.calendar,
+                                selectedDay = uiState.selectedDay,
+                                daySessions = uiState.daySessions,
+                                onSelectDay = onSelectDay,
+                            )
+                        }
+                    }
+                    if (uiState.byProfile.isNotEmpty()) {
+                        item(key = "profiles") { ProfilesSection(profiles = uiState.byProfile) }
+                    }
+                    if (uiState.journal.isNotEmpty()) {
+                        item(key = "journal") {
+                            SectionTitle(stringResource(R.string.stats_journal_title))
+                        }
+                        items(uiState.journal, key = { it.id }) { entry ->
+                            JournalRow(entry = entry, onRequestDelete = { pendingDelete = entry })
+                        }
+                    }
                 }
             }
         }
+    }
+
+    pendingDelete?.let { entry ->
+        JournalDeleteDialog(
+            entry = entry,
+            onConfirm = {
+                onDeleteEntry(entry.id)
+                pendingDelete = null
+            },
+            onDismiss = { pendingDelete = null },
+        )
     }
 }
 
@@ -317,6 +357,7 @@ private fun StatsScreenPreview() {
                     calendar = calendar,
                     selectedDay = selected,
                     daySessions = listOf(previewSession(selected)),
+                    journal = listOf(previewSession(selected), previewSession(selected.minusDays(2))),
                     periodLengthDays = 30,
                     canGoForward = false,
                     isLoading = false,
@@ -325,6 +366,7 @@ private fun StatsScreenPreview() {
             onPrevious = {},
             onNext = {},
             onSelectDay = {},
+            onDeleteEntry = {},
             onBack = {},
         )
     }
@@ -346,6 +388,7 @@ private fun previewCalendar(today: LocalDate): List<CalendarCell> =
 
 private fun previewSession(date: LocalDate) =
     SessionLogEntry(
+        id = date.toEpochDay(),
         profileId = 1,
         profileName = "Хатха 60 мин",
         localDate = date,

@@ -34,6 +34,11 @@
     <string name="timer_summary_deviation">Difference</string>
     <string name="timer_summary_time">Time</string>
     <string name="timer_summary_time_value">%1$s → %2$s</string>
+    <!--
+      Порог журнала (docs/09-STATISTICS.md, D-S3) сказан вслух там, где сработал:
+      молчащее правило читается как сломанная статистика.
+    -->
+    <string name="timer_summary_not_logged">Shorter than a minute — not added to the statistics journal.</string>
 
     <string name="timer_finished_quote_author">— %1$s</string>
 

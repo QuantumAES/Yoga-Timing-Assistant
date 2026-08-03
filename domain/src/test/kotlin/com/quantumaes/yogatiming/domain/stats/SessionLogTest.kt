@@ -30,6 +30,22 @@ class SessionLogTest {
         assertThat(SessionLog.entryFor(summary(durationMs = SessionLog.MIN_DURATION_MS), MOSCOW)).isNotNull()
     }
 
+    /**
+     * Экран итогов спрашивает о пороге тем же способом, каким его применяет
+     * запись: два разных правила однажды разъедутся, и пользователю скажут
+     * «занятие в журнале» о том, чего в журнале нет.
+     */
+    @Test
+    fun `порог журнала виден снаружи и совпадает с записью`() {
+        val short = summary(durationMs = SessionLog.MIN_DURATION_MS - 1)
+        val long = summary(durationMs = SessionLog.MIN_DURATION_MS)
+
+        assertThat(SessionLog.isRecordable(short)).isFalse()
+        assertThat(SessionLog.entryFor(short, MOSCOW)).isNull()
+        assertThat(SessionLog.isRecordable(long)).isTrue()
+        assertThat(SessionLog.entryFor(long, MOSCOW)).isNotNull()
+    }
+
     @Test
     fun `брошенное занятие записывается с пометкой, а не выбрасывается`() {
         val entry =

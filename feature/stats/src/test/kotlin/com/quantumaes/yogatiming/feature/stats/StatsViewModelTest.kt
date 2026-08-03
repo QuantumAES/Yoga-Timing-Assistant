@@ -36,6 +36,8 @@ private val FIXED_CLOCK: Clock =
 
 private const val HOUR_MS = 3_600_000L
 
+private const val DAY_MS = 24 * HOUR_MS
+
 /**
  * Журнал в памяти: хранит строки и отвечает на запросы теми же разрезами, что
  * и SQL, — но фильтрацией по списку. Проверяется не он, а границы периода,
@@ -52,12 +54,17 @@ private class FakeSessionLogRepository(
 
     override suspend fun record(entry: SessionLogEntry): Long = 0
 
-    override suspend fun delete(id: Long) = Unit
+    /** Удаление настоящее: строка обязана исчезнуть и из журнала, и из сводки. */
+    override suspend fun delete(id: Long) {
+        state.value = state.value.filterNot { it.id == id }
+    }
 
+    /** Порядок — часть контракта порта: журнал отдаётся от свежих к старым. */
     override fun observeSessions(
         from: LocalDate,
         to: LocalDate,
-    ): Flow<List<SessionLogEntry>> = state.map { entries -> entries.inRange(from, to) }
+    ): Flow<List<SessionLogEntry>> =
+        state.map { entries -> entries.inRange(from, to).sortedByDescending { it.startedAtMs } }
 
     override fun observeDays(
         from: LocalDate,
@@ -105,12 +112,16 @@ private fun entry(
     date: LocalDate,
     durationMs: Long = HOUR_MS,
     profileName: String = "Хатха 60",
+    id: Long = date.toEpochDay(),
 ) = SessionLogEntry(
+    id = id,
     profileId = 1,
     profileName = profileName,
     localDate = date,
-    startedAtMs = 0,
-    finishedAtMs = durationMs,
+    // Метка начала считается от даты: по ней журнал сортируется, и одинаковый
+    // ноль у всех строк проверял бы сортировку вхолостую.
+    startedAtMs = date.toEpochDay() * DAY_MS,
+    finishedAtMs = date.toEpochDay() * DAY_MS + durationMs,
     durationMs = durationMs,
     plannedMs = durationMs,
     stagesCompleted = 6,
@@ -387,6 +398,50 @@ class StatsViewModelTest {
                 assertThat(awaitItem().calendar).isEmpty()
                 viewModel.setPeriodType(StatsPeriodType.MONTH)
                 assertThat(awaitItem().calendar).isNotEmpty()
+            }
+        }
+
+    @Test
+    fun `журнал за период приходит от свежих к старым`() =
+        runTest(dispatcher) {
+            val repository =
+                FakeSessionLogRepository(
+                    listOf(
+                        entry(LocalDate.of(2026, 11, 2)),
+                        entry(LocalDate.of(2026, 11, 9)),
+                        // Октябрьское занятие в ноябрьский журнал не попадает.
+                        entry(LocalDate.of(2026, 10, 30)),
+                    ),
+                )
+
+            viewModel(repository).uiState.test {
+                skipItems(1)
+                val journal = awaitItem().journal
+                assertThat(journal.map { it.localDate })
+                    .containsExactly(LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 2))
+                    .inOrder()
+            }
+        }
+
+    @Test
+    fun `удаление строки убирает её из журнала и из сводки`() =
+        runTest(dispatcher) {
+            // Порог в минуту отсеивает случайные запуски, но не проверочный
+            // прогон на пять минут — а в отчёте студии он лишний.
+            val extra = entry(LocalDate.of(2026, 11, 9), id = 42)
+            val repository = FakeSessionLogRepository(listOf(entry(LocalDate.of(2026, 11, 2)), extra))
+            val viewModel = viewModel(repository)
+
+            viewModel.uiState.test {
+                skipItems(1)
+                assertThat(awaitItem().journal).hasSize(2)
+
+                viewModel.deleteEntry(extra.id)
+
+                val state = awaitItem()
+                assertThat(state.journal.map { it.id }).doesNotContain(extra.id)
+                assertThat(state.totals.sessionCount).isEqualTo(1)
+                cancelAndIgnoreRemainingEvents()
             }
         }
 
