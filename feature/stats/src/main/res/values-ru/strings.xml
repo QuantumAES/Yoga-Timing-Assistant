@@ -29,6 +29,12 @@
     <string name="stats_weekday_description">%1$s: %2$s, %3$s</string>
     <string name="stats_weekday_empty_description">%1$s: занятий нет</string>
 
+    <string name="stats_calendar_title">Календарь</string>
+    <string name="stats_day_description">%1$s: %2$s, %3$s</string>
+    <string name="stats_day_empty_description">%1$s: занятий нет</string>
+    <string name="stats_day_time_range">%1$s → %2$s</string>
+    <string name="stats_day_stopped">остановлено</string>
+
     <string name="stats_profiles_title">По профилям</string>
     <plurals name="stats_sessions_count">
         <item quantity="one">%1$d занятие</item>

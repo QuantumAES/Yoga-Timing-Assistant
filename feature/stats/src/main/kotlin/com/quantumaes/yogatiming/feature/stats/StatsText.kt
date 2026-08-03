@@ -1,7 +1,9 @@
 package com.quantumaes.yogatiming.feature.stats
 
+import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.quantumaes.yogatiming.core.common.time.TimeFormatter
 import com.quantumaes.yogatiming.domain.stats.StatsPeriod
@@ -10,6 +12,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
@@ -100,6 +103,31 @@ private fun LocalDate.format(
     pattern: String,
     locale: Locale,
 ): String = format(DateTimeFormatter.ofPattern(pattern, locale))
+
+/**
+ * «3 ноября» — подпись дня в календаре и в карточке дня.
+ *
+ * Без года: год стоит в подписи периода прямо над календарём, и повторять его
+ * в каждой из сорока двух клеток значит удлинять фразу TalkBack на ровном месте.
+ */
+@Composable
+internal fun dayTitle(date: LocalDate): String {
+    val locale = currentLocale()
+    return remember(date, locale) { date.format("d MMMM", locale) }
+}
+
+/**
+ * Время по стенным часам в формате устройства.
+ *
+ * 12- или 24-часовой выбирает система, а не приложение, — тот же приём, что на
+ * экране итогов занятия.
+ */
+@Composable
+internal fun wallClock(millis: Long): String {
+    val context = LocalContext.current
+    val format = remember(context) { DateFormat.getTimeFormat(context) }
+    return remember(format, millis) { format.format(Date(millis)) }
+}
 
 /** «пн», «вт» — подписи столбиков недельного графика. */
 @Composable

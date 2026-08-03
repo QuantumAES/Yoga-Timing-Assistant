@@ -132,7 +132,10 @@ class StatsViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel(repository: SessionLogRepository) = StatsViewModel(repository, FIXED_CLOCK)
+    private fun viewModel(
+        repository: SessionLogRepository,
+        clock: Clock = FIXED_CLOCK,
+    ) = StatsViewModel(repository, clock)
 
     @Test
     fun `экран открывается на текущем месяце`() =
@@ -271,6 +274,119 @@ class StatsViewModelTest {
                 assertThat(state.periodLengthDays).isNull()
                 assertThat(state.canGoForward).isFalse()
                 assertThat(state.period.type.isNavigable).isFalse()
+            }
+        }
+
+    @Test
+    fun `календарь ноября строится целыми неделями с хвостами соседних месяцев`() =
+        runTest(dispatcher) {
+            // 1 ноября 2026 — воскресенье, 30 ноября — понедельник: сетка от
+            // понедельника 26 октября до воскресенья 6 декабря, шесть недель.
+            viewModel(FakeSessionLogRepository()).uiState.test {
+                skipItems(1)
+                val calendar = awaitItem().calendar
+                assertThat(calendar).hasSize(42)
+                assertThat(calendar.first().date).isEqualTo(LocalDate.of(2026, 10, 26))
+                assertThat(calendar.last().date).isEqualTo(LocalDate.of(2026, 12, 6))
+                // Хвосты — настоящие даты, но помечены как чужие.
+                assertThat(calendar.first().inPeriod).isFalse()
+                assertThat(calendar.single { it.date == LocalDate.of(2026, 11, 1) }.inPeriod).isTrue()
+                assertThat(calendar.single { it.isToday }.date).isEqualTo(TODAY)
+            }
+        }
+
+    @Test
+    fun `февраль из 28 дней укладывается ровно в четыре недели`() =
+        runTest(dispatcher) {
+            // 1 февраля 2027 — понедельник, 28 февраля — воскресенье: редкий
+            // месяц без единого чужого дня в сетке. Проверяется другими часами,
+            // а не листанием: вперёд из текущего месяца экран не пускает.
+            val february = LocalDate.of(2027, 2, 15)
+            val clock = Clock.fixed(february.atTime(19, 0).atZone(ZONE).toInstant(), ZONE)
+
+            viewModel(FakeSessionLogRepository(), clock).uiState.test {
+                skipItems(1)
+                val calendar = awaitItem().calendar
+                assertThat(calendar).hasSize(28)
+                assertThat(calendar.all { it.inPeriod }).isTrue()
+                assertThat(calendar.first().date).isEqualTo(LocalDate.of(2027, 2, 1))
+                assertThat(calendar.last().date).isEqualTo(LocalDate.of(2027, 2, 28))
+            }
+        }
+
+    @Test
+    fun `занятие в хвосте соседнего месяца отмечено в сетке`() =
+        runTest(dispatcher) {
+            // Дни запрашиваются по сетке, а не по периоду: 30 октября видно
+            // в ноябрьском календаре, но в сводку ноября оно не попадает.
+            val repository = FakeSessionLogRepository(listOf(entry(LocalDate.of(2026, 10, 30))))
+
+            viewModel(repository).uiState.test {
+                skipItems(1)
+                val state = awaitItem()
+                val tail = state.calendar.single { it.date == LocalDate.of(2026, 10, 30) }
+                assertThat(tail.sessionCount).isEqualTo(1)
+                assertThat(tail.inPeriod).isFalse()
+                assertThat(state.totals.sessionCount).isEqualTo(0)
+                // И в график по дням недели чужой день тоже не попадает.
+                assertThat(state.weekdays.sumOf { it.sessionCount }).isEqualTo(0)
+            }
+        }
+
+    @Test
+    fun `тап по дню открывает его занятия и закрывается повторным тапом`() =
+        runTest(dispatcher) {
+            val day = LocalDate.of(2026, 11, 3)
+            val repository = FakeSessionLogRepository(listOf(entry(day), entry(LocalDate.of(2026, 11, 4))))
+            val viewModel = viewModel(repository)
+
+            viewModel.uiState.test {
+                skipItems(2)
+
+                viewModel.selectDay(day)
+                val opened = awaitItem()
+                assertThat(opened.selectedDay).isEqualTo(day)
+                assertThat(opened.daySessions.map { it.localDate }).containsExactly(day)
+
+                viewModel.selectDay(day)
+                val closed = awaitItem()
+                assertThat(closed.selectedDay).isNull()
+                assertThat(closed.daySessions).isEmpty()
+            }
+        }
+
+    @Test
+    fun `листание месяца снимает выбор дня`() =
+        runTest(dispatcher) {
+            // Иначе под октябрьской сеткой висела бы карточка ноябрьского дня.
+            val day = LocalDate.of(2026, 11, 3)
+            val viewModel = viewModel(FakeSessionLogRepository(listOf(entry(day))))
+
+            viewModel.uiState.test {
+                skipItems(2)
+                viewModel.selectDay(day)
+                assertThat(awaitItem().selectedDay).isEqualTo(day)
+
+                viewModel.showPrevious()
+                assertThat(awaitItem().selectedDay).isNull()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `календарь показывается только для месяца`() =
+        runTest(dispatcher) {
+            // Месячная сетка при выбранном годе врала бы подписью периода.
+            val viewModel = viewModel(FakeSessionLogRepository())
+
+            viewModel.uiState.test {
+                skipItems(2)
+                viewModel.setPeriodType(StatsPeriodType.YEAR)
+                assertThat(awaitItem().calendar).isEmpty()
+                viewModel.setPeriodType(StatsPeriodType.WEEK)
+                assertThat(awaitItem().calendar).isEmpty()
+                viewModel.setPeriodType(StatsPeriodType.MONTH)
+                assertThat(awaitItem().calendar).isNotEmpty()
             }
         }
 
