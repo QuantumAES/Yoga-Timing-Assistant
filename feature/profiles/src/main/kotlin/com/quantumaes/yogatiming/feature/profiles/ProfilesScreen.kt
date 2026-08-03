@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,6 +68,7 @@ internal fun ProfilesScreen(
     onStartSession: (Long) -> Unit,
     onOpenSession: (Long) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenStats: () -> Unit,
     viewModel: ProfilesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -88,6 +90,7 @@ internal fun ProfilesScreen(
         onStartSession = onStartSession,
         onOpenSession = onOpenSession,
         onOpenSettings = onOpenSettings,
+        onOpenStats = onOpenStats,
         onToggleFavorite = viewModel::setFavorite,
         onQueryChange = viewModel::setQuery,
         onToggleCategory = viewModel::toggleCategory,
@@ -146,6 +149,7 @@ internal fun ProfilesScreen(
     onStartSession: (Long) -> Unit,
     onOpenSession: (Long) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenStats: () -> Unit,
     onToggleFavorite: (Long, Boolean) -> Unit,
     onQueryChange: (String) -> Unit,
     onToggleCategory: (ProfileCategory) -> Unit,
@@ -166,6 +170,14 @@ internal fun ProfilesScreen(
                 // списку, поиску и фильтрам.
                 title = { AppBrand() },
                 actions = {
+                    // Статистика рядом с настройками: обе — про приложение в
+                    // целом, а не про конкретный профиль (docs/09-STATISTICS.md §4).
+                    IconButton(onClick = onOpenStats) {
+                        Icon(
+                            imageVector = Icons.Filled.DateRange,
+                            contentDescription = stringResource(R.string.profiles_stats),
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
@@ -424,6 +436,7 @@ private fun ProfilesScreenPreview() {
             onStartSession = {},
             onOpenSession = {},
             onOpenSettings = {},
+            onOpenStats = {},
             onToggleFavorite = { _, _ -> },
             onQueryChange = {},
             onToggleCategory = {},

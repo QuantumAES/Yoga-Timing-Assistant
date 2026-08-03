@@ -22,6 +22,10 @@
     <string name="settings_voice_unavailable">This device has no voice for the app language. Cues configured for voice will fall back to a soft gong.</string>
 
     <string name="settings_section_screen">Screen</string>
+    <string name="settings_timer_shape">Timer shape</string>
+    <string name="settings_timer_shape_hint">A ring is a square: on a short screen its diameter runs out of height before it runs out of width. A panel takes the full width — on a small phone the digits come out about half again as large.</string>
+    <string name="settings_timer_shape_ring">Ring</string>
+    <string name="settings_timer_shape_panel">Rounded panel</string>
     <string name="settings_keep_screen_on">Keep the screen on</string>
     <string name="settings_keep_screen_on_hint">During a session only. The countdown does not depend on it: it keeps running with the screen off.</string>
     <string name="settings_auto_dim">Dim in focus mode</string>

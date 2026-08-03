@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="stats_title">Статистика</string>
+    <string name="stats_back">Назад</string>
+
+    <string name="stats_period_week">Неделя</string>
+    <string name="stats_period_month">Месяц</string>
+    <string name="stats_period_year">Год</string>
+    <string name="stats_period_all">Всё</string>
+    <string name="stats_period_all_title">За всё время</string>
+    <string name="stats_period_previous">Предыдущий период</string>
+    <string name="stats_period_next">Следующий период</string>
+
+    <string name="stats_duration_hm">%1$d ч %2$d мин</string>
+    <string name="stats_duration_m">%1$d мин</string>
+
+    <plurals name="stats_tile_sessions" tools:ignore="ImpliedQuantity">
+        <item quantity="one">занятие</item>
+        <item quantity="few">занятия</item>
+        <item quantity="many">занятий</item>
+        <item quantity="other">занятия</item>
+    </plurals>
+    <string name="stats_tile_total">общее время</string>
+    <string name="stats_tile_average">среднее занятие</string>
+    <string name="stats_tile_days">дней с практикой</string>
+    <string name="stats_days_of">%1$d из %2$d</string>
+
+    <string name="stats_weekdays_title">По дням недели</string>
+    <string name="stats_weekday_description">%1$s: %2$s, %3$s</string>
+    <string name="stats_weekday_empty_description">%1$s: занятий нет</string>
+
+    <string name="stats_profiles_title">По профилям</string>
+    <plurals name="stats_sessions_count">
+        <item quantity="one">%1$d занятие</item>
+        <item quantity="few">%1$d занятия</item>
+        <item quantity="many">%1$d занятий</item>
+        <item quantity="other">%1$d занятия</item>
+    </plurals>
+
+    <string name="stats_empty_title">За этот период занятий нет</string>
+    <string name="stats_empty_hint">Занятие длиннее минуты попадает сюда само, сразу по окончании.</string>
+    <string name="stats_empty_action">К списку профилей</string>
+</resources>

@@ -20,7 +20,7 @@ agp = "9.3.1"                   # требует Gradle >= 9.5, build-tools >= 3
 kotlin = "2.4.10"
 ksp = "2.3.10"                  # соответствует Kotlin 2.4.10
 detekt = "2.0.0-alpha.5"        # 1.23.x собран на Kotlin 2.0 и не парсит 2.4
-spotless = "8.8.0"
+spotless = "8.9.0"
 ktlint = "1.8.0"
 kover = "0.9.9"
 

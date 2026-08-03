@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":feature:editor"))
     implementation(project(":feature:timer"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:stats"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

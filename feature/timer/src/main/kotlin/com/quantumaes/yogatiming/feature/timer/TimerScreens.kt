@@ -60,6 +60,7 @@ import com.quantumaes.yogatiming.core.designsystem.theme.TimerPalette
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTextStyles
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.core.designsystem.theme.timerPalette
+import com.quantumaes.yogatiming.domain.settings.TimerShape
 import com.quantumaes.yogatiming.feature.timer.component.LockOverlay
 import com.quantumaes.yogatiming.feature.timer.component.ProgressRing
 import com.quantumaes.yogatiming.feature.timer.component.RestrictionNotice
@@ -153,6 +154,7 @@ internal fun TimerScreen(
         snapshot = snapshot,
         notices = notices,
         autoDimEnabled = settings.autoDimEnabled,
+        shape = settings.timerShape,
         settingsAvailable = settings.settingsFromSession,
         onOpenSettings = onOpenSettings,
         mode = mode,
@@ -204,6 +206,7 @@ private fun SessionScreen(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
     autoDimEnabled: Boolean,
+    shape: TimerShape,
     settingsAvailable: Boolean,
     onOpenSettings: () -> Unit,
     mode: SessionMode,
@@ -271,6 +274,7 @@ private fun SessionScreen(
                     snapshot = snapshot,
                     notices = notices,
                     palette = palette,
+                    shape = shape,
                     settingsAvailable = settingsAvailable,
                     onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
@@ -291,6 +295,7 @@ private fun SessionScreen(
                     snapshot = snapshot,
                     notices = notices,
                     palette = palette,
+                    shape = shape,
                     settingsAvailable = settingsAvailable,
                     onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
@@ -446,11 +451,30 @@ private fun StopConfirmation(
 @Preview
 @Composable
 private fun SessionScreenPreview() {
+    SessionScreenPreview(TimerShape.RING)
+}
+
+/**
+ * Панель на маленьком экране — то, ради чего вторая форма и появилась.
+ *
+ * Размер окна задан явно: на превью по умолчанию (телефон целиком) разница
+ * между круг и панелью скромная, а видна она именно там, где кольцу не хватает
+ * высоты (полевая проверка 2026-08-03, замечание 2).
+ */
+@Preview(widthDp = 360, heightDp = 592)
+@Composable
+private fun SessionScreenPanelPreview() {
+    SessionScreenPreview(TimerShape.PANEL)
+}
+
+@Composable
+private fun SessionScreenPreview(shape: TimerShape) {
     YtaTheme(darkTheme = true) {
         SessionScreen(
             snapshot = previewSnapshot(),
             notices = emptyList(),
             autoDimEnabled = true,
+            shape = shape,
             settingsAvailable = true,
             onOpenSettings = {},
             mode = SessionMode.NORMAL,

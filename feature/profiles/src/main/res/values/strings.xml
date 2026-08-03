@@ -2,6 +2,7 @@
 <resources>
     <string name="profiles_create">New profile</string>
     <string name="profiles_settings">Settings</string>
+    <string name="profiles_stats">Statistics</string>
     <string name="profiles_start">Start session</string>
     <string name="profiles_favorite_add">Add to favorites</string>
     <string name="profiles_favorite_remove">Remove from favorites</string>

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.speech.tts.TextToSpeech
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,6 +53,7 @@ import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.domain.alert.VoiceStatus
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
+import com.quantumaes.yogatiming.domain.settings.TimerShape
 
 private val VALUE_WIDTH = 56.dp
 
@@ -116,6 +118,7 @@ internal fun SettingsScreen(
             onSpeechRateChange = viewModel::setSpeechRate,
             onKeepScreenOnChange = viewModel::setKeepScreenOn,
             onAutoDimChange = viewModel::setAutoDim,
+            onTimerShapeChange = viewModel::setTimerShape,
             onSettingsFromSessionChange = viewModel::setSettingsFromSession,
             onPreviewSound = viewModel::previewSound,
             onPreviewVoice = viewModel::previewVoice,
@@ -142,6 +145,7 @@ private fun SettingsContent(
     onSpeechRateChange: (Int) -> Unit,
     onKeepScreenOnChange: (Boolean) -> Unit,
     onAutoDimChange: (Boolean) -> Unit,
+    onTimerShapeChange: (TimerShape) -> Unit,
     onSettingsFromSessionChange: (Boolean) -> Unit,
     onPreviewSound: () -> Unit,
     onPreviewVoice: () -> Unit,
@@ -201,6 +205,20 @@ private fun SettingsContent(
         HorizontalDivider(Modifier.padding(vertical = Spacing.s))
 
         SectionTitle(stringResource(R.string.settings_section_screen))
+        // Форма индикатора — первой в разделе: она меняет рабочий экран сильнее
+        // всего остального здесь и ради неё в этот раздел и заходят.
+        OptionGroup(
+            title = stringResource(R.string.settings_timer_shape),
+            hint = stringResource(R.string.settings_timer_shape_hint),
+        ) {
+            TimerShape.entries.forEach { shape ->
+                RadioRow(
+                    label = stringResource(shape.labelRes),
+                    selected = shape == settings.timerShape,
+                    onSelect = { onTimerShapeChange(shape) },
+                )
+            }
+        }
         SwitchRow(
             title = stringResource(R.string.settings_keep_screen_on),
             subtitle = stringResource(R.string.settings_keep_screen_on_hint),
@@ -225,8 +243,8 @@ private fun SettingsContent(
         SectionTitle(stringResource(R.string.settings_section_appearance))
         Column(Modifier.selectableGroup()) {
             ThemeMode.entries.forEach { mode ->
-                ThemeOption(
-                    mode = mode,
+                RadioRow(
+                    label = stringResource(mode.labelRes),
                     selected = mode == settings.themeMode,
                     onSelect = { onThemeModeChange(mode) },
                 )
@@ -394,14 +412,14 @@ private fun PreviewButton(
 }
 
 /**
- * Вариант темы.
+ * Один вариант выбора.
  *
  * `selectable` на всей строке, а не только на кнопке: попасть пальцем в
  * радиокнопку с коврика тяжело, а TalkBack получает одну цель вместо двух.
  */
 @Composable
-private fun ThemeOption(
-    mode: ThemeMode,
+private fun RadioRow(
+    label: String,
     selected: Boolean,
     onSelect: () -> Unit,
 ) {
@@ -415,10 +433,37 @@ private fun ThemeOption(
         horizontalArrangement = Arrangement.spacedBy(Spacing.m),
     ) {
         RadioButton(selected = selected, onClick = null)
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+/**
+ * Группа вариантов с заголовком и пояснением.
+ *
+ * Заголовок нужен там, где вариантов больше одной строки и сами по себе они
+ * не говорят, о чём выбор: «Круг» и «Прямоугольник» без подписи «Вид таймера»
+ * — загадка. У темы такой подписи нет намеренно: раздел «Оформление» и три
+ * названия тем не оставляют вопросов.
+ */
+@Composable
+private fun OptionGroup(
+    title: String,
+    hint: String,
+    options: @Composable ColumnScope.() -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().selectableGroup()) {
         Text(
-            text = stringResource(mode.labelRes),
+            text = title,
             style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(horizontal = Spacing.m),
         )
+        Text(
+            text = hint,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Spacing.m),
+        )
+        options()
     }
 }
 
@@ -457,6 +502,13 @@ private val ThemeMode.labelRes: Int
             ThemeMode.DARK -> R.string.settings_theme_dark
         }
 
+private val TimerShape.labelRes: Int
+    get() =
+        when (this) {
+            TimerShape.RING -> R.string.settings_timer_shape_ring
+            TimerShape.PANEL -> R.string.settings_timer_shape_panel
+        }
+
 @Preview
 @Composable
 private fun SettingsContentPreview() {
@@ -473,6 +525,7 @@ private fun SettingsContentPreview() {
             onSpeechRateChange = {},
             onKeepScreenOnChange = {},
             onAutoDimChange = {},
+            onTimerShapeChange = {},
             onSettingsFromSessionChange = {},
             onPreviewSound = {},
             onPreviewVoice = {},

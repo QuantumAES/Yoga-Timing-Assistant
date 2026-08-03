@@ -11,6 +11,7 @@ import com.quantumaes.yogatiming.domain.repository.ProfileRepository
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
+import com.quantumaes.yogatiming.domain.settings.TimerShape
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -97,6 +98,8 @@ class FakeSettingsStore(
     override suspend fun setKeepScreenOn(enabled: Boolean) = Unit
 
     override suspend fun setAutoDim(enabled: Boolean) = Unit
+
+    override suspend fun setTimerShape(shape: TimerShape) = Unit
 
     override suspend fun setSettingsFromSession(enabled: Boolean) = Unit
 

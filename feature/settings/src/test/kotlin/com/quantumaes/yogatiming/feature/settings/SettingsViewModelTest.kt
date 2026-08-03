@@ -11,6 +11,7 @@ import com.quantumaes.yogatiming.domain.model.alert.AlertChannel
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
+import com.quantumaes.yogatiming.domain.settings.TimerShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -62,6 +63,10 @@ private class FakeSettingsStore(
 
     override suspend fun setAutoDim(enabled: Boolean) {
         state.value = state.value.copy(autoDimEnabled = enabled)
+    }
+
+    override suspend fun setTimerShape(shape: TimerShape) {
+        state.value = state.value.copy(timerShape = shape)
     }
 
     override suspend fun setSettingsFromSession(enabled: Boolean) {
@@ -144,6 +149,25 @@ class SettingsViewModelTest {
                 awaitItem()
                 model.setVoiceEnabled(true)
                 assertThat(awaitItem().voiceEnabled).isTrue()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    /**
+     * Полевая проверка 2026-08-03, замечание 2: на невысоком экране кольцо
+     * мельчит цифры, и форму индикатора должно быть можно сменить.
+     */
+    @Test
+    fun `вид таймера по умолчанию кольцо и переключается на прямоугольник`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.settings.test {
+                assertThat(awaitItem().timerShape).isEqualTo(TimerShape.RING)
+
+                viewModel.setTimerShape(TimerShape.PANEL)
+
+                assertThat(awaitItem().timerShape).isEqualTo(TimerShape.PANEL)
                 cancelAndIgnoreRemainingEvents()
             }
         }

@@ -45,6 +45,8 @@ import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.TimerPalette
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTextStyles
+import com.quantumaes.yogatiming.domain.settings.TimerShape
+import com.quantumaes.yogatiming.feature.timer.component.ProgressPanel
 import com.quantumaes.yogatiming.feature.timer.component.ProgressRing
 import com.quantumaes.yogatiming.feature.timer.component.RestrictionNotice
 import com.quantumaes.yogatiming.feature.timer.component.SessionControls
@@ -75,7 +77,7 @@ private const val STAGE_TITLE_LINES = 2
 /** Сколько строк резервируется под заметку инструктора. */
 private const val STAGE_NOTE_LINES = 2
 
-// ─── Геометрия содержимого кольца ────────────────────────────────────────────
+// ─── Геометрия содержимого индикатора ────────────────────────────────────────
 //
 // Внутри круга остались только цифры и плашка ручной поправки: название этапа,
 // «Этап 2/6» и остаток занятия ушли в шапку над кольцом (полевая проверка
@@ -90,16 +92,42 @@ private const val STAGE_NOTE_LINES = 2
 // равна √(r² − y²). Полоса содержимого занимает 70% высоты — её край отстоит от
 // центра на 0,35 d, там хорда равна 0,71 d, и плашка шириной 0,68 d
 // гарантированно внутри. По центру круг шире: цифрам достаётся 0,86 d.
+//
+// У панели (`TimerShape.PANEL`) этой арифметики нет: обводку и воздух около неё
+// вычитает сама панель (см. `ProgressPanel`), а внутри отступа ширина одинакова
+// на любой высоте — доли остаются почти единицей и одинаковы для цифр и плашки.
 
 private const val RING_CONTENT_HEIGHT = 0.70f
 private const val RING_EDGE_WIDTH = 0.68f
 private const val RING_DIGITS_WIDTH = 0.86f
+
+private const val PANEL_CONTENT_HEIGHT = 0.96f
+private const val PANEL_EDGE_WIDTH = 0.96f
+private const val PANEL_DIGITS_WIDTH = 1f
+
+/** Доля высоты фигуры, отданная цифрам и плашке поправки. */
+private val TimerShape.contentHeight: Float
+    get() = if (this == TimerShape.RING) RING_CONTENT_HEIGHT else PANEL_CONTENT_HEIGHT
+
+/** Доля ширины фигуры под цифры — по её середине, где места больше всего. */
+private val TimerShape.digitsWidth: Float
+    get() = if (this == TimerShape.RING) RING_DIGITS_WIDTH else PANEL_DIGITS_WIDTH
+
+/** Доля ширины у края полосы содержимого — там, где стоит плашка поправки. */
+private val TimerShape.edgeWidth: Float
+    get() = if (this == TimerShape.RING) RING_EDGE_WIDTH else PANEL_EDGE_WIDTH
 
 /** Скруглённая плашка ручной поправки под цифрами. */
 private val ADJUSTMENT_CORNER = 12.dp
 
 /** Насколько плашка поправки светлее фона. Акцент, а не заливка. */
 private const val ADJUSTMENT_BACKGROUND_ALPHA = 0.18f
+
+/**
+ * Сколько шагов `Spacing.xxs` добавляется к строке плашки: поле сверху,
+ * собственные поля плашки сверху и снизу.
+ */
+private const val ADJUSTMENT_SLOT_PADDINGS = 3
 
 // Раскладки рабочего экрана: портрет, ландшафт и режим фокуса. Отделены от
 // TimerScreen намеренно — тот отвечает за состояние и жесты, эти функции
@@ -119,6 +147,7 @@ internal fun PortraitContent(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
     palette: TimerPalette,
+    shape: TimerShape,
     settingsAvailable: Boolean,
     onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
@@ -159,9 +188,10 @@ internal fun PortraitContent(
 
         StageHeader(snapshot = snapshot, palette = palette, modifier = sides)
 
-        StageRing(
+        StageGauge(
             snapshot = snapshot,
             palette = palette,
+            shape = shape,
             onEnterFocus = { onModeChange(SessionMode.FOCUS) },
             modifier =
                 Modifier
@@ -195,6 +225,7 @@ internal fun LandscapeContent(
     snapshot: SessionSnapshot?,
     notices: List<TimerRestriction>,
     palette: TimerPalette,
+    shape: TimerShape,
     settingsAvailable: Boolean,
     onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
@@ -209,9 +240,10 @@ internal fun LandscapeContent(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
-        StageRing(
+        StageGauge(
             snapshot = snapshot,
             palette = palette,
+            shape = shape,
             onEnterFocus = { onModeChange(SessionMode.FOCUS) },
             modifier = Modifier.weight(1f).fillMaxSize().padding(LANDSCAPE_RING_PADDING),
         )
@@ -314,73 +346,129 @@ private fun StageHeader(
 }
 
 /**
- * Кольцо с цифрами.
+ * Индикатор отсчёта с цифрами: кольцо или панель — по настройке «Вид таймера».
  *
  * Вся зона — одна большая цель для тапа (docs/03-GESTURES.md §2): попасть в
  * неё с коврика можно не глядя, в отличие от кнопки «фокус» где-нибудь в углу.
  *
  * Внутри — только то, что обязано быть крупным: цифры и накопленная поправка
  * ±30 с. Цифры получают `weight`, поэтому плашка поправки не может вытеснить
- * их за пределы круга даже системным шрифтом в 200%.
+ * их за пределы фигуры даже системным шрифтом в 200%.
+ *
+ * Кольцо квадратное (`aspectRatio(1f)`), панель — нет: в этом вся её польза,
+ * она забирает всю ширину экрана и всю оставшуюся высоту.
  */
 @Composable
-private fun StageRing(
+private fun StageGauge(
     snapshot: SessionSnapshot?,
     palette: TimerPalette,
+    shape: TimerShape,
     onEnterFocus: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusLabel = stringResource(R.string.timer_focus_enter)
+    val progress = snapshot?.stageProgress
+    val accent = snapshot.accent(palette)
+    val paused = snapshot?.runState == RunState.PAUSED
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        ProgressRing(
-            progress = snapshot?.stageProgress,
-            color = snapshot.accent(palette),
-            trackColor = palette.ringTrack,
-            pulsing = snapshot?.runState == RunState.PAUSED,
-            strokeWidth = Dimens.progressRingWidth,
-            modifier =
-                Modifier
-                    .aspectRatio(1f)
-                    .tapTarget(label = focusLabel, onTap = onEnterFocus),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(RING_CONTENT_HEIGHT),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                // `fill = false`: цифры берут из полосы столько, сколько им нужно
-                // по ширине, и не растягивают столбец.
-                TimerDisplay(
-                    text = remainingText(snapshot),
-                    color = snapshot.accent(palette),
-                    modifier = Modifier.fillMaxWidth(RING_DIGITS_WIDTH).weight(1f, fill = false),
-                )
-                // Ручная поправка — плашкой под цифрами: «+0:30» относится к
-                // текущему этапу и читается одним взглядом вместе с ним.
-                StageAdjustment(snapshot = snapshot, palette = palette)
+        when (shape) {
+            TimerShape.RING -> {
+                ProgressRing(
+                    progress = progress,
+                    color = accent,
+                    trackColor = palette.ringTrack,
+                    pulsing = paused,
+                    strokeWidth = Dimens.progressRingWidth,
+                    modifier =
+                        Modifier
+                            .aspectRatio(1f)
+                            .tapTarget(label = focusLabel, onTap = onEnterFocus),
+                ) {
+                    GaugeContent(snapshot = snapshot, palette = palette, shape = shape)
+                }
+            }
+
+            TimerShape.PANEL -> {
+                ProgressPanel(
+                    progress = progress,
+                    color = accent,
+                    trackColor = palette.ringTrack,
+                    pulsing = paused,
+                    strokeWidth = Dimens.progressRingWidth,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .tapTarget(label = focusLabel, onTap = onEnterFocus),
+                ) {
+                    GaugeContent(snapshot = snapshot, palette = palette, shape = shape)
+                }
             }
         }
     }
 }
 
-/** «+0:30» — накопленная правка ±30 с текущего этапа. */
+/**
+ * Цифры и плашка поправки внутри фигуры.
+ *
+ * Место под плашку зарезервировано всегда, даже когда поправки нет. Иначе
+ * появление «+0:30» удлиняло бы столбец, а он центрирован — и цифры прыгали бы
+ * вверх при каждом нажатии «+30 с» и вниз при возврате поправки к нулю
+ * (полевая проверка 2026-08-03, замечание 1). Цифрам это не стоит ничего:
+ * их кегль почти всегда упирается в ширину фигуры, а не в высоту, — но
+ * положение главного элемента экрана перестаёт зависеть от второстепенного.
+ */
+@Composable
+private fun GaugeContent(
+    snapshot: SessionSnapshot?,
+    palette: TimerPalette,
+    shape: TimerShape,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().fillMaxHeight(shape.contentHeight),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        // `fill = false`: цифры берут из полосы столько, сколько им нужно
+        // по ширине, и не растягивают столбец.
+        TimerDisplay(
+            text = remainingText(snapshot),
+            color = snapshot.accent(palette),
+            modifier = Modifier.fillMaxWidth(shape.digitsWidth).weight(1f, fill = false),
+        )
+        // Ручная поправка — плашкой под цифрами: «+0:30» относится к
+        // текущему этапу и читается одним взглядом вместе с ним.
+        StageAdjustment(snapshot = snapshot, palette = palette, widthFraction = shape.edgeWidth)
+    }
+}
+
+/**
+ * «+0:30» — накопленная правка ±30 с текущего этапа.
+ *
+ * Высота слота постоянна и посчитана из самого стиля, а не задана в dp: при
+ * системном шрифте в 200% плашка обязана поместиться целиком, а не обрезаться.
+ * Пустой слот — не потерянное место, а зафиксированное положение цифр над ним.
+ */
 @Composable
 private fun StageAdjustment(
     snapshot: SessionSnapshot?,
     palette: TimerPalette,
+    widthFraction: Float,
 ) {
-    val adjustment = snapshot?.stageAdjustmentMs?.takeIf { it != 0L } ?: return
-    val accent = snapshot.accent(palette)
-    val description = stageAdjustmentText(adjustment)
+    // Строка плашки плюс её собственные поля сверху и снизу и отступ от цифр.
+    val slot = reservedHeight(MaterialTheme.typography.titleMedium, 1) + Spacing.xxs * ADJUSTMENT_SLOT_PADDINGS
 
     // Плашка обёрнута в бокс шириной с хорду, а не растянута на неё: доля
     // диаметра здесь потолок, а не размер — залитый прямоугольник в две трети
     // круга спорил бы с цифрами, ради которых круг и нарисован.
     Box(
-        modifier = Modifier.fillMaxWidth(RING_EDGE_WIDTH).padding(top = Spacing.xxs),
-        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxWidth(widthFraction).height(slot).padding(top = Spacing.xxs),
+        contentAlignment = Alignment.TopCenter,
     ) {
+        val adjustment = snapshot?.stageAdjustmentMs?.takeIf { it != 0L } ?: return@Box
+        val accent = snapshot.accent(palette)
+        val description = stageAdjustmentText(adjustment)
+
         Text(
             text = signedClock(adjustment),
             style = MaterialTheme.typography.titleMedium,

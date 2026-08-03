@@ -14,6 +14,7 @@ import com.quantumaes.yogatiming.domain.model.alert.VoicePhrase
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
+import com.quantumaes.yogatiming.domain.settings.TimerShape
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,6 +105,19 @@ class SettingsViewModel
 
         fun setAutoDim(enabled: Boolean) {
             viewModelScope.launch { settingsStore.setAutoDim(enabled) }
+        }
+
+        /**
+         * Форма индикатора отсчёта.
+         *
+         * Не вопрос вкуса: на невысоком экране круг упирается диаметром в
+         * остаток высоты, и цифры внутри него мельчают вдвое против того, что
+         * даёт та же ширина прямоугольником (полевая проверка 2026-08-03,
+         * замечание 2). Занятие от смены не страдает — форму меняет разметка,
+         * отсчёт ведёт сервис.
+         */
+        fun setTimerShape(shape: TimerShape) {
+            viewModelScope.launch { settingsStore.setTimerShape(shape) }
         }
 
         /**

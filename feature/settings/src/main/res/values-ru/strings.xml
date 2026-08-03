@@ -22,6 +22,10 @@
     <string name="settings_voice_unavailable">На устройстве нет голоса для языка приложения. Оповещения с голосом заменяются мягким гонгом.</string>
 
     <string name="settings_section_screen">Экран</string>
+    <string name="settings_timer_shape">Вид таймера</string>
+    <string name="settings_timer_shape_hint">Кольцо — квадрат: на невысоком экране его диаметр упирается в высоту раньше, чем в ширину. Прямоугольник занимает всю ширину — на небольшом телефоне цифры выходят примерно в полтора раза крупнее.</string>
+    <string name="settings_timer_shape_ring">Круг</string>
+    <string name="settings_timer_shape_panel">Прямоугольник</string>
     <string name="settings_keep_screen_on">Не гасить экран</string>
     <string name="settings_keep_screen_on_hint">Только на время занятия. Отсчёт от этого не зависит: он идёт и при выключенном экране.</string>
     <string name="settings_auto_dim">Затемнять в режиме фокуса</string>

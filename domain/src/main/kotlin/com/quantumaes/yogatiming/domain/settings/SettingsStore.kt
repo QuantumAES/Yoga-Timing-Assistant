@@ -29,6 +29,8 @@ interface SettingsStore {
 
     suspend fun setAutoDim(enabled: Boolean)
 
+    suspend fun setTimerShape(shape: TimerShape)
+
     suspend fun setSettingsFromSession(enabled: Boolean)
 
     suspend fun setOnboardingCompleted(completed: Boolean)

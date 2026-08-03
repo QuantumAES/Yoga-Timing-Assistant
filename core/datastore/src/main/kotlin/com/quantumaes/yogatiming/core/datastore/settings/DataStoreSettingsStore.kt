@@ -10,6 +10,7 @@ import com.quantumaes.yogatiming.core.datastore.userPrefs
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
+import com.quantumaes.yogatiming.domain.settings.TimerShape
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -26,6 +27,7 @@ private val KEY_DUCK_MUSIC = booleanPreferencesKey("duck_music_on_alert")
 private val KEY_SPEECH_RATE = intPreferencesKey("speech_rate_percent")
 private val KEY_KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
 private val KEY_AUTO_DIM = booleanPreferencesKey("auto_dim")
+private val KEY_TIMER_SHAPE = stringPreferencesKey("timer_shape")
 private val KEY_SESSION_SETTINGS = booleanPreferencesKey("settings_from_session")
 private val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_completed")
 
@@ -64,6 +66,7 @@ class DataStoreSettingsStore
                         speechRatePercent = prefs[KEY_SPEECH_RATE] ?: defaults.speechRatePercent,
                         keepScreenOn = prefs[KEY_KEEP_SCREEN_ON] ?: defaults.keepScreenOn,
                         autoDimEnabled = prefs[KEY_AUTO_DIM] ?: defaults.autoDimEnabled,
+                        timerShape = TimerShape.fromName(prefs[KEY_TIMER_SHAPE]),
                         settingsFromSession = prefs[KEY_SESSION_SETTINGS] ?: defaults.settingsFromSession,
                         onboardingCompleted = prefs[KEY_ONBOARDING_DONE] ?: defaults.onboardingCompleted,
                     )
@@ -102,6 +105,10 @@ class DataStoreSettingsStore
 
         override suspend fun setAutoDim(enabled: Boolean) {
             context.userPrefs.edit { it[KEY_AUTO_DIM] = enabled }
+        }
+
+        override suspend fun setTimerShape(shape: TimerShape) {
+            context.userPrefs.edit { it[KEY_TIMER_SHAPE] = shape.name }
         }
 
         override suspend fun setSettingsFromSession(enabled: Boolean) {

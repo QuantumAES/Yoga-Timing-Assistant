@@ -13,6 +13,8 @@ import com.quantumaes.yogatiming.feature.profiles.profilesScreen
 import com.quantumaes.yogatiming.feature.settings.OnboardingRoute
 import com.quantumaes.yogatiming.feature.settings.SettingsRoute
 import com.quantumaes.yogatiming.feature.settings.settingsScreens
+import com.quantumaes.yogatiming.feature.stats.StatsRoute
+import com.quantumaes.yogatiming.feature.stats.statsScreen
 import com.quantumaes.yogatiming.feature.timer.SessionFinishedRoute
 import com.quantumaes.yogatiming.feature.timer.TimerRoute
 import com.quantumaes.yogatiming.feature.timer.timerScreens
@@ -24,6 +26,7 @@ import com.quantumaes.yogatiming.feature.timer.timerScreens
  * Онбординг (1-й запуск, Фаза 7)
  *        │
  *  Список профилей ──┬── Настройки
+ *        │           ├── Статистика (M7)
  *        │           └── Занятие ── Finished
  *        │
  *  Редактор профиля ── Редактор этапа ── Alert Config
@@ -54,7 +57,10 @@ fun YtaNavHost(
                 navController.navigate(TimerRoute(profileId)) { launchSingleTop = true }
             },
             onOpenSettings = { navController.navigate(SettingsRoute) },
+            onOpenStats = { navController.navigate(StatsRoute) },
         )
+
+        statsScreen(onBack = { navController.popBackStack() })
 
         editorScreens(
             onOpenStage = { profileId, stageId ->
