@@ -72,9 +72,20 @@ internal fun VibrationPattern.vibrationLabelRes(): Int =
 internal fun VoicePhrase.voiceLabelRes(): Int =
     when (this) {
         VoicePhrase.NONE -> R.string.editor_voice_none
+
         VoicePhrase.STAGE_NAME -> R.string.editor_voice_stage_name
+
         VoicePhrase.NEXT_STAGE -> R.string.editor_voice_next_stage
+
         VoicePhrase.TIME_REMAINING -> R.string.editor_voice_time_remaining
+
         VoicePhrase.SESSION_FINISHED -> R.string.editor_voice_session_finished
+
         VoicePhrase.CUSTOM -> R.string.editor_voice_custom
+
+        // В списки выбора эта фраза не попадает: она про занятие целиком и
+        // собирается из целевого времени профиля (`SessionPlanFactory`).
+        // Ветка нужна, чтобы `when` оставался исчерпывающим, — и на случай,
+        // если оповещение с ней приедет из импорта.
+        VoicePhrase.WRAP_UP -> R.string.editor_voice_wrap_up
     }

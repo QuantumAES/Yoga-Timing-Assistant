@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Справочник асан для поля «Название этапа» (замечание 2 полевой проверки
+        2026-08-04).
+
+        Два массива идут строка в строку: название и его произношение с
+        пометкой ударения (плюс перед ударной гласной, см. `Pronunciation`).
+        В английской локали произношение пусто у всех: латинская
+        транслитерация санскрита читается движками достаточно близко, а
+        расставлять ударения в ней пришлось бы наугад.
+    -->
+    <string-array name="asana_directory" translatable="false">
+        <item>Tadasana</item>
+        <item>Urdhva Hastasana</item>
+        <item>Uttanasana</item>
+        <item>Ardha Uttanasana</item>
+        <item>Utkatasana</item>
+        <item>Vrksasana</item>
+        <item>Trikonasana</item>
+        <item>Parivrtta Trikonasana</item>
+        <item>Virabhadrasana I</item>
+        <item>Virabhadrasana II</item>
+        <item>Virabhadrasana III</item>
+        <item>Ardha Chandrasana</item>
+        <item>Parsvakonasana</item>
+        <item>Parivrtta Parsvakonasana</item>
+        <item>Prasarita Padottanasana</item>
+        <item>Parsvottanasana</item>
+        <item>Garudasana</item>
+        <item>Natarajasana</item>
+        <item>Utthita Hasta Padangusthasana</item>
+        <item>Parighasana</item>
+        <item>Dandasana</item>
+        <item>Paschimottanasana</item>
+        <item>Janu Sirsasana</item>
+        <item>Upavistha Konasana</item>
+        <item>Baddha Konasana</item>
+        <item>Sukhasana</item>
+        <item>Padmasana</item>
+        <item>Ardha Padmasana</item>
+        <item>Siddhasana</item>
+        <item>Virasana</item>
+        <item>Supta Virasana</item>
+        <item>Gomukhasana</item>
+        <item>Marichyasana</item>
+        <item>Ardha Matsyendrasana</item>
+        <item>Navasana</item>
+        <item>Ardha Navasana</item>
+        <item>Malasana</item>
+        <item>Kurmasana</item>
+        <item>Bhujangasana</item>
+        <item>Urdhva Mukha Svanasana</item>
+        <item>Salabhasana</item>
+        <item>Dhanurasana</item>
+        <item>Ustrasana</item>
+        <item>Setu Bandha Sarvangasana</item>
+        <item>Urdhva Dhanurasana</item>
+        <item>Matsyasana</item>
+        <item>Anjaneyasana</item>
+        <item>Kapotasana</item>
+        <item>Eka Pada Rajakapotasana</item>
+        <item>Bhekasana</item>
+        <item>Adho Mukha Svanasana</item>
+        <item>Phalakasana</item>
+        <item>Chaturanga Dandasana</item>
+        <item>Vasisthasana</item>
+        <item>Bakasana</item>
+        <item>Adho Mukha Vrksasana</item>
+        <item>Pincha Mayurasana</item>
+        <item>Sirsasana</item>
+        <item>Sarvangasana</item>
+        <item>Halasana</item>
+        <item>Karnapidasana</item>
+        <item>Viparita Karani</item>
+        <item>Tittibhasana</item>
+        <item>Astavakrasana</item>
+        <item>Mayurasana</item>
+        <item>Jathara Parivartanasana</item>
+        <item>Supta Matsyendrasana</item>
+        <item>Parivrtta Janu Sirsasana</item>
+        <item>Ananda Balasana</item>
+        <item>Balasana</item>
+        <item>Marjaryasana</item>
+        <item>Bitilasana</item>
+        <item>Sasankasana</item>
+        <item>Supta Baddha Konasana</item>
+        <item>Vajrasana</item>
+        <item>Savasana</item>
+        <item>Surya Namaskar A</item>
+        <item>Surya Namaskar B</item>
+        <item>Chandra Namaskar</item>
+        <item>Ujjayi pranayama</item>
+        <item>Kapalabhati</item>
+        <item>Bhastrika</item>
+        <item>Nadi Shodhana</item>
+        <item>Bhramari</item>
+        <item>Sitali</item>
+        <item>Yoga nidra</item>
+        <item>Meditation</item>
+        <item>Joint warm-up</item>
+        <item>Settling in</item>
+    </string-array>
+
+    <!-- Произношение: строка в строку с asana_directory, пусто — как написано. -->
+    <string-array name="asana_directory_voice" translatable="false">
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+        <item></item>
+    </string-array>
+</resources>

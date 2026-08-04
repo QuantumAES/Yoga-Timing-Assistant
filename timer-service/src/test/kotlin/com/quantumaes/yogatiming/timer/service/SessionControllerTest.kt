@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
 import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.session.SessionPlanFactory
+import com.quantumaes.yogatiming.domain.session.SideLabels
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerEvent
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
@@ -40,10 +41,12 @@ class SessionControllerTest {
     private fun TestScope.controller() =
         SessionController(
             profileRepository = repository,
-            sessionLog = sessionLog,
+            sideLabels = { SideLabels.DEBUG },
+            summaryWriter = SessionSummaryWriter(sessionLog, time),
             sessionStore = store,
             watchdog = watchdog,
             time = time,
+            settingsStore = FakeSettingsStore(),
             scope = backgroundScope,
         )
 
@@ -390,10 +393,12 @@ class SessionControllerTest {
             val emptyProfileController =
                 SessionController(
                     profileRepository = FakeProfileRepository(demoProfile(PROFILE_ID, stages = emptyList())),
-                    sessionLog = sessionLog,
+                    sideLabels = { SideLabels.DEBUG },
+                    summaryWriter = SessionSummaryWriter(sessionLog, time),
                     sessionStore = store,
                     watchdog = watchdog,
                     time = time,
+                    settingsStore = FakeSettingsStore(),
                     scope = backgroundScope,
                 )
 

@@ -53,11 +53,29 @@ sealed interface TimerEvent {
         val to: RunState,
     ) : TimerEvent
 
-    /** Правка ±30 с: расписание этапа пересчитано, дедлайн сдвинулся. */
+    /**
+     * Расписание пересчитано: правка ±30 с, сжатие плана под бюджет или смена
+     * режима паузы. Для того, кто снаружи, все три случая одинаковы — сохранить
+     * состояние и перевзвести watchdog.
+     */
     data object PlanChanged : TimerEvent
 
+    /**
+     * Последний этап дошёл до конца.
+     *
+     * Правки и время удержания приезжают в событии, а не вычитываются из
+     * состояния, по той же причине, что и в [SessionStopped]: у итогов должен
+     * быть один источник, и им остаётся тот, кто видит состояние в момент
+     * конца занятия.
+     *
+     * @param holdMs сколько занятие простояло на паузе этапа.
+     * @param adjustmentsMs накопленные правки длительностей по индексам этапов.
+     *   По ним экран итогов решает, предлагать ли сохранить новый профиль.
+     */
     data class SessionFinished(
         val totalElapsedMs: Long,
+        val holdMs: Long = 0L,
+        val adjustmentsMs: Map<Int, Long> = emptyMap(),
     ) : TimerEvent
 
     /**
@@ -75,6 +93,8 @@ sealed interface TimerEvent {
     data class SessionStopped(
         val totalElapsedMs: Long,
         val stagesCompleted: Int,
+        val holdMs: Long = 0L,
+        val adjustmentsMs: Map<Int, Long> = emptyMap(),
     ) : TimerEvent
 
     /**

@@ -12,6 +12,7 @@ import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
 import com.quantumaes.yogatiming.domain.settings.TimerShape
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -102,6 +103,8 @@ class FakeSettingsStore(
     override suspend fun setTimerShape(shape: TimerShape) = Unit
 
     override suspend fun setSettingsFromSession(enabled: Boolean) = Unit
+
+    override suspend fun setPauseMode(mode: PauseMode) = Unit
 
     override suspend fun setOnboardingCompleted(completed: Boolean) = Unit
 }

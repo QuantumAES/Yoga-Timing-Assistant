@@ -54,6 +54,7 @@ import com.quantumaes.yogatiming.domain.alert.VoiceStatus
 import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
 import com.quantumaes.yogatiming.domain.settings.TimerShape
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 
 private val VALUE_WIDTH = 56.dp
 
@@ -119,6 +120,7 @@ internal fun SettingsScreen(
             onKeepScreenOnChange = viewModel::setKeepScreenOn,
             onAutoDimChange = viewModel::setAutoDim,
             onTimerShapeChange = viewModel::setTimerShape,
+            onPauseModeChange = viewModel::setPauseMode,
             onSettingsFromSessionChange = viewModel::setSettingsFromSession,
             onPreviewSound = viewModel::previewSound,
             onPreviewVoice = viewModel::previewVoice,
@@ -146,6 +148,7 @@ private fun SettingsContent(
     onKeepScreenOnChange: (Boolean) -> Unit,
     onAutoDimChange: (Boolean) -> Unit,
     onTimerShapeChange: (TimerShape) -> Unit,
+    onPauseModeChange: (PauseMode) -> Unit,
     onSettingsFromSessionChange: (Boolean) -> Unit,
     onPreviewSound: () -> Unit,
     onPreviewVoice: () -> Unit,
@@ -237,6 +240,22 @@ private fun SettingsContent(
             checked = settings.settingsFromSession,
             onCheckedChange = onSettingsFromSessionChange,
         )
+        // Режим паузы — свойство занятия, а не экрана, но живёт он здесь:
+        // раздел «Экран занятия» это всё, что относится к самому занятию, и
+        // заводить ради одной настройки восьмой раздел значит удлинить дорогу
+        // ко всем остальным.
+        OptionGroup(
+            title = stringResource(R.string.settings_pause_mode),
+            hint = stringResource(R.string.settings_pause_mode_hint),
+        ) {
+            PauseMode.entries.forEach { mode ->
+                RadioRow(
+                    label = stringResource(mode.labelRes),
+                    selected = mode == settings.pauseMode,
+                    onSelect = { onPauseModeChange(mode) },
+                )
+            }
+        }
 
         HorizontalDivider(Modifier.padding(vertical = Spacing.s))
 
@@ -502,6 +521,13 @@ private val ThemeMode.labelRes: Int
             ThemeMode.DARK -> R.string.settings_theme_dark
         }
 
+private val PauseMode.labelRes: Int
+    get() =
+        when (this) {
+            PauseMode.SESSION -> R.string.settings_pause_mode_session
+            PauseMode.STAGE -> R.string.settings_pause_mode_stage
+        }
+
 private val TimerShape.labelRes: Int
     get() =
         when (this) {
@@ -526,6 +552,7 @@ private fun SettingsContentPreview() {
             onKeepScreenOnChange = {},
             onAutoDimChange = {},
             onTimerShapeChange = {},
+            onPauseModeChange = {},
             onSettingsFromSessionChange = {},
             onPreviewSound = {},
             onPreviewVoice = {},

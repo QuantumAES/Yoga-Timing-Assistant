@@ -24,6 +24,22 @@
     <string name="editor_profile_total_minutes">%1$d мин</string>
     <string name="editor_profile_total_at_least">≥ %1$s</string>
 
+    <!-- Целевое время занятия (замечание 8 полевой проверки 2026-08-04). -->
+    <string name="editor_profile_target">Целевое время занятия</string>
+    <string name="editor_profile_target_switch">Занятие ограничено по времени</string>
+    <string name="editor_profile_target_hint">Аренда зала, оплаченный час, окно между группами. Приложение будет считать остаток по часам и предупредит, когда пора закругляться.</string>
+    <string name="editor_profile_tolerance">Допустимый перебор</string>
+    <string name="editor_profile_tolerance_strict">Ровно</string>
+    <string name="editor_profile_tolerance_value">+%1$d мин</string>
+    <string name="editor_profile_wrap_up">Отсечка «пора закругляться»</string>
+    <string name="editor_profile_wrap_up_off">Без отсечки</string>
+    <string name="editor_profile_wrap_up_value">за %1$d мин</string>
+    <string name="editor_profile_wrap_up_hint">Сигнал прозвучит один раз, и на экране появится, сколько осталось и сколько ещё в плане.</string>
+    <string name="editor_profile_allocated">Распределено %1$d из %2$d мин</string>
+    <string name="editor_profile_unallocated">осталось разложить %1$d мин</string>
+    <string name="editor_profile_over_target">на %1$d мин больше цели</string>
+    <string name="editor_profile_exact_target">ровно по цели</string>
+
     <!-- Экран 3: редактор этапа -->
     <string name="editor_stage_title">Этап</string>
     <string name="editor_stage_new">Новый этап</string>
@@ -35,6 +51,11 @@
     <string name="editor_stage_note">Заметка</string>
     <string name="editor_stage_note_label">Заметка инструктору</string>
     <string name="editor_stage_note_hint">Показывается на рабочем экране. Вслух не произносится.</string>
+
+    <!-- Двусторонняя асана (замечание 10 полевой проверки 2026-08-04). -->
+    <string name="editor_stage_bilateral">Двусторонняя асана</string>
+    <string name="editor_stage_bilateral_hint">Выполняется зеркально: сначала правая сторона, затем левая. Длительность указывается на одну сторону.</string>
+    <string name="editor_stage_bilateral_total">Всего на этап: %1$s — по одному отрезку на сторону.</string>
 
     <!-- Произношение этапа: ударения для синтезатора речи. -->
     <string name="editor_stage_voice_name">Произношение</string>
@@ -129,6 +150,8 @@
     <string name="editor_voice_time_remaining">Сколько осталось</string>
     <string name="editor_voice_session_finished">Занятие завершено</string>
     <string name="editor_voice_custom">Свой текст</string>
+    <!-- В списках выбора не появляется: фраза относится к занятию, а не к этапу. -->
+    <string name="editor_voice_wrap_up">Пора закругляться</string>
 
     <string name="editor_duration_minutes">Минуты</string>
     <string name="editor_duration_seconds">Секунды</string>

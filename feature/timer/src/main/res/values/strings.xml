@@ -12,6 +12,28 @@
     <string name="timer_stage_position">Stage %1$d/%2$d</string>
     <string name="timer_total_remaining">Remaining %1$s</string>
     <string name="timer_total_at_least">≥ %1$s</string>
+
+    <!--
+      Занятие с целевым временем. «До конца» — это про часы, а не про сумму
+      этапов: число убывает равномерно и не прыгает от переключений
+      (замечание 12 полевой проверки 2026-08-04).
+    -->
+    <string name="timer_budget_remaining">%1$s to the end</string>
+    <string name="timer_budget_overrun">%1$s over</string>
+    <string name="timer_plan_over">plan +%1$s</string>
+    <string name="timer_plan_under">%1$s spare</string>
+
+    <!-- Два режима паузы (замечание 6). Плашка нажимается и переключает режим. -->
+    <string name="timer_pause_session_title">Class paused</string>
+    <string name="timer_pause_session_text">Class time is on hold. Tap to let it run</string>
+    <string name="timer_pause_stage_title">Stage paused</string>
+    <string name="timer_pause_stage_text">Class time keeps running: +%1$s. Tap to hold it</string>
+
+    <!-- Отсечка бюджета (замечание 11). -->
+    <string name="timer_wrap_up_title">Time to wrap up</string>
+    <string name="timer_wrap_up_text">%1$s left, %2$s planned</string>
+    <string name="timer_wrap_up_fit">Fit the plan</string>
+    <string name="timer_wrap_up_hide">Leave as is</string>
     <!--
       The manual ±30 s adjustment. On screen only the sign and the time show:
       the chip sits under the digits, so "to this stage" is clear from where it
@@ -39,6 +61,12 @@
       молчащее правило читается как сломанная статистика.
     -->
     <string name="timer_summary_not_logged">Shorter than a minute — not added to the statistics journal.</string>
+
+    <!-- Сохранение занятия с правками новым профилем (замечание 7). -->
+    <string name="timer_summary_save_title">Stage durations changed during the class</string>
+    <string name="timer_summary_save_action">Save as a new profile</string>
+    <string name="timer_summary_save_name">%1$s (adjusted)</string>
+    <string name="timer_summary_saved">Profile “%1$s” saved</string>
 
     <string name="timer_finished_quote_author">— %1$s</string>
 
@@ -131,7 +159,7 @@
     <string name="timer_lock">Lock the screen</string>
     <string name="timer_unlock_hint">Press and hold to unlock</string>
     <string name="timer_focus_enter">Focus mode</string>
-    <string name="timer_focus_hint">‹ swipe to change stage ·  swipe down to exit ›</string>
+    <string name="timer_focus_hint">‹ swipe — stage · down — pause · tap — exit ›</string>
     <string name="timer_previous_stage">‹ Previous stage</string>
     <string name="timer_next_stage">Next: %1$s</string>
     <string name="timer_last_stage">Last stage</string>

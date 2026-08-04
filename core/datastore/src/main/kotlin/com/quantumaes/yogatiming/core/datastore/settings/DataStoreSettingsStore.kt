@@ -11,6 +11,7 @@ import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
 import com.quantumaes.yogatiming.domain.settings.TimerShape
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -29,6 +30,7 @@ private val KEY_KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
 private val KEY_AUTO_DIM = booleanPreferencesKey("auto_dim")
 private val KEY_TIMER_SHAPE = stringPreferencesKey("timer_shape")
 private val KEY_SESSION_SETTINGS = booleanPreferencesKey("settings_from_session")
+private val KEY_PAUSE_MODE = stringPreferencesKey("pause_mode")
 private val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_completed")
 
 /**
@@ -41,7 +43,12 @@ private val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_completed")
  * Отсутствующий ключ означает «значение по умолчанию», а не ноль: настройки
  * появлялись в разных версиях, и файл, записанный прошлой, обязан читаться
  * этой (P1-11 — тот же файл переживает Auto Backup).
+ *
+ * Порог detekt снят по той же причине, что и у [SettingsStore]: это построчный
+ * перевод интерфейса в ключи DataStore, и функций в нём ровно столько же,
+ * сколько настроек.
  */
+@Suppress("TooManyFunctions")
 @Singleton
 class DataStoreSettingsStore
     @Inject
@@ -68,6 +75,9 @@ class DataStoreSettingsStore
                         autoDimEnabled = prefs[KEY_AUTO_DIM] ?: defaults.autoDimEnabled,
                         timerShape = TimerShape.fromName(prefs[KEY_TIMER_SHAPE]),
                         settingsFromSession = prefs[KEY_SESSION_SETTINGS] ?: defaults.settingsFromSession,
+                        pauseMode =
+                            PauseMode.entries.firstOrNull { it.name == prefs[KEY_PAUSE_MODE] }
+                                ?: defaults.pauseMode,
                         onboardingCompleted = prefs[KEY_ONBOARDING_DONE] ?: defaults.onboardingCompleted,
                     )
                 }
@@ -113,6 +123,10 @@ class DataStoreSettingsStore
 
         override suspend fun setSettingsFromSession(enabled: Boolean) {
             context.userPrefs.edit { it[KEY_SESSION_SETTINGS] = enabled }
+        }
+
+        override suspend fun setPauseMode(mode: PauseMode) {
+            context.userPrefs.edit { it[KEY_PAUSE_MODE] = mode.name }
         }
 
         override suspend fun setOnboardingCompleted(completed: Boolean) {

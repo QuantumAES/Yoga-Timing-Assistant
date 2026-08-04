@@ -15,6 +15,8 @@ import androidx.room.PrimaryKey
  *
  * `alert_config` = NULL означает наследование конфига профиля, а не «тишину».
  * `voice_name` = NULL означает «произносить как написано», а не «молчать».
+ * `bilateral` = 1 означает, что `duration_sec` — длительность **одной стороны**:
+ * на занятии такой этап проходится дважды (Фаза 11).
  */
 @Entity(
     tableName = "stages",
@@ -39,4 +41,5 @@ data class StageEntity(
     @ColumnInfo(name = "sort_order") val sortOrder: Int,
     @ColumnInfo(name = "alert_config") val alertConfigJson: String? = null,
     @ColumnInfo(name = "voice_name") val voiceName: String? = null,
+    @ColumnInfo(name = "bilateral", defaultValue = "0") val bilateral: Boolean = false,
 )

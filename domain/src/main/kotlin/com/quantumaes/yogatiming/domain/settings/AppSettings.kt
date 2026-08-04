@@ -1,5 +1,7 @@
 package com.quantumaes.yogatiming.domain.settings
 
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
+
 /**
  * Оформление приложения (Экран 6 настроек).
  *
@@ -103,6 +105,11 @@ enum class TimerShape {
  *   именно тогда, когда сигнал уже прозвучал не так, — то есть посреди
  *   занятия. Выключается теми, кто отдаёт телефон в чужие руки: занятие идёт
  *   дальше в любом случае, но лишней двери на экране не остаётся.
+ * @param pauseMode с какого режима начинается пауза (см. [PauseMode]). Оба
+ *   режима доступны и на самом занятии — одним нажатием по плашке паузы;
+ *   настройка задаёт лишь тот, с которого пауза начинается. Тот, кто ведёт
+ *   индивидуальные занятия по предоплате, чаще ставит на паузу этап — время
+ *   идёт в любом случае; тот, у кого зал свободен, — всё занятие.
  * @param onboardingCompleted показан ли онбординг. Отдельный флаг, а не
  *   «первый запуск»: онбординг можно пересмотреть из настроек.
  */
@@ -117,6 +124,7 @@ data class AppSettings(
     val autoDimEnabled: Boolean = true,
     val timerShape: TimerShape = TimerShape.DEFAULT,
     val settingsFromSession: Boolean = true,
+    val pauseMode: PauseMode = PauseMode.DEFAULT,
     val onboardingCompleted: Boolean = false,
 ) {
     /** Множитель громкости в долях единицы — в том виде, в каком его ждёт звуковой тракт. */

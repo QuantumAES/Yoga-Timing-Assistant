@@ -28,11 +28,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.quantumaes.yogatiming.core.common.time.TimeFormatter
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.domain.model.Stage
 import com.quantumaes.yogatiming.domain.model.StageType
 import com.quantumaes.yogatiming.feature.editor.R
+import com.quantumaes.yogatiming.feature.editor.component.AsanaNameField
 import com.quantumaes.yogatiming.feature.editor.component.ColorTagPicker
 import com.quantumaes.yogatiming.feature.editor.component.DurationPicker
 import com.quantumaes.yogatiming.feature.editor.component.EditorScaffold
@@ -43,6 +45,7 @@ import com.quantumaes.yogatiming.feature.editor.component.SwitchRow
 import com.quantumaes.yogatiming.feature.editor.stageTypeLabelRes
 
 private const val NOTE_MAX_LINES = 4
+private const val MS_IN_SECOND = 1_000L
 
 /** Экран 3 «Редактор этапа». */
 @Composable
@@ -67,12 +70,14 @@ internal fun StageEditorScreen(
     StageEditorContent(
         uiState = uiState,
         onNameChange = viewModel::setName,
+        onAsanaPick = viewModel::pickAsana,
         onVoiceNameChange = viewModel::setVoiceName,
         onPreviewVoice = viewModel::previewVoice,
         onTypeChange = viewModel::setType,
         onDeclineRestPreset = viewModel::declineRestPreset,
         onColorChange = viewModel::setColorTag,
         onDurationChange = viewModel::setDuration,
+        onBilateralChange = viewModel::setBilateral,
         onNoteChange = viewModel::setNote,
         onOwnAlertsChange = viewModel::setOwnAlerts,
         onOpenAlerts = viewModel::openAlerts,
@@ -85,12 +90,14 @@ internal fun StageEditorScreen(
 private fun StageEditorContent(
     uiState: StageEditorUiState,
     onNameChange: (String) -> Unit,
+    onAsanaPick: (String, String) -> Unit,
     onVoiceNameChange: (String) -> Unit,
     onPreviewVoice: () -> Unit,
     onTypeChange: (StageType) -> Unit,
     onDeclineRestPreset: () -> Unit,
     onColorChange: (String) -> Unit,
     onDurationChange: (Int) -> Unit,
+    onBilateralChange: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
     onOwnAlertsChange: (Boolean) -> Unit,
     onOpenAlerts: () -> Unit,
@@ -114,15 +121,10 @@ private fun StageEditorContent(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = Spacing.xl),
             ) {
-                OutlinedTextField(
+                AsanaNameField(
                     value = uiState.name,
                     onValueChange = onNameChange,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Spacing.m, vertical = Spacing.s),
-                    label = { Text(stringResource(R.string.editor_stage_name)) },
-                    singleLine = true,
+                    onPick = onAsanaPick,
                     isError = uiState.nameErrorShown,
                 )
                 if (uiState.nameErrorShown) {
@@ -155,6 +157,12 @@ private fun StageEditorContent(
                     if (uiState.durationErrorShown) {
                         FieldHint(stringResource(R.string.editor_stage_duration_invalid), error = true)
                     }
+
+                    BilateralSwitch(
+                        bilateral = uiState.bilateral,
+                        totalDurationSec = uiState.totalDurationSec,
+                        onChange = onBilateralChange,
+                    )
                 }
 
                 SectionTitle(stringResource(R.string.editor_color))
@@ -255,6 +263,39 @@ private fun PronunciationField(
 }
 
 /**
+ * «Двусторонняя асана» (замечание 10 полевой проверки 2026-08-04).
+ *
+ * Переключатель, а не отдельный тип этапа: сторона — свойство асаны, а не её
+ * роль в занятии. Двусторонним бывает и обычный этап, и отдых на боку.
+ *
+ * Длительность после включения читается как «на сторону», и это сказано
+ * вслух вместе с итогом: «1:00 на сторону, 2:00 всего». Иначе профиль на
+ * шестьдесят минут незаметно превращается в семьдесят.
+ */
+@Composable
+private fun BilateralSwitch(
+    bilateral: Boolean,
+    totalDurationSec: Int,
+    onChange: (Boolean) -> Unit,
+) {
+    SwitchRow(
+        title = stringResource(R.string.editor_stage_bilateral),
+        subtitle = stringResource(R.string.editor_stage_bilateral_hint),
+        checked = bilateral,
+        onCheckedChange = onChange,
+    )
+    if (bilateral) {
+        FieldHint(
+            text =
+                stringResource(
+                    R.string.editor_stage_bilateral_total,
+                    TimeFormatter.clock(totalDurationSec * MS_IN_SECOND),
+                ),
+        )
+    }
+}
+
+/**
  * Предложение тихого пресета для этапа отдыха (решение C-6).
  *
  * Пресет уже применён — сообщение о факте с возможностью отказаться, а не
@@ -299,12 +340,14 @@ private fun StageEditorPreview() {
                     voiceEnabled = true,
                 ),
             onNameChange = {},
+            onAsanaPick = { _, _ -> },
             onVoiceNameChange = {},
             onPreviewVoice = {},
             onTypeChange = {},
             onDeclineRestPreset = {},
             onColorChange = {},
             onDurationChange = {},
+            onBilateralChange = {},
             onNoteChange = {},
             onOwnAlertsChange = {},
             onOpenAlerts = {},

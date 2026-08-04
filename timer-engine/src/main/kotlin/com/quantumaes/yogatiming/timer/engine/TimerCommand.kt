@@ -1,5 +1,6 @@
 package com.quantumaes.yogatiming.timer.engine
 
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.model.SessionPlan
 
 /**
@@ -18,7 +19,28 @@ sealed interface TimerCommand {
 
     data object Start : TimerCommand
 
-    data object Pause : TimerCommand
+    /**
+     * Пауза.
+     *
+     * @param mode останавливать ли вместе с этапом и часы занятия
+     *   (см. [PauseMode]). Значение по умолчанию сохраняет поведение до
+     *   Фазы 11: пауза останавливает всё.
+     */
+    data class Pause(
+        val mode: PauseMode = PauseMode.DEFAULT,
+    ) : TimerCommand
+
+    /**
+     * Переключение режима уже идущей паузы.
+     *
+     * Отдельная команда, а не «снять паузу и поставить заново»: снятие паузы
+     * возобновило бы этап, а инструктор всего лишь уточняет, считать ли эти
+     * минуты временем занятия. Вне паузы команда ничего не делает — режим
+     * задаётся в момент нажатия «Пауза».
+     */
+    data class SetPauseMode(
+        val mode: PauseMode,
+    ) : TimerCommand
 
     data object Resume : TimerCommand
 
@@ -34,6 +56,16 @@ sealed interface TimerCommand {
     data class Adjust(
         val deltaMs: Long,
     ) : TimerCommand
+
+    /**
+     * Ужать оставшийся план под остаток бюджета (замечание 11 полевой проверки
+     * 2026-08-04).
+     *
+     * Дефицит распределяется по будущим этапам пропорционально их длительности.
+     * Текущий этап не трогается: он уже идёт, и менять его конец под ногами у
+     * инструктора — сюрприз, а не помощь.
+     */
+    data object FitToBudget : TimerCommand
 
     data object Stop : TimerCommand
 

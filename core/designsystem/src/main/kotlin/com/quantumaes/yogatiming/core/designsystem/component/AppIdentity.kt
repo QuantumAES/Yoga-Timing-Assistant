@@ -3,17 +3,16 @@ package com.quantumaes.yogatiming.core.designsystem.component
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,18 +60,22 @@ private fun Context.versionName(): String =
         }.versionName
     }.getOrNull().orEmpty()
 
-/** Знак приложения. Тинтом, а не встроенным цветом — см. `ic_yta_logo.xml`. */
+/**
+ * Знак приложения.
+ *
+ * Собственные цвета, без тинта: логотип — многоцветный лотос, и перекрасить
+ * его в один цвет схемы значит превратить в пятно. Раньше знак был
+ * одноцветным вектором и тинтовался под тему; растровый логотип из
+ * `scripts/generate-logo.sh` живёт в обеих темах как есть — он на прозрачном
+ * фоне и достаточно контрастен и на светлом, и на тёмном.
+ */
 @Composable
-fun YtaLogo(
-    modifier: Modifier = Modifier,
-    tint: Color = MaterialTheme.colorScheme.primary,
-) {
-    Icon(
+fun YtaLogo(modifier: Modifier = Modifier) {
+    Image(
         painter = painterResource(R.drawable.ic_yta_logo),
         // Логотип рядом с названием — украшение: TalkBack прочитает название
         // текстом, а «логотип приложения» вслух не нужен никому.
         contentDescription = null,
-        tint = tint,
         modifier = modifier.size(LOGO_SIZE),
     )
 }

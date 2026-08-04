@@ -60,10 +60,32 @@ internal fun stagePositionText(snapshot: SessionSnapshot?): String {
     return stringResource(R.string.timer_stage_position, snapshot.currentIndex + 1, snapshot.stageCount)
 }
 
-/** «Осталось 45:45» — вторая строка: остаток всего занятия. */
+/**
+ * Вторая строка шапки: сколько занятия осталось.
+ *
+ * У занятия с целевым временем это остаток **по часам** — «до конца 42:15».
+ * Он не зависит ни от переключений этапов, ни от правок ±30 с, поэтому
+ * убывает равномерно и отвечает на вопрос «когда я закончу», а не «сколько
+ * длится то, что я ещё не провёл» (замечание 12 полевой проверки 2026-08-04).
+ * Уход в минус показывается перебором, а не нулём: скрытый перерасход — это
+ * ровно та ситуация, ради которой бюджет и заводили.
+ *
+ * Без целевого времени всё как было: сумма оставшихся этапов.
+ */
 @Composable
 internal fun totalRemainingText(snapshot: SessionSnapshot?): String {
     if (snapshot == null) return ""
+    val budget = snapshot.budgetRemainingMs ?: return planRemainingText(snapshot)
+    return if (budget < 0L) {
+        stringResource(R.string.timer_budget_overrun, TimeFormatter.clock(-budget))
+    } else {
+        stringResource(R.string.timer_budget_remaining, TimeFormatter.clock(budget, roundUp = true))
+    }
+}
+
+/** «Осталось 45:45» — сумма оставшихся этапов. */
+@Composable
+private fun planRemainingText(snapshot: SessionSnapshot): String {
     val clock = TimeFormatter.clock(snapshot.totalRemainingMs)
     val total =
         if (snapshot.totalRemainingIsLowerBound) {
@@ -72,6 +94,24 @@ internal fun totalRemainingText(snapshot: SessionSnapshot?): String {
             clock
         }
     return stringResource(R.string.timer_total_remaining, total)
+}
+
+/**
+ * «план +4:30» — насколько остаток плана расходится с остатком бюджета.
+ *
+ * Третье число в шапке появляется только тогда, когда расхождение вышло за
+ * допуск профиля: пока занятие идёт по плану, сообщать не о чем, а лишняя
+ * строка на рабочем экране стоит дороже, чем кажется. `null` — не показывать.
+ */
+@Composable
+internal fun budgetDeviationText(snapshot: SessionSnapshot?): String? {
+    val deficit = snapshot?.budgetDeficitMs ?: return null
+    val tolerance = snapshot.budgetToleranceMs
+    return when {
+        deficit > tolerance -> stringResource(R.string.timer_plan_over, TimeFormatter.clock(deficit))
+        deficit < -tolerance -> stringResource(R.string.timer_plan_under, TimeFormatter.clock(-deficit))
+        else -> null
+    }
 }
 
 /** «+0:30» — накопленная правка ±30 с в том виде, в каком она стоит на экране. */

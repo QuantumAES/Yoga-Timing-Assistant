@@ -16,6 +16,13 @@
     <string name="timer_action_next">Далее</string>
     <string name="timer_action_stop">Стоп</string>
 
+    <!--
+        Стороны двусторонней асаны. Попадают и в название этапа на экране, и в
+        произносимое оповещение, поэтому пишутся словом, а не значком.
+    -->
+    <string name="timer_side_first">правая сторона</string>
+    <string name="timer_side_second">левая сторона</string>
+
     <string name="timer_notice_finished_title">Занятие завершено</string>
     <string name="timer_notice_finished_text">%1$s · всего %2$s</string>
     <string name="timer_notice_reboot_title">Занятие было прервано</string>

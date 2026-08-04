@@ -28,6 +28,9 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
+/** Час — типовое занятие: от него проще отталкиваться, чем от нуля. */
+private const val DEFAULT_TARGET_SEC = 60 * 60
+
 /**
  * Поля профиля в том виде, в каком они уходят в базу.
  *
@@ -41,6 +44,9 @@ data class ProfileForm(
     val category: ProfileCategory = ProfileCategory.DEFAULT,
     val colorTag: String = DEFAULT_COLOR_TAG,
     val isFavorite: Boolean = false,
+    val targetDurationSec: Int? = null,
+    val targetToleranceSec: Int = 0,
+    val wrapUpOffsetSec: Int = Profile.DEFAULT_WRAP_UP_SEC,
     val stages: List<Stage> = emptyList(),
 )
 
@@ -58,13 +64,35 @@ data class ProfileEditorUiState(
     val category: ProfileCategory = ProfileCategory.DEFAULT,
     val colorTag: String = DEFAULT_COLOR_TAG,
     val isFavorite: Boolean = false,
+    /**
+     * Целевое время занятия; `null` — цели нет (Фаза 11).
+     *
+     * Отдельно от суммы этапов: сумма отвечает на вопрос «сколько занятие
+     * займёт», цель — «сколько времени под него есть». Расхождение этих двух
+     * чисел и есть то, что редактор обязан показывать (замечание 8 полевой
+     * проверки 2026-08-04).
+     */
+    val targetDurationSec: Int? = null,
+    val targetToleranceSec: Int = 0,
+    val wrapUpOffsetSec: Int = Profile.DEFAULT_WRAP_UP_SEC,
     val stages: List<Stage> = emptyList(),
     /** Показывать ли ошибку пустого имени. До первой попытки сохранить — нет. */
     val nameErrorShown: Boolean = false,
     /** Снимок последней записи в базу. Пустой у профиля, которого там ещё нет. */
     val savedForm: ProfileForm = ProfileForm(),
 ) {
-    val form: ProfileForm get() = ProfileForm(name.trim(), category, colorTag, isFavorite, stages)
+    val form: ProfileForm
+        get() =
+            ProfileForm(
+                name = name.trim(),
+                category = category,
+                colorTag = colorTag,
+                isFavorite = isFavorite,
+                targetDurationSec = targetDurationSec,
+                targetToleranceSec = targetToleranceSec,
+                wrapUpOffsetSec = wrapUpOffsetSec,
+                stages = stages,
+            )
 
     val hasUnsavedChanges: Boolean get() = form != savedForm
 
@@ -73,9 +101,20 @@ data class ProfileEditorUiState(
     /** Профиль без этапов запустить нельзя (решение B-6) — но сохранить можно. */
     val isRunnable: Boolean get() = stages.isNotEmpty()
 
-    val totalDurationSec: Int get() = stages.filter { it.hasPlannedDuration }.sumOf { it.durationSec }
+    /** Двусторонний этап считается дважды: в занятии он и проходится дважды. */
+    val totalDurationSec: Int get() = stages.filter { it.hasPlannedDuration }.sumOf { it.plannedDurationSec }
 
     val hasFreeStages: Boolean get() = stages.any { !it.hasPlannedDuration }
+
+    val hasTarget: Boolean get() = (targetDurationSec ?: 0) > 0
+
+    /**
+     * Сколько целевого времени ещё не разложено по этапам.
+     *
+     * Положительное — есть что добавить, отрицательное — план длиннее цели.
+     * `null` — цели нет, и сравнивать не с чем.
+     */
+    val unallocatedSec: Int? get() = targetDurationSec?.takeIf { it > 0 }?.minus(totalDurationSec)
 }
 
 /**
@@ -186,6 +225,9 @@ class ProfileEditorViewModel
                     category = profile.category,
                     colorTag = profile.colorTag,
                     isFavorite = profile.isFavorite,
+                    targetDurationSec = profile.targetDurationSec,
+                    targetToleranceSec = profile.targetToleranceSec,
+                    wrapUpOffsetSec = profile.wrapUpOffsetSec,
                     stages = profile.stages,
                 )
             _uiState.value = loaded.copy(savedForm = loaded.form)
@@ -198,6 +240,27 @@ class ProfileEditorViewModel
         fun setColorTag(colorTag: String) = _uiState.update { it.copy(colorTag = colorTag) }
 
         fun toggleFavorite() = _uiState.update { it.copy(isFavorite = !it.isFavorite) }
+
+        /**
+         * Включение цели подставляет то, что уже разложено по этапам.
+         *
+         * Ноль в поле «сколько у меня времени» бесполезен: инструктор всё
+         * равно начнёт с длительности своего занятия, а сумма этапов — её
+         * лучшая известная оценка. Пустой профиль получает час: типовое
+         * занятие, от которого проще отталкиваться, чем от нуля.
+         */
+        fun setTargetEnabled(enabled: Boolean) {
+            _uiState.update { state ->
+                val fallback = state.totalDurationSec.takeIf { it > 0 } ?: DEFAULT_TARGET_SEC
+                state.copy(targetDurationSec = if (enabled) state.targetDurationSec ?: fallback else null)
+            }
+        }
+
+        fun setTargetDuration(durationSec: Int) = _uiState.update { it.copy(targetDurationSec = durationSec) }
+
+        fun setTargetTolerance(toleranceSec: Int) = _uiState.update { it.copy(targetToleranceSec = toleranceSec) }
+
+        fun setWrapUpOffset(offsetSec: Int) = _uiState.update { it.copy(wrapUpOffsetSec = offsetSec) }
 
         /** Перестановка этапа. Порядок задаётся позицией в списке, а не полем. */
         fun moveStage(
@@ -270,6 +333,10 @@ class ProfileEditorViewModel
                 iconId = iconId,
                 totalDurationMode = totalDurationMode,
                 fixedTotalSec = fixedTotalSec,
+                targetDurationSec =
+                    targetDurationSec?.takeIf { it > 0 }?.coerceIn(Profile.MIN_TARGET_SEC, Profile.MAX_TARGET_SEC),
+                targetToleranceSec = targetToleranceSec.coerceAtLeast(0),
+                wrapUpOffsetSec = wrapUpOffsetSec.coerceAtLeast(0),
                 isFavorite = isFavorite,
                 sortOrder = sortOrder,
                 defaultAlertConfig = defaultAlertConfig,

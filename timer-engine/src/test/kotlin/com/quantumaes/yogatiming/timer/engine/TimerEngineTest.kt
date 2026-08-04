@@ -75,7 +75,7 @@ class TimerEngineTest {
             val engine = startedEngine(sixStagePlan(), mutableListOf())
             tick(MINUTE_MS)
 
-            engine.submit(TimerCommand.Pause)
+            engine.submit(TimerCommand.Pause())
             testScheduler.runCurrent()
             val atPause = engine.snapshot.value!!
             tick(10 * MINUTE_MS)
@@ -146,7 +146,7 @@ class TimerEngineTest {
             val engine = startedEngine(sixStagePlan(), mutableListOf())
             tick(MINUTE_MS)
 
-            engine.submit(TimerCommand.Pause)
+            engine.submit(TimerCommand.Pause())
             testScheduler.runCurrent()
 
             assertThat(engine.currentStageEndMs).isNull()
@@ -168,7 +168,7 @@ class TimerEngineTest {
 
             repeat(5) {
                 tick(7 * MINUTE_MS)
-                engine.submit(TimerCommand.Pause)
+                engine.submit(TimerCommand.Pause())
                 testScheduler.runCurrent()
                 tick(90 * SECOND_MS)
                 pausedMs += 90 * SECOND_MS

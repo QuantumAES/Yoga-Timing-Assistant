@@ -51,7 +51,7 @@ class TimerReducerTest {
             ReducerHarness(sixStagePlan())
                 .submit(TimerCommand.Start)
                 .advance(4 * MINUTE_MS)
-                .submit(TimerCommand.Pause)
+                .submit(TimerCommand.Pause())
 
         val remainingAtPause = harness.state.stageRemainingMs(harness.now)
         harness.advance(10 * MINUTE_MS)
@@ -71,7 +71,7 @@ class TimerReducerTest {
             ReducerHarness(sixStagePlan())
                 .submit(TimerCommand.Start)
                 .advance(3 * MINUTE_MS)
-                .submit(TimerCommand.Pause)
+                .submit(TimerCommand.Pause())
                 .submit(TimerCommand.Next)
 
         assertThat(harness.state.runState).isEqualTo(RunState.PAUSED)
@@ -290,7 +290,15 @@ class TimerReducerTest {
         assertThat(harness.state).isEqualTo(SessionState.initial(harness.state.plan))
         assertThat(harness.drainEvents())
             .containsExactly(
-                TimerEvent.SessionStopped(totalElapsedMs = 3 * MINUTE_MS, stagesCompleted = 0),
+                // Правки уезжают вместе с событием: в состоянии после сброса их
+                // уже нет, а экрану итогов они нужны, чтобы предложить сохранить
+                // занятие новым профилем (замечание 7 полевой проверки
+                // 2026-08-04).
+                TimerEvent.SessionStopped(
+                    totalElapsedMs = 3 * MINUTE_MS,
+                    stagesCompleted = 0,
+                    adjustmentsMs = mapOf(0 to TimerLimits.ADJUST_STEP_MS),
+                ),
                 TimerEvent.RunStateChanged(RunState.RUNNING, RunState.IDLE),
             ).inOrder()
     }
@@ -325,7 +333,7 @@ class TimerReducerTest {
             ReducerHarness(sixStagePlan())
                 .submit(TimerCommand.Start)
                 .advance(2 * MINUTE_MS)
-                .submit(TimerCommand.Pause)
+                .submit(TimerCommand.Pause())
                 .advance(5 * MINUTE_MS)
         harness.drainEvents()
 
@@ -356,7 +364,7 @@ class TimerReducerTest {
         val idle = harness.state
 
         harness
-            .submit(TimerCommand.Pause)
+            .submit(TimerCommand.Pause())
             .submit(TimerCommand.Resume)
             .submit(TimerCommand.Next)
             .submit(TimerCommand.Previous)

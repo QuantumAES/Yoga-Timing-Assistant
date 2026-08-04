@@ -65,6 +65,9 @@ fun ProfileWithStages.toDomain(): Profile =
         iconId = profile.iconId,
         totalDurationMode = TotalDurationMode.fromName(profile.totalDurationMode),
         fixedTotalSec = profile.fixedTotalSec,
+        targetDurationSec = profile.targetDurationSec,
+        targetToleranceSec = profile.targetToleranceSec,
+        wrapUpOffsetSec = profile.wrapUpOffsetSec,
         isFavorite = profile.isFavorite,
         sortOrder = profile.sortOrder,
         defaultAlertConfig = profile.defaultAlertConfigJson.decodeAlertConfig(AlertPresets.standard()),
@@ -86,6 +89,7 @@ fun StageEntity.toDomain(): Stage =
         // null здесь означает наследование конфига профиля, а не тишину.
         alertConfig = alertConfigJson?.decodeAlertConfig(AlertPresets.standard()),
         voiceName = voiceName,
+        bilateral = bilateral,
     )
 
 fun ProfileSummaryProjection.toDomain(): ProfileSummary =
@@ -118,6 +122,9 @@ fun Profile.toEntity(
         iconId = iconId,
         totalDurationMode = totalDurationMode.name,
         fixedTotalSec = fixedTotalSec,
+        targetDurationSec = targetDurationSec?.takeIf { it > 0 },
+        targetToleranceSec = targetToleranceSec,
+        wrapUpOffsetSec = wrapUpOffsetSec,
         isFavorite = isFavorite,
         sortOrder = sortOrder,
         defaultAlertConfigJson = defaultAlertConfig.encode(),
@@ -140,6 +147,7 @@ fun Stage.toEntity(
         sortOrder = sortOrder,
         alertConfigJson = alertConfig?.encode(),
         voiceName = voiceName,
+        bilateral = bilateral,
     )
 
 /** Приведение к виду, в котором ищет SQL: регистр в SQLite для кириллицы не работает. */

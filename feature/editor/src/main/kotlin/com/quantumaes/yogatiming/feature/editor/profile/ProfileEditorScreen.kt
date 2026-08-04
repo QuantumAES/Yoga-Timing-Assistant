@@ -63,16 +63,36 @@ import com.quantumaes.yogatiming.feature.editor.NEW_ENTITY_ID
 import com.quantumaes.yogatiming.feature.editor.R
 import com.quantumaes.yogatiming.feature.editor.categoryLabelRes
 import com.quantumaes.yogatiming.feature.editor.component.ColorTagPicker
+import com.quantumaes.yogatiming.feature.editor.component.DurationPicker
 import com.quantumaes.yogatiming.feature.editor.component.EditorScaffold
 import com.quantumaes.yogatiming.feature.editor.component.FieldHint
 import com.quantumaes.yogatiming.feature.editor.component.SectionTitle
 import com.quantumaes.yogatiming.feature.editor.component.SingleChoiceChips
+import com.quantumaes.yogatiming.feature.editor.component.SwitchRow
 import com.quantumaes.yogatiming.feature.editor.component.dragHandle
 import com.quantumaes.yogatiming.feature.editor.component.rememberReorderableState
 import com.quantumaes.yogatiming.feature.editor.stageTypeLabelRes
 
 private const val MS_IN_SECOND = 1_000L
+private const val SECONDS_IN_MINUTE = 60
 private const val DRAGGED_ALPHA = 0.9f
+
+/**
+ * Допуски перерасхода, минуты.
+ *
+ * Ноль — жёсткое время: индивидуальное занятие проводится ровно столько,
+ * сколько заявлено. Дальше — эластичное окно группового занятия; больше
+ * четверти часа это уже не допуск, а другое занятие.
+ */
+private val TOLERANCE_MINUTES = listOf(0, 5, 10, 15)
+
+/**
+ * Когда звучит отсечка, минуты до целевого конца.
+ *
+ * Десять минут — шавасана плюс выход из неё; пять — короткая практика; ноль
+ * выключает отсечку тем, кто следит за временем сам.
+ */
+private val WRAP_UP_MINUTES = listOf(0, 3, 5, 10, 15)
 
 /**
  * Сколько элементов списка идёт перед первым этапом: поля профиля и заголовок
@@ -117,6 +137,10 @@ internal fun ProfileEditorScreen(
         onCategoryChange = viewModel::setCategory,
         onColorChange = viewModel::setColorTag,
         onToggleFavorite = viewModel::toggleFavorite,
+        onTargetEnabledChange = viewModel::setTargetEnabled,
+        onTargetDurationChange = viewModel::setTargetDuration,
+        onToleranceChange = viewModel::setTargetTolerance,
+        onWrapUpChange = viewModel::setWrapUpOffset,
         onMoveStage = viewModel::moveStage,
         onOpenStage = viewModel::openStage,
         onDuplicateStage = viewModel::duplicateStage,
@@ -134,6 +158,10 @@ private fun ProfileEditorContent(
     onCategoryChange: (ProfileCategory) -> Unit,
     onColorChange: (String) -> Unit,
     onToggleFavorite: () -> Unit,
+    onTargetEnabledChange: (Boolean) -> Unit,
+    onTargetDurationChange: (Int) -> Unit,
+    onToleranceChange: (Int) -> Unit,
+    onWrapUpChange: (Int) -> Unit,
     onMoveStage: (Int, Int) -> Unit,
     onOpenStage: (Long) -> Unit,
     onDuplicateStage: (Long) -> Unit,
@@ -161,6 +189,10 @@ private fun ProfileEditorContent(
                 onCategoryChange = onCategoryChange,
                 onColorChange = onColorChange,
                 onToggleFavorite = onToggleFavorite,
+                onTargetEnabledChange = onTargetEnabledChange,
+                onTargetDurationChange = onTargetDurationChange,
+                onToleranceChange = onToleranceChange,
+                onWrapUpChange = onWrapUpChange,
                 onMoveStage = onMoveStage,
                 onOpenStage = onOpenStage,
                 onDuplicateStage = onDuplicateStage,
@@ -179,6 +211,10 @@ private fun StageList(
     onCategoryChange: (ProfileCategory) -> Unit,
     onColorChange: (String) -> Unit,
     onToggleFavorite: () -> Unit,
+    onTargetEnabledChange: (Boolean) -> Unit,
+    onTargetDurationChange: (Int) -> Unit,
+    onToleranceChange: (Int) -> Unit,
+    onWrapUpChange: (Int) -> Unit,
     onMoveStage: (Int, Int) -> Unit,
     onOpenStage: (Long) -> Unit,
     onDuplicateStage: (Long) -> Unit,
@@ -205,6 +241,10 @@ private fun StageList(
                 onCategoryChange = onCategoryChange,
                 onColorChange = onColorChange,
                 onToggleFavorite = onToggleFavorite,
+                onTargetEnabledChange = onTargetEnabledChange,
+                onTargetDurationChange = onTargetDurationChange,
+                onToleranceChange = onToleranceChange,
+                onWrapUpChange = onWrapUpChange,
                 onOpenAlerts = onOpenAlerts,
             )
         }
@@ -268,6 +308,10 @@ private fun ProfileFields(
     onCategoryChange: (ProfileCategory) -> Unit,
     onColorChange: (String) -> Unit,
     onToggleFavorite: () -> Unit,
+    onTargetEnabledChange: (Boolean) -> Unit,
+    onTargetDurationChange: (Int) -> Unit,
+    onToleranceChange: (Int) -> Unit,
+    onWrapUpChange: (Int) -> Unit,
     onOpenAlerts: () -> Unit,
 ) {
     Column {
@@ -326,9 +370,93 @@ private fun ProfileFields(
             }
         }
 
+        TargetSection(
+            uiState = uiState,
+            onEnabledChange = onTargetEnabledChange,
+            onDurationChange = onTargetDurationChange,
+            onToleranceChange = onToleranceChange,
+            onWrapUpChange = onWrapUpChange,
+        )
+
         HorizontalDivider(Modifier.padding(top = Spacing.s))
     }
 }
+
+/**
+ * «Целевое время занятия» (замечание 8 полевой проверки 2026-08-04).
+ *
+ * Не то же самое, что сумма этапов: сумма отвечает «сколько занятие займёт»,
+ * цель — «сколько времени под него есть». Аренда зала до восьми, следующая
+ * группа в половине восьмого, индивидуальное занятие оплачено на час — это и
+ * есть цель, и раньше её негде было записать.
+ *
+ * Допуск отвечает на второй вопрос из замечания 12: жёсткое это время или
+ * эластичное. Ноль — «ровно столько»; десять минут — «арендодатель не
+ * возражает». От него зависит только момент, с которого приложение начинает
+ * тревожить, а не сам отсчёт.
+ */
+@Composable
+private fun TargetSection(
+    uiState: ProfileEditorUiState,
+    onEnabledChange: (Boolean) -> Unit,
+    onDurationChange: (Int) -> Unit,
+    onToleranceChange: (Int) -> Unit,
+    onWrapUpChange: (Int) -> Unit,
+) {
+    SectionTitle(stringResource(R.string.editor_profile_target))
+    SwitchRow(
+        title = stringResource(R.string.editor_profile_target_switch),
+        subtitle = stringResource(R.string.editor_profile_target_hint),
+        checked = uiState.hasTarget,
+        onCheckedChange = onEnabledChange,
+    )
+
+    if (!uiState.hasTarget) return
+
+    DurationPicker(
+        durationSec = uiState.targetDurationSec ?: 0,
+        onDurationChange = onDurationChange,
+    )
+
+    SectionTitle(stringResource(R.string.editor_profile_tolerance))
+    SingleChoiceChips(
+        options = TOLERANCE_MINUTES,
+        selected = TOLERANCE_MINUTES.closestTo(uiState.targetToleranceSec),
+        label = { minutes ->
+            if (minutes == 0) {
+                stringResource(R.string.editor_profile_tolerance_strict)
+            } else {
+                stringResource(R.string.editor_profile_tolerance_value, minutes)
+            }
+        },
+        onSelect = { onToleranceChange(it * SECONDS_IN_MINUTE) },
+    )
+
+    SectionTitle(stringResource(R.string.editor_profile_wrap_up))
+    SingleChoiceChips(
+        options = WRAP_UP_MINUTES,
+        selected = WRAP_UP_MINUTES.closestTo(uiState.wrapUpOffsetSec),
+        label = { minutes ->
+            if (minutes == 0) {
+                stringResource(R.string.editor_profile_wrap_up_off)
+            } else {
+                stringResource(R.string.editor_profile_wrap_up_value, minutes)
+            }
+        },
+        onSelect = { onWrapUpChange(it * SECONDS_IN_MINUTE) },
+    )
+    FieldHint(stringResource(R.string.editor_profile_wrap_up_hint), Modifier.padding(top = Spacing.xs))
+}
+
+/**
+ * Ближайшее к сохранённому значению из предложенных.
+ *
+ * Профиль мог приехать из экспорта с любым числом секунд, а чипы предлагают
+ * круглые минуты. Подсветить «ничего» в таком случае значит показать набор
+ * чипов, ни один из которых не выбран, — и оставить пользователя гадать, что
+ * же сейчас задано.
+ */
+private fun List<Int>.closestTo(seconds: Int): Int = minBy { kotlin.math.abs(it * SECONDS_IN_MINUTE - seconds) }
 
 /** «Этапы · 60 мин» — то же, что видно в списке профилей, но по ходу правки. */
 @Composable
@@ -336,27 +464,63 @@ private fun StagesHeader(uiState: ProfileEditorUiState) {
     val minutes = TimeFormatter.roundedMinutes(uiState.totalDurationSec * MS_IN_SECOND).toInt()
     val duration = stringResource(R.string.editor_profile_total_minutes, minutes)
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = Spacing.m, end = Spacing.m, top = Spacing.m),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.editor_profile_stages),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text =
-                if (uiState.hasFreeStages) {
-                    stringResource(R.string.editor_profile_total_at_least, duration)
-                } else {
-                    duration
-                },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = Spacing.m, end = Spacing.m, top = Spacing.m),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.editor_profile_stages),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text =
+                    if (uiState.hasFreeStages) {
+                        stringResource(R.string.editor_profile_total_at_least, duration)
+                    } else {
+                        duration
+                    },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        AllocationHint(uiState)
     }
+}
+
+/**
+ * «Распределено 64 из 60 мин · на 4 мин больше цели».
+ *
+ * Считать разницу в уме, добавляя этапы по одному, — работа, которую и должен
+ * делать редактор (замечание 8 полевой проверки 2026-08-04). Строка появляется
+ * только у профиля с целью: без неё сравнивать не с чем.
+ *
+ * Перебор красится ошибкой, недобор — обычным цветом: план короче цели это
+ * нормально (свободный этап, запас на вопросы), а длиннее — то, что придётся
+ * решать прямо на занятии.
+ */
+@Composable
+private fun AllocationHint(uiState: ProfileEditorUiState) {
+    val unallocated = uiState.unallocatedSec ?: return
+    val targetMinutes = TimeFormatter.roundedMinutes((uiState.targetDurationSec ?: 0) * MS_IN_SECOND).toInt()
+    val plannedMinutes = TimeFormatter.roundedMinutes(uiState.totalDurationSec * MS_IN_SECOND).toInt()
+    val restMinutes = TimeFormatter.roundedMinutes(kotlin.math.abs(unallocated) * MS_IN_SECOND).toInt()
+
+    val allocation = stringResource(R.string.editor_profile_allocated, plannedMinutes, targetMinutes)
+    val rest =
+        when {
+            unallocated > 0 -> stringResource(R.string.editor_profile_unallocated, restMinutes)
+            unallocated < 0 -> stringResource(R.string.editor_profile_over_target, restMinutes)
+            else -> stringResource(R.string.editor_profile_exact_target)
+        }
+
+    FieldHint(
+        text = "$allocation · $rest",
+        modifier = Modifier.padding(top = Spacing.xxs),
+        error = unallocated < 0,
+    )
 }
 
 @Composable
@@ -481,6 +645,8 @@ private fun ProfileEditorPreview() {
                     isLoading = false,
                     name = "Хатха 60 мин",
                     category = ProfileCategory.HATHA,
+                    targetDurationSec = 3600,
+                    targetToleranceSec = 300,
                     stages =
                         listOf(
                             Stage(id = 1, name = "Разминка", durationSec = 480),
@@ -491,6 +657,10 @@ private fun ProfileEditorPreview() {
             onCategoryChange = {},
             onColorChange = {},
             onToggleFavorite = {},
+            onTargetEnabledChange = {},
+            onTargetDurationChange = {},
+            onToleranceChange = {},
+            onWrapUpChange = {},
             onMoveStage = { _, _ -> },
             onOpenStage = {},
             onDuplicateStage = {},

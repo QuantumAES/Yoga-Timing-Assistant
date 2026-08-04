@@ -16,6 +16,11 @@ import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
  * решение C-6 в действии: подмены каналов в рантайме нет, тишина шавасаны
  * задана данными и видна пользователю в редакторе.
  *
+ * У всех трёх задано целевое время занятия и допуск (Фаза 11): настройка,
+ * которую не видел ни на одном профиле, не существует для пользователя.
+ * Групповые занятия получают эластичное окно, медитация — строгое: это и есть
+ * два сценария из замечания 12 полевой проверки 2026-08-04, показанные данными.
+ *
  * UUID зафиксированы: по ним демо-профиль опознаётся при импорте и в тестах.
  */
 internal object DemoProfiles {
@@ -46,6 +51,11 @@ internal object DemoProfiles {
             name = "Хатха 60 мин",
             category = ProfileCategory.HATHA,
             colorTag = COLOR_GREEN,
+            // Групповое занятие в арендованном зале: пять минут сверху обычно
+            // никого не беспокоят, а отсечка за десять минут приходится ровно
+            // на вход в шавасану.
+            targetDurationSec = 60 * MIN,
+            targetToleranceSec = 5 * MIN,
             isFavorite = true,
             sortOrder = 0,
             defaultAlertConfig = AlertPresets.standard(),
@@ -73,15 +83,19 @@ internal object DemoProfiles {
             name = "Инь-йога 90 мин",
             category = ProfileCategory.YIN,
             colorTag = COLOR_INDIGO,
+            targetDurationSec = 90 * MIN,
+            targetToleranceSec = 10 * MIN,
             sortOrder = 1,
             defaultAlertConfig = AlertPresets.standard(),
             stages =
                 listOf(
                     stage("Настройка дыхания", 6 * MIN, COLOR_TEAL),
                     stage("Бабочка", 8 * MIN, COLOR_BLUE),
-                    stage("Дракон", 10 * MIN, COLOR_BLUE, note = "По 5 минут на сторону"),
+                    // Длительность двустороннего этапа — на одну сторону; в
+                    // занятии он развернётся в два отрезка по пять минут.
+                    stage("Дракон", 5 * MIN, COLOR_BLUE, bilateral = true),
                     stage("Седло", 8 * MIN, COLOR_BLUE),
-                    stage("Скрутка лёжа", 8 * MIN, COLOR_INDIGO, note = "По 4 минуты на сторону"),
+                    stage("Скрутка лёжа", 4 * MIN, COLOR_INDIGO, bilateral = true),
                     stage("Гусеница", 10 * MIN, COLOR_INDIGO),
                     stage("Полубабочка", 8 * MIN, COLOR_INDIGO),
                     stage("Ноги на стене", 12 * MIN, COLOR_PURPLE),
@@ -97,6 +111,12 @@ internal object DemoProfiles {
             name = "Медитация 20 мин",
             category = ProfileCategory.MEDITATION,
             colorTag = COLOR_PURPLE,
+            // Двадцать минут — это двадцать минут: практика короткая, и допуска
+            // у неё нет. Отсечка сдвинута к трём минутам: десять от двадцати —
+            // половина занятия, такая отсечка ничего не сообщает.
+            targetDurationSec = 20 * MIN,
+            targetToleranceSec = 0,
+            wrapUpOffsetSec = 3 * MIN,
             sortOrder = 2,
             defaultAlertConfig = AlertPresets.silent(),
             stages =
@@ -113,6 +133,7 @@ internal object DemoProfiles {
         color: String,
         note: String? = null,
         voiceName: String? = null,
+        bilateral: Boolean = false,
     ) = Stage(
         name = name,
         type = StageType.NORMAL,
@@ -120,6 +141,7 @@ internal object DemoProfiles {
         durationSec = durationSec,
         note = note,
         voiceName = voiceName,
+        bilateral = bilateral,
     )
 
     /** REST-этап всегда получает тихий пресет — иначе гонг посреди шавасаны (C-6). */

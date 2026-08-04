@@ -2,6 +2,7 @@ package com.quantumaes.yogatiming.timer.engine
 
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionState
+import com.quantumaes.yogatiming.timer.engine.model.holdElapsedMs
 import com.quantumaes.yogatiming.timer.engine.schedule.passedEventIds
 
 /**
@@ -27,11 +28,13 @@ fun reduce(
         is TimerCommand.Load -> load(command)
         TimerCommand.Start -> start(state, now)
         TimerCommand.Restart -> restart(state, now)
-        TimerCommand.Pause -> pause(state, now)
+        is TimerCommand.Pause -> pause(state, command.mode, now)
+        is TimerCommand.SetPauseMode -> setPauseMode(state, command.mode, now)
         TimerCommand.Resume -> resume(state, now)
         TimerCommand.Next -> next(state, now)
         TimerCommand.Previous -> previous(state, now)
         is TimerCommand.Adjust -> adjust(state, command.deltaMs, now)
+        TimerCommand.FitToBudget -> fitToBudget(state, now)
         TimerCommand.Stop -> stop(state, now)
     }
 
@@ -72,24 +75,6 @@ private fun startFresh(
     return Reduction(fresh, events)
 }
 
-private fun pause(
-    state: SessionState,
-    now: Long,
-): Reduction {
-    if (state.runState != RunState.RUNNING) return Reduction.unchanged(state)
-    val paused = state.copy(runState = RunState.PAUSED, stageElapsedAtResumeMs = state.stageElapsedMs(now))
-    return Reduction(paused, listOf(TimerEvent.RunStateChanged(RunState.RUNNING, RunState.PAUSED)))
-}
-
-private fun resume(
-    state: SessionState,
-    now: Long,
-): Reduction {
-    if (state.runState != RunState.PAUSED) return Reduction.unchanged(state)
-    val resumed = state.copy(runState = RunState.RUNNING, resumedAtMs = now)
-    return Reduction(resumed, listOf(TimerEvent.RunStateChanged(RunState.PAUSED, RunState.RUNNING)))
-}
-
 /**
  * «След.»: этап завершается досрочно вместе с END-оповещением.
  *
@@ -109,6 +94,14 @@ private fun next(
 /**
  * «Пред.»: вход в предыдущий этап без END-оповещения покидаемого (решение B-10).
  *
+ * Возврат на этап, покинутый **досрочно**, продолжает его с того места, где он
+ * был брошен, а не начинает заново. Это ровно тот случай, ради которого кнопка
+ * и существует: «След.» нажали по ошибке — задели телефон на полу, промахнулись
+ * мимо паузы, — и исправление промаха обязано вернуть занятие в то состояние,
+ * в котором оно было (замечание 5 полевой проверки 2026-08-04). Этап,
+ * досмотренный до конца, наоборот, начинается с нуля: возвращаются к нему,
+ * чтобы показать позу ещё раз.
+ *
  * На первом этапе — no-op: возвращаться некуда.
  */
 private fun previous(
@@ -116,7 +109,21 @@ private fun previous(
     now: Long,
 ): Reduction {
     if (!state.runState.isActive || state.currentIndex == 0) return Reduction.unchanged(state)
-    return enterStage(state.leaveStage(now), state.currentIndex - 1, now, StageChangeReason.MANUAL_PREVIOUS)
+
+    val target = state.currentIndex - 1
+    val left = state.leaveStage(now)
+    val spent = left.actualDurationsMs[target] ?: 0L
+    val hasDeadline =
+        left.plan.stages[target]
+            .kind.hasDeadline
+    val unfinished = spent > 0L && (!hasDeadline || spent < left.effectiveDurationMs(target))
+
+    if (!unfinished) return enterStage(left, target, now, StageChangeReason.MANUAL_PREVIOUS)
+
+    // Накопленное возвращается из «покинутых» обратно в текущий этап: иначе оно
+    // посчиталось бы дважды — и в сумме прошлых этапов, и в текущем.
+    val rewound = left.copy(actualDurationsMs = left.actualDurationsMs - target)
+    return enterStage(rewound, target, now, StageChangeReason.MANUAL_PREVIOUS, elapsedMs = spent)
 }
 
 /**
@@ -125,6 +132,11 @@ private fun previous(
  * Общее время занятия меняется само собой: `totalRemainingMs` считается по
  * эффективным длительностям. Отдельной логики для режима SUM не требуется —
  * это дивиденд от того, что всё выводится, а не хранится.
+ *
+ * У двусторонней асаны правка первой стороны повторяется на второй: смысл
+ * такого этапа в симметрии, и удерживать правую минуту, а левую полторы —
+ * не «гибкость», а ошибка (замечание 10 полевой проверки 2026-08-04). Правка
+ * второй стороны на первую не переносится: она уже пройдена.
  */
 private fun adjust(
     state: SessionState,
@@ -146,7 +158,10 @@ private fun adjust(
             .coerceIn(TimerLimits.MIN_STAGE_MS, TimerLimits.MAX_STAGE_MS) - planned
     if (adjustment == previousAdjustment) return Reduction.unchanged(state)
 
-    val adjusted = state.copy(adjustmentsMs = state.adjustmentsMs + (index to adjustment))
+    val mirror = state.mirrorIndexOf(index)?.takeIf { it > index }
+    val adjustments =
+        state.adjustmentsMs + (index to adjustment) + (mirror?.let { mapOf(it to adjustment) }.orEmpty())
+    val adjusted = state.copy(adjustmentsMs = adjustments)
     // Сдвиг конца этапа сдвигает и WARNING, и END. Всё, что правка увела
     // в будущее, обязано сработать заново.
     val rescheduled = adjusted.copy(firedAlertIds = adjusted.firedAlertIds intersect adjusted.passedEventIds(now))
@@ -181,6 +196,8 @@ private fun stop(
             TimerEvent.SessionStopped(
                 totalElapsedMs = state.totalElapsedMs(now),
                 stagesCompleted = state.currentIndex,
+                holdMs = state.holdElapsedMs(now),
+                adjustmentsMs = state.adjustmentsMs,
             ),
             TimerEvent.RunStateChanged(from = state.runState, to = RunState.IDLE),
         ),

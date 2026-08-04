@@ -35,12 +35,27 @@ import java.time.LocalDate
 private val DOT_SIZE = 5.dp
 
 /**
- * Больше трёх занятий в день — одна точка с цифрой.
+ * Больше трёх занятий в день — цифра вместо точек.
  *
  * Четыре точки в клетке шириной 47 dp уже не считаются взглядом, а именно
- * ради взгляда календарь и нарисован.
+ * ради взгляда календарь и нарисован. Точка рядом с цифрой, как было до
+ * замечания 14 полевой проверки 2026-08-04, не помещалась: клетка круглая, и
+ * пара «точка + цифра» выходила за её хорду и обрезалась. Цифра сама по себе
+ * помещается всегда — и читается однозначнее, чем цифра с точкой, про которую
+ * непонятно, входит она в счёт или нет.
  */
 private const val MAX_DOTS = 3
+
+/**
+ * Насколько заметна заливка клетки с занятиями.
+ *
+ * Заливка нужна не вместо отметок, а под ними: форму месяца — где густо, где
+ * пусто — глаз берёт по пятнам, а не по счёту точек. Насыщенность растёт с
+ * числом занятий и упирается в потолок: разница между четырьмя и восемью
+ * занятиями в день инструктору не нужна, ему нужно «в этот день было много».
+ */
+private const val FILL_ALPHA_STEP = 0.08f
+private const val FILL_ALPHA_MAX = 0.24f
 
 /** Насколько бледнее хвосты соседних месяцев. */
 private const val OUTSIDE_ALPHA = 0.38f
@@ -113,8 +128,19 @@ private fun RowScope.DayCell(
     val selectable = cell.sessionCount > 0
     val background =
         when {
-            cell.selected -> MaterialTheme.colorScheme.primaryContainer
-            else -> Color.Transparent
+            cell.selected -> {
+                MaterialTheme.colorScheme.primaryContainer
+            }
+
+            cell.sessionCount > 0 && cell.inPeriod -> {
+                MaterialTheme.colorScheme.primary.copy(
+                    alpha = (cell.sessionCount * FILL_ALPHA_STEP).coerceAtMost(FILL_ALPHA_MAX),
+                )
+            }
+
+            else -> {
+                Color.Transparent
+            }
         }
     val content =
         when {
@@ -160,7 +186,7 @@ private fun RowScope.DayCell(
     }
 }
 
-/** Точки под числом: до трёх — точками, больше — точкой с цифрой. */
+/** Отметки под числом: до трёх — точками, больше — цифрой. */
 @Composable
 private fun Marks(
     count: Int,
@@ -178,11 +204,12 @@ private fun Marks(
             }
 
             count > MAX_DOTS -> {
-                Dot(color)
                 Text(
                     text = count.toString(),
                     style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
                     color = color,
+                    maxLines = 1,
                 )
             }
         }

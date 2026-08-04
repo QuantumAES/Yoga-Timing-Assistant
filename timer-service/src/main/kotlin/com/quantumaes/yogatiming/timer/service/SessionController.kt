@@ -1,23 +1,22 @@
 package com.quantumaes.yogatiming.timer.service
 
-import android.database.SQLException
-import android.util.Log
 import com.quantumaes.yogatiming.domain.alert.AlertRequest
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
-import com.quantumaes.yogatiming.domain.repository.SessionLogRepository
 import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.session.SessionPlanFactory
 import com.quantumaes.yogatiming.domain.session.SessionSummary
+import com.quantumaes.yogatiming.domain.session.SideLabels
 import com.quantumaes.yogatiming.domain.session.domainAlert
-import com.quantumaes.yogatiming.domain.stats.SessionLog
-import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
+import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerEngine
 import com.quantumaes.yogatiming.timer.engine.TimerEvent
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.model.PlannedStage
 import com.quantumaes.yogatiming.timer.engine.model.RunState
+import com.quantumaes.yogatiming.timer.engine.model.SessionPlan
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.engine.model.SessionState
 import com.quantumaes.yogatiming.timer.engine.persist.PersistedSession
@@ -28,17 +27,12 @@ import com.quantumaes.yogatiming.timer.engine.persist.restorability
 import com.quantumaes.yogatiming.timer.engine.persist.restoreInto
 import com.quantumaes.yogatiming.timer.service.di.TimerSessionScope
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import java.time.ZoneId
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-
-private const val TAG = "SessionController"
 
 /** Чем закончилась попытка поднять сохранённую сессию. */
 enum class RestoreOutcome {
@@ -78,37 +72,59 @@ class SessionController
     @Inject
     constructor(
         private val profileRepository: ProfileRepository,
-        private val sessionLog: SessionLogRepository,
+        private val sideLabels: SideLabelsSource,
+        private val summaryWriter: SessionSummaryWriter,
         private val sessionStore: SessionStore,
         private val watchdog: Watchdog,
         private val time: TimeSource,
+        settingsStore: SettingsStore,
         @TimerSessionScope scope: CoroutineScope,
     ) : ActiveSessionSource,
         SessionSummarySource {
         private val engine = TimerEngine(time, scope, ::onEffect)
 
+        /**
+         * С какого режима начинается пауза (Экран 6).
+         *
+         * Читается здесь, а не на экране: «Пауза» нажимают и из шторки, и с
+         * рабочего экрана, и разойтись эти два пути не имеют права (критерий
+         * A-2). `@Volatile` — поле пишется корутиной подписки, а читается
+         * потоком, доставившим намерение сервису.
+         */
+        @Volatile
+        private var defaultPauseMode: PauseMode = PauseMode.DEFAULT
+
         /** `null` — занятие не загружено. */
         override val snapshot: StateFlow<SessionSnapshot?> get() = engine.snapshot
 
-        private val _lastSummary = MutableStateFlow<SessionSummary?>(null)
-
-        override val lastSummary: StateFlow<SessionSummary?> = _lastSummary.asStateFlow()
+        override val lastSummary: StateFlow<SessionSummary?> get() = summaryWriter.lastSummary
 
         val events: SharedFlow<TimerEvent> get() = engine.events
 
         val hasSession: Boolean get() = engine.currentState != null
 
-        /**
-         * Стенные часы старта занятия — единственное, чего нет в состоянии движка.
-         *
-         * Движок стенных часов не знает вовсе (принцип П-3), а показать «18:05 →
-         * 19:03» без них нельзя. Метка переживает смерть процесса вместе со
-         * снимком сессии, поэтому восстановленное занятие помнит, когда началось.
-         */
-        private var startedAtWallMs: Long? = null
-
         init {
             engine.start()
+            scope.launch {
+                settingsStore.settings.collect { defaultPauseMode = it.pauseMode }
+            }
+        }
+
+        /**
+         * «Пауза» / «Продолжить» — одно действие на всё приложение.
+         *
+         * Живёт здесь, а не в модели экрана и не в сервисе: обе кнопки — на
+         * экране и в шторке — обязаны выбирать один и тот же режим паузы, а
+         * знание о том, какой он, лежит в настройках.
+         */
+        fun togglePause() {
+            val command =
+                if (snapshot.value?.runState == RunState.PAUSED) {
+                    TimerCommand.Resume
+                } else {
+                    TimerCommand.Pause(defaultPauseMode)
+                }
+            engine.submit(command)
         }
 
         /**
@@ -116,7 +132,7 @@ class SessionController
          */
         suspend fun startSession(profileId: Long): Boolean {
             val profile = profileRepository.getProfile(profileId) ?: return false
-            val plan = SessionPlanFactory.create(profile) ?: return false
+            val plan = SessionPlanFactory.create(profile, sideLabels.labels()) ?: return false
             engine.submit(TimerCommand.Load(plan))
             engine.submit(TimerCommand.Start)
             return true
@@ -152,10 +168,10 @@ class SessionController
             val restored =
                 profileRepository
                     .getProfile(saved.profileId)
-                    ?.let(SessionPlanFactory::create)
+                    ?.let { SessionPlanFactory.create(it, sideLabels.labels()) }
                     ?.let(saved::restoreInto)
             restored?.let {
-                startedAtWallMs = saved.startedAtWallMs.takeIf { start -> start > 0L }
+                summaryWriter.restoreStartedAt(saved.startedAtWallMs.takeIf { start -> start > 0L })
                 engine.restore(it)
             }
             return if (restored == null) RestoreOutcome.PROFILE_GONE else RestoreOutcome.RESTORED
@@ -198,26 +214,30 @@ class SessionController
                     // в RUNNING откуда угодно, кроме паузы. Возврат с паузы —
                     // продолжение того же занятия, и начало у него прежнее.
                     if (event.to == RunState.RUNNING && event.from != RunState.PAUSED) {
-                        startedAtWallMs = time.wall()
+                        summaryWriter.markStarted()
                     }
                     if (event.to == RunState.IDLE) forget() else save(state)
                 }
 
                 is TimerEvent.SessionFinished -> {
-                    publishSummary(
-                        state = state,
+                    summaryWriter.publish(
+                        plan = state.plan,
                         outcome = SessionOutcome.COMPLETED,
                         actualDurationMs = event.totalElapsedMs,
+                        holdMs = event.holdMs,
+                        adjustmentsMs = event.adjustmentsMs,
                         stagesCompleted = state.plan.stages.size,
                     )
                     forget()
                 }
 
                 is TimerEvent.SessionStopped -> {
-                    publishSummary(
-                        state = state,
+                    summaryWriter.publish(
+                        plan = state.plan,
                         outcome = SessionOutcome.STOPPED,
                         actualDurationMs = event.totalElapsedMs,
+                        holdMs = event.holdMs,
+                        adjustmentsMs = event.adjustmentsMs,
                         stagesCompleted = event.stagesCompleted,
                     )
                 }
@@ -229,72 +249,10 @@ class SessionController
             }
         }
 
-        /**
-         * Итоги закончившегося занятия — на экран и в журнал.
-         *
-         * Начало берётся из метки старта, а если её нет — вычитанием факта из
-         * конца. Метки нет ровно в одном случае: занятие подняли из снимка,
-         * сохранённого версией без неё. Приблизительное начало здесь лучше
-         * пустого места: пауз в занятии обычно нет, и ошибка равна их длине.
-         */
-        private suspend fun publishSummary(
-            state: SessionState,
-            outcome: SessionOutcome,
-            actualDurationMs: Long,
-            stagesCompleted: Int,
-        ) {
-            val finishedAtWallMs = time.wall()
-            val summary =
-                SessionSummary(
-                    profileId = state.plan.profileId,
-                    profileName = state.plan.profileName,
-                    outcome = outcome,
-                    startedAtWallMs = startedAtWallMs ?: (finishedAtWallMs - actualDurationMs),
-                    finishedAtWallMs = finishedAtWallMs,
-                    plannedDurationMs = state.plan.plannedDurationMs,
-                    actualDurationMs = actualDurationMs,
-                    stagesCompleted = stagesCompleted,
-                    stageCount = state.plan.stages.size,
-                )
-            _lastSummary.value = summary
-            startedAtWallMs = null
-            record(summary)
-        }
-
-        /**
-         * Запись занятия в журнал (docs/09-STATISTICS.md, фаза S1).
-         *
-         * Здесь же, в обработчике конца занятия, а не отдельной корутиной
-         * «когда-нибудь потом» (R-S3): между концом занятия и записью процесс
-         * может умереть, и чем короче этот промежуток, тем меньше вероятность
-         * потерять занятие.
-         *
-         * Зона — системная на момент записи: день занятия фиксируется тем, где
-         * инструктор его провёл, а не тем, где он потом откроет статистику
-         * (D-S4).
-         *
-         * Ошибка записи гасится: журнал — вторичная функция, и падение базы не
-         * имеет права уронить цикл событий движка вместе с идущим занятием.
-         * Отмена корутины при этом пробрасывается: `runCatching` ловил и её —
-         * то есть глушил не только отказ базы, но и штатное сворачивание
-         * области, притворяясь, что занятие записано.
-         */
-        private suspend fun record(summary: SessionSummary) {
-            val entry = SessionLog.entryFor(summary, ZoneId.systemDefault()) ?: return
-            try {
-                sessionLog.record(entry)
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (database: SQLException) {
-                logLostEntry(entry, database)
-            } catch (closed: IllegalStateException) {
-                // База закрыта — процесс сворачивается прямо сейчас.
-                logLostEntry(entry, closed)
-            }
-        }
-
         private suspend fun save(state: SessionState) {
-            sessionStore.save(state.persist(time).copy(startedAtWallMs = startedAtWallMs ?: time.wall()))
+            sessionStore.save(
+                state.persist(time).copy(startedAtWallMs = summaryWriter.startedAtWallMs ?: time.wall()),
+            )
             watchdog.rearm(engine.currentStageEndMs)
         }
 
@@ -303,15 +261,6 @@ class SessionController
             sessionStore.clear()
         }
     }
-
-/**
- * Уровень ошибки, а не предупреждения: потерянное занятие — это дыра в отчёте
- * студии, и в багрепорте её должно быть видно с первого взгляда.
- */
-private fun logLostEntry(
-    entry: SessionLogEntry,
-    error: Throwable,
-) = Log.e(TAG, "Занятие не попало в журнал: ${entry.localDate}, ${entry.durationMs} мс", error)
 
 /**
  * Назовёт ли этап своё имя, входя в занятие.

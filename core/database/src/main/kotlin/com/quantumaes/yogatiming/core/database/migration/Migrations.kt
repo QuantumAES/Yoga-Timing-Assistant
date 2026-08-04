@@ -68,5 +68,33 @@ val MIGRATION_2_3 =
         }
     }
 
+/**
+ * v3 → v4: целевое время занятия и двусторонние этапы (Фаза 11).
+ *
+ * Четыре колонки, ни одной таблицы. Значения по умолчанию подобраны так, чтобы
+ * существующие профили после обновления вели себя ровно как до него:
+ * `target_duration_sec` = NULL — цели нет, отсчёт идёт по сумме этапов;
+ * `bilateral` = 0 — этап проходится один раз. `wrap_up_offset_sec` = 600
+ * заполняется всем, но без цели он не срабатывает: отсечка отсчитывается от
+ * целевого конца, которого нет.
+ *
+ * Значения по умолчанию продублированы в `@ColumnInfo(defaultValue = ...)`:
+ * `runMigrationsAndValidate` сверяет схему после миграции с экспортированной,
+ * и колонка с DEFAULT в SQL, но без него в сущности, считается расхождением.
+ */
+val MIGRATION_3_4 =
+    object : Migration(3, 4) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE profiles ADD COLUMN target_duration_sec INTEGER")
+            connection.execSQL(
+                "ALTER TABLE profiles ADD COLUMN target_tolerance_sec INTEGER NOT NULL DEFAULT 0",
+            )
+            connection.execSQL(
+                "ALTER TABLE profiles ADD COLUMN wrap_up_offset_sec INTEGER NOT NULL DEFAULT 600",
+            )
+            connection.execSQL("ALTER TABLE stages ADD COLUMN bilateral INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
 /** Все миграции в порядке версий — ровно то, что уходит в `databaseBuilder`. */
-val YTA_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+val YTA_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)

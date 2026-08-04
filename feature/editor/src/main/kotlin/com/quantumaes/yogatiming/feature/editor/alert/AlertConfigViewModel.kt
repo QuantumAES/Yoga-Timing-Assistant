@@ -157,7 +157,11 @@ class AlertConfigViewModel
                     config.copy(end = config.end.enabledOr(enabled, AlertPresets.standard().end))
                 }
 
-                AlertTrigger.WARNING -> {
+                // WARNING — список, а не один переключатель: предупреждения
+                // добавляются и удаляются по одному. WRAP_UP этапу не
+                // принадлежит вовсе — это отсечка занятия, и собирается она из
+                // целевого времени профиля.
+                AlertTrigger.WARNING, AlertTrigger.WRAP_UP -> {
                     config
                 }
             }

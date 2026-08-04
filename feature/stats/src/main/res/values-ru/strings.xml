@@ -25,6 +25,28 @@
     <string name="stats_tile_days">дней с практикой</string>
     <string name="stats_days_of">%1$d из %2$d</string>
 
+    <!--
+      Сворачиваемые разделы (замечание 16 полевой проверки 2026-08-04).
+      Подпись под заголовком отвечает на главный вопрос раздела, не раскрывая
+      его: свёрнутый раздел обязан оставаться полезным.
+    -->
+    <string name="stats_section_expand">развернуть</string>
+    <string name="stats_section_collapse">свернуть</string>
+    <plurals name="stats_days_practiced">
+        <item quantity="one">%1$d день с практикой</item>
+        <item quantity="few">%1$d дня с практикой</item>
+        <item quantity="many">%1$d дней с практикой</item>
+        <item quantity="other">%1$d дня с практикой</item>
+    </plurals>
+    <plurals name="stats_profiles_count">
+        <item quantity="one">%1$d профиль</item>
+        <item quantity="few">%1$d профиля</item>
+        <item quantity="many">%1$d профилей</item>
+        <item quantity="other">%1$d профиля</item>
+    </plurals>
+    <string name="stats_weekdays_subtitle">чаще всего — %1$s</string>
+    <string name="stats_weekdays_subtitle_empty">занятий за период нет</string>
+
     <string name="stats_weekdays_title">По дням недели</string>
     <string name="stats_weekday_description">%1$s: %2$s, %3$s</string>
     <string name="stats_weekday_empty_description">%1$s: занятий нет</string>

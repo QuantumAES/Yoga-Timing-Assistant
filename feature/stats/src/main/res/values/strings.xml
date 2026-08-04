@@ -29,6 +29,24 @@
     <!-- «9 из 30»: сколько дней периода содержат хотя бы одно занятие. -->
     <string name="stats_days_of">%1$d of %2$d</string>
 
+    <!--
+      Сворачиваемые разделы (замечание 16 полевой проверки 2026-08-04).
+      Подпись под заголовком отвечает на главный вопрос раздела, не раскрывая
+      его: свёрнутый раздел обязан оставаться полезным.
+    -->
+    <string name="stats_section_expand">expand</string>
+    <string name="stats_section_collapse">collapse</string>
+    <plurals name="stats_days_practiced">
+        <item quantity="one">%1$d day practised</item>
+        <item quantity="other">%1$d days practised</item>
+    </plurals>
+    <plurals name="stats_profiles_count">
+        <item quantity="one">%1$d profile</item>
+        <item quantity="other">%1$d profiles</item>
+    </plurals>
+    <string name="stats_weekdays_subtitle">most often — %1$s</string>
+    <string name="stats_weekdays_subtitle_empty">no classes in this period</string>
+
     <string name="stats_weekdays_title">By day of the week</string>
     <!-- Столбик графика для TalkBack: картинка для незрячего пользователя пуста. -->
     <string name="stats_weekday_description">%1$s: %2$s, %3$s</string>

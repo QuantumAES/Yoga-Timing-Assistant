@@ -101,7 +101,7 @@ class TimerService : Service() {
         when (intent?.action) {
             ACTION_START -> startSession(intent.getLongExtra(EXTRA_PROFILE_ID, NO_PROFILE))
 
-            ACTION_TOGGLE_PAUSE -> controller.submit(togglePauseCommand())
+            ACTION_TOGGLE_PAUSE -> controller.togglePause()
 
             ACTION_NEXT -> controller.submit(TimerCommand.Next)
 
@@ -123,9 +123,6 @@ class TimerService : Service() {
             if (!controller.startSession(profileId)) stopSession()
         }
     }
-
-    private fun togglePauseCommand(): TimerCommand =
-        if (controller.snapshot.value?.runState == RunState.PAUSED) TimerCommand.Resume else TimerCommand.Pause
 
     private fun resumeAfterGap() {
         if (controller.hasSession) {

@@ -32,7 +32,9 @@ interface ProfileDao {
                p.icon_id       AS icon_id,
                p.is_favorite   AS is_favorite,
                COUNT(s.id)     AS stage_count,
-               COALESCE(SUM(CASE WHEN s.type <> 'FREE' THEN s.duration_sec ELSE 0 END), 0)
+               COALESCE(SUM(CASE WHEN s.type <> 'FREE'
+                                 THEN s.duration_sec * (CASE WHEN s.bilateral = 1 THEN 2 ELSE 1 END)
+                                 ELSE 0 END), 0)
                                AS total_duration_sec,
                COALESCE(SUM(CASE WHEN s.type =  'FREE' THEN 1 ELSE 0 END), 0)
                                AS free_stage_count

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -65,6 +66,19 @@ private data class OnboardingSlide(
     val illustration: ImageVector?,
 )
 
+/**
+ * Четыре слайда, и каждый — обещание, а не описание кнопки.
+ *
+ * Прежние три рассказывали, что в приложении есть: профили, экран, сигналы.
+ * Так пишут справку, а не первый экран (замечание 9 полевой проверки
+ * 2026-08-04). Теперь каждый слайд отвечает на вопрос инструктора: «что я
+ * получу» — план, который ведёт занятие сам; свободу не смотреть на экран;
+ * гарантию закончить вовремя; отсчёт, который не собьётся. Порядок — от того,
+ * что придётся сделать первым, к тому, ради чего это всё.
+ *
+ * Последний слайд про надёжность стоит перед запросом на уведомления не
+ * случайно: разрешение спрашивается ровно тогда, когда сказано, зачем оно.
+ */
 private val SLIDES =
     listOf(
         OnboardingSlide(
@@ -73,24 +87,29 @@ private val SLIDES =
             illustration = Icons.AutoMirrored.Filled.List,
         ),
         OnboardingSlide(
-            title = R.string.onboarding_session_title,
-            text = R.string.onboarding_session_text,
-            illustration = null,
-        ),
-        OnboardingSlide(
             title = R.string.onboarding_alerts_title,
             text = R.string.onboarding_alerts_text,
             illustration = Icons.Filled.Notifications,
+        ),
+        OnboardingSlide(
+            title = R.string.onboarding_budget_title,
+            text = R.string.onboarding_budget_text,
+            illustration = Icons.Filled.DateRange,
+        ),
+        OnboardingSlide(
+            title = R.string.onboarding_session_title,
+            text = R.string.onboarding_session_text,
+            illustration = null,
         ),
     )
 
 /**
  * Экран 7 «Онбординг» (Фаза 7).
  *
- * Три слайда вместо четырёх из ТЗ (§5.4 анализа): слайд с разрешениями
- * растворён в последнем. Разрешение на уведомления спрашивается здесь, потому
- * что без него занятием нельзя управлять из шторки, а система охотнее
- * останавливает сервис без видимого уведомления.
+ * Отдельного слайда с разрешениями нет (§5.4 анализа): он растворён в
+ * последнем. Разрешение на уведомления спрашивается здесь, потому что без него
+ * занятием нельзя управлять из шторки, а система охотнее останавливает сервис
+ * без видимого уведомления.
  *
  * **Отключения оптимизации батареи здесь нет** (решение P0-8): запрос без
  * повода выглядит как выпрашивание прав, а его смысл понятен только тому, у

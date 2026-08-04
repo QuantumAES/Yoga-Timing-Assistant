@@ -36,6 +36,11 @@ sealed interface VoiceText {
     data class SecondsLeft(
         val seconds: Int,
     ) : VoiceText
+
+    /** Отсечка занятия: «пора закругляться, до конца N минут». */
+    data class WrapUp(
+        val minutes: Int,
+    ) : VoiceText
 }
 
 /**
@@ -70,6 +75,12 @@ fun voiceTextOf(request: AlertRequest): VoiceText? {
 
         VoicePhrase.SESSION_FINISHED -> {
             VoiceText.SessionFinished
+        }
+
+        // Отсечка всегда несёт смещение: без «сколько осталось» сигнал сообщает
+        // только «что-то произошло» — а произошло ровно то, что времени в обрез.
+        VoicePhrase.WRAP_UP -> {
+            wrapUp(alert.offsetSec)
         }
 
         VoicePhrase.CUSTOM -> {
@@ -115,6 +126,18 @@ private fun timeRemaining(offsetSec: Int): VoiceText? =
     }
 
 /**
+ * Отсечка округляется до минут вверх.
+ *
+ * «До конца занятия девять минут сорок секунд» — точность, которой инструктор
+ * не воспользуется: он не досекундно перестраивает финал, а решает, успевает
+ * ли шавасана целиком.
+ */
+private fun wrapUp(offsetSec: Int): VoiceText? =
+    offsetSec
+        .takeIf { it > 0 }
+        ?.let { VoiceText.WrapUp((it + SECONDS_IN_MINUTE - 1) / SECONDS_IN_MINUTE) }
+
+/**
  * Рендер фразы в текущей локали приложения (решение P1-6).
  *
  * Пометки ударения снимаются здесь же, на последнем шаге: их может содержать
@@ -156,6 +179,14 @@ class VoicePhrases
                         R.plurals.alert_voice_seconds_left,
                         text.seconds,
                         text.seconds,
+                    )
+                }
+
+                is VoiceText.WrapUp -> {
+                    context.resources.getQuantityString(
+                        R.plurals.alert_voice_wrap_up,
+                        text.minutes,
+                        text.minutes,
                     )
                 }
             }

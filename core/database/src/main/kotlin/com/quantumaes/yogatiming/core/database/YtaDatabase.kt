@@ -34,8 +34,9 @@ abstract class YtaDatabase : RoomDatabase() {
         /**
          * v2 — `stages.voice_name`: произношение этапа для синтезатора речи.
          * v3 — `session_log`: журнал занятий (docs/09-STATISTICS.md, фаза S1).
+         * v4 — целевое время занятия и двусторонние этапы (Фаза 11).
          */
-        const val VERSION = 3
+        const val VERSION = 4
         const val NAME = "yoga-timing.db"
     }
 }

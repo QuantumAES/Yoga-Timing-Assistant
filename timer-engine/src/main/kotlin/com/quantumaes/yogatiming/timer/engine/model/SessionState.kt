@@ -10,8 +10,6 @@ import com.quantumaes.yogatiming.timer.engine.TimerLimits
  * поэтому заморозка процесса на десять минут не ломает состояние, а лишь
  * откладывает вычисление.
  *
- * Семь полей несут состояние, всё остальное выводится.
- *
  * @param stageElapsedAtResumeMs сколько текущего этапа пройдено к моменту
  *   последнего Start/Resume/входа в этап.
  * @param resumedAtMs монотонная метка последнего Start/Resume/входа в этап.
@@ -20,8 +18,16 @@ import com.quantumaes.yogatiming.timer.engine.TimerLimits
  * @param actualDurationsMs фактическое время, проведённое в **покинутых**
  *   этапах. Вклад текущего этапа всегда считается через [stageElapsedMs] —
  *   без этого инварианта время либо теряется, либо считается дважды.
- * @param firedAlertIds уже отработавшие в текущем этапе оповещения — защита
- *   от повторов при catch-up.
+ * @param firedAlertIds уже отработавшие оповещения — защита от повторов при
+ *   catch-up. Событиям занятия (а не этапа) отметка переживает смену этапа,
+ *   см. [SessionState.keptAlertIds].
+ * @param pauseMode что именно остановлено, пока [runState] равен
+ *   [RunState.PAUSED].
+ * @param pausedAtMs монотонная метка входа в паузу. Значима только в
+ *   [RunState.PAUSED] и только при [PauseMode.STAGE]: по ней растёт [holdMs].
+ * @param holdMs суммарное время, проведённое в паузе этапа. Практикой не
+ *   считается (в [totalElapsedMs] не входит), но часами занятия — считается:
+ *   зал занят, аренда идёт.
  */
 data class SessionState(
     val plan: SessionPlan,
@@ -32,6 +38,9 @@ data class SessionState(
     val adjustmentsMs: Map<Int, Long> = emptyMap(),
     val actualDurationsMs: Map<Int, Long> = emptyMap(),
     val firedAlertIds: Set<String> = emptySet(),
+    val pauseMode: PauseMode = PauseMode.DEFAULT,
+    val pausedAtMs: Long = 0L,
+    val holdMs: Long = 0L,
 ) {
     val currentStage: PlannedStage get() = plan.stages[currentIndex]
 
@@ -112,6 +121,15 @@ data class SessionState(
                 .filter { plan.stages[it].kind.hasDeadline }
                 .sumOf { effectiveDurationMs(it) }
         return future + (stageRemainingMs(now) ?: 0L)
+    }
+
+    /** Индекс парной половины двустороннего этапа; `null` — этап обычный. */
+    fun mirrorIndexOf(index: Int): Int? {
+        val stage = plan.stages.getOrNull(index) ?: return null
+        val side = stage.side ?: return null
+        val pairIndex = if (side == StageSide.FIRST) index + 1 else index - 1
+        val pair = plan.stages.getOrNull(pairIndex) ?: return null
+        return pairIndex.takeIf { pair.id == stage.id && pair.side != null && pair.side != side }
     }
 
     /**

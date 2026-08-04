@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +58,7 @@ import com.quantumaes.yogatiming.domain.stats.WeekdayTotal
 import com.quantumaes.yogatiming.domain.stats.monthGrid
 import com.quantumaes.yogatiming.domain.stats.weekdaysFrom
 import com.quantumaes.yogatiming.feature.stats.component.CalendarDayUi
+import com.quantumaes.yogatiming.feature.stats.component.ExpandableSection
 import com.quantumaes.yogatiming.feature.stats.component.MonthCalendar
 import com.quantumaes.yogatiming.feature.stats.component.WeekdayBar
 import com.quantumaes.yogatiming.feature.stats.component.WeekdayChart
@@ -104,6 +106,17 @@ internal fun StatsScreen(
 ) {
     // Строка, которую свайпнули: удаление спрашивает, а не делает молча.
     var pendingDelete: SessionLogEntry? by remember { mutableStateOf(null) }
+
+    // Какие разделы раскрыты (замечание 16 полевой проверки 2026-08-04).
+    // Плитки сводки остаются всегда: это ответ на вопрос «как у меня дела», и
+    // прятать его за нажатием значит убрать смысл экрана. Календарь раскрыт по
+    // умолчанию — он самый наглядный (US-S2); остальное открывают по надобности.
+    // `rememberSaveable`: поворот экрана и листание периода не должны схлопывать
+    // раздел, который пользователь только что открыл.
+    var weekdaysExpanded by rememberSaveable { mutableStateOf(false) }
+    var calendarExpanded by rememberSaveable { mutableStateOf(true) }
+    var profilesExpanded by rememberSaveable { mutableStateOf(false) }
+    var journalExpanded by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -158,26 +171,57 @@ internal fun StatsScreen(
                     item(key = "totals") {
                         TotalsGrid(totals = uiState.totals, periodLengthDays = uiState.periodLengthDays)
                     }
-                    item(key = "weekdays") { WeekdaySection(weekdays = uiState.weekdays) }
+                    item(key = "weekdays") {
+                        WeekdaySection(
+                            weekdays = uiState.weekdays,
+                            expanded = weekdaysExpanded,
+                            onToggle = { weekdaysExpanded = !weekdaysExpanded },
+                        )
+                    }
                     if (uiState.calendar.isNotEmpty()) {
                         item(key = "calendar") {
                             CalendarSection(
                                 cells = uiState.calendar,
                                 selectedDay = uiState.selectedDay,
                                 daySessions = uiState.daySessions,
+                                expanded = calendarExpanded,
+                                onToggle = { calendarExpanded = !calendarExpanded },
                                 onSelectDay = onSelectDay,
                             )
                         }
                     }
                     if (uiState.byProfile.isNotEmpty()) {
-                        item(key = "profiles") { ProfilesSection(profiles = uiState.byProfile) }
+                        item(key = "profiles") {
+                            ProfilesSection(
+                                profiles = uiState.byProfile,
+                                expanded = profilesExpanded,
+                                onToggle = { profilesExpanded = !profilesExpanded },
+                            )
+                        }
                     }
                     if (uiState.journal.isNotEmpty()) {
                         item(key = "journal") {
-                            SectionTitle(stringResource(R.string.stats_journal_title))
+                            // Заголовок журнала — такой же сворачиваемый, но
+                            // строки остаются отдельными элементами списка:
+                            // за «всё время» их тысячи, и складывать их внутрь
+                            // одного элемента значит собирать все на каждый кадр
+                            // (R-S4). Свёрнутый журнал их просто не выкладывает.
+                            ExpandableSection(
+                                title = stringResource(R.string.stats_journal_title),
+                                subtitle =
+                                    pluralStringResource(
+                                        R.plurals.stats_sessions_count,
+                                        uiState.journal.size,
+                                        uiState.journal.size,
+                                    ),
+                                expanded = journalExpanded,
+                                onToggle = { journalExpanded = !journalExpanded },
+                            ) {}
                         }
-                        items(uiState.journal, key = { it.id }) { entry ->
-                            JournalRow(entry = entry, onRequestDelete = { pendingDelete = entry })
+                        if (journalExpanded) {
+                            items(uiState.journal, key = { it.id }) { entry ->
+                                JournalRow(entry = entry, onRequestDelete = { pendingDelete = entry })
+                            }
                         }
                     }
                 }
@@ -275,11 +319,6 @@ private fun PeriodNavigator(
             }
         }
     }
-}
-
-@Composable
-internal fun SectionTitle(text: String) {
-    Text(text = text, style = MaterialTheme.typography.titleMedium)
 }
 
 /**

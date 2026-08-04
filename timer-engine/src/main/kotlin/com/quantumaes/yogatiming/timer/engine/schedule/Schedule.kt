@@ -3,6 +3,16 @@ package com.quantumaes.yogatiming.timer.engine.schedule
 import com.quantumaes.yogatiming.timer.engine.model.PlannedAlert
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionState
+import com.quantumaes.yogatiming.timer.engine.model.sessionElapsedMs
+
+/**
+ * Префикс событий, привязанных к занятию, а не к этапу.
+ *
+ * Отметка «уже сработало» у таких событий обязана пережить смену этапа: вход в
+ * новый этап очищает [SessionState.firedAlertIds], и без этого различия отсечка
+ * бюджета звучала бы заново на каждом переходе.
+ */
+internal const val SESSION_EVENT_PREFIX = "session:"
 
 /**
  * Расписание текущего этапа целиком.
@@ -42,6 +52,25 @@ fun SessionState.scheduleForCurrentStage(now: Long): List<ScheduledEvent> {
 }
 
 /**
+ * Отсечка бюджета — единственное событие, живущее не в этапе, а в занятии.
+ *
+ * Считается от часов занятия ([SessionState.sessionElapsedMs]), поэтому ни
+ * ручной переход, ни правка ±30 с её не двигают: в этом весь смысл бюджета.
+ * Пустой список, если бюджета нет, отсечка выключена или сигналить нечем.
+ */
+fun SessionState.scheduleForBudget(now: Long): List<ScheduledEvent> {
+    val budget = plan.budget ?: return emptyList()
+    val alert = budget.wrapUpAlert ?: return emptyList()
+    val at = budget.wrapUpAtMs ?: return emptyList()
+    val sessionStart = now - sessionElapsedMs(now)
+    return listOf(ScheduledEvent(WRAP_UP_ID, sessionStart + at, ScheduledEvent.Kind.Alert(alert)))
+}
+
+/** Всё, чего ждёт занятие прямо сейчас: события этапа и события бюджета. */
+fun SessionState.schedule(now: Long): List<ScheduledEvent> =
+    (scheduleForCurrentStage(now) + scheduleForBudget(now)).sortedBy { it.atElapsedMs }
+
+/**
  * Ближайший момент, ради которого стоит просыпаться; `null` — спать до команды.
  *
  * Именно это число превращает «тик пять раз в секунду» в ~25 пробуждений за
@@ -51,14 +80,14 @@ fun SessionState.nextDeadline(now: Long): Long? =
     if (runState != RunState.RUNNING) {
         null
     } else {
-        scheduleForCurrentStage(now)
+        schedule(now)
             .filter { it.id !in firedAlertIds && it.atElapsedMs > now }
             .minOfOrNull { it.atElapsedMs }
     }
 
 /** Наступившие, но ещё не отработавшие события — от самого раннего. */
 fun SessionState.dueEvents(now: Long): List<ScheduledEvent> =
-    scheduleForCurrentStage(now).filter { it.id !in firedAlertIds && it.atElapsedMs <= now }
+    schedule(now).filter { it.id !in firedAlertIds && it.atElapsedMs <= now }
 
 /**
  * Идентификаторы событий, чьё время уже прошло.
@@ -69,7 +98,19 @@ fun SessionState.dueEvents(now: Long): List<ScheduledEvent> =
  * съедало бы предупреждение «осталась минута».
  */
 fun SessionState.passedEventIds(now: Long): Set<String> =
-    scheduleForCurrentStage(now).filter { it.atElapsedMs <= now }.mapTo(mutableSetOf()) { it.id }
+    schedule(now).filter { it.atElapsedMs <= now }.mapTo(mutableSetOf()) { it.id }
+
+/**
+ * Отметки, которые переживают вход в новый этап.
+ *
+ * У этапа своё расписание и своя защита от повторов — она начинается с чистого
+ * листа. У занятия расписание одно на всё занятие, и забывать его отметки при
+ * каждом переходе значит проигрывать отсечку по разу на этап.
+ */
+fun SessionState.keptAlertIds(): Set<String> =
+    firedAlertIds.filterTo(mutableSetOf()) {
+        it.startsWith(SESSION_EVENT_PREFIX)
+    }
 
 private fun warningId(
     index: Int,
@@ -78,5 +119,8 @@ private fun warningId(
 
 /** Идентификатор END-оповещения этапа. Общий для расписания и ручного перехода. */
 internal fun endAlertId(index: Int): String = "stage$index:end"
+
+/** Идентификатор отсечки бюджета. Занятие проходит её ровно один раз. */
+internal const val WRAP_UP_ID = "${SESSION_EVENT_PREFIX}wrapup"
 
 private fun stageEndId(index: Int): String = "stage$index:complete"

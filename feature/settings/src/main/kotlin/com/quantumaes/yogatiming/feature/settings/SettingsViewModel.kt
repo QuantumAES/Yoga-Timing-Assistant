@@ -16,6 +16,7 @@ import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.domain.settings.ThemeMode
 import com.quantumaes.yogatiming.domain.settings.TimerShape
 import com.quantumaes.yogatiming.timer.engine.model.AlertTrigger
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -118,6 +119,11 @@ class SettingsViewModel
          */
         fun setTimerShape(shape: TimerShape) {
             viewModelScope.launch { settingsStore.setTimerShape(shape) }
+        }
+
+        /** С какого режима начинается пауза; на самом занятии он переключается. */
+        fun setPauseMode(mode: PauseMode) {
+            viewModelScope.launch { settingsStore.setPauseMode(mode) }
         }
 
         /**

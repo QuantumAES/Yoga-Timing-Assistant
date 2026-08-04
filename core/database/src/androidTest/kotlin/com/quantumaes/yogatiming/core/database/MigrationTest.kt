@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.core.database.migration.MIGRATION_1_2
 import com.quantumaes.yogatiming.core.database.migration.MIGRATION_2_3
+import com.quantumaes.yogatiming.core.database.migration.MIGRATION_3_4
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -132,7 +133,63 @@ class MigrationTest {
         }
     }
 
+    /**
+     * v3 → v4: целевое время занятия и двусторонние этапы (Фаза 11).
+     *
+     * Главное свойство — существующие профили после обновления ведут себя ровно
+     * как до него: цели нет (`NULL`, а не ноль — это разные вещи), этап
+     * проходится один раз. Иначе обновление молча превратило бы каждое занятие
+     * в занятие с бюджетом, о котором пользователя никто не спрашивал.
+     */
+    @Test
+    fun миграция_3_4_добавляет_целевое_время_и_ничего_не_включает() {
+        helper.createDatabase(TEST_DB, 3).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (
+                    id, uuid, name, name_normalized, category, color_tag, icon_id,
+                    total_duration_mode, fixed_total_sec, is_favorite, sort_order,
+                    default_alert_config, created_at, updated_at
+                ) VALUES (
+                    1, 'uuid-1', 'Хатха 60 мин', 'хатха 60 мин', 'HATHA', '#4CAF50', NULL,
+                    'SUM', NULL, 0, 0, '{}', 0, 0
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO stages (
+                    id, profile_id, name, type, color_tag, duration_sec, note, sort_order,
+                    alert_config, voice_name
+                ) VALUES (11, 1, 'Дракон', 'NORMAL', '#4CAF50', 600, NULL, 0, NULL, NULL)
+                """.trimIndent(),
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 4, true, MIGRATION_3_4).use { db ->
+            db
+                .query(
+                    "SELECT target_duration_sec, target_tolerance_sec, wrap_up_offset_sec FROM profiles WHERE id = 1",
+                    emptyArray(),
+                ).use { cursor ->
+                    assertThat(cursor.moveToFirst()).isTrue()
+                    // Цели нет: занятие длится столько, сколько сумма этапов.
+                    assertThat(cursor.isNull(0)).isTrue()
+                    assertThat(cursor.getInt(1)).isEqualTo(0)
+                    assertThat(cursor.getInt(2)).isEqualTo(DEFAULT_WRAP_UP_SEC)
+                }
+            db.query("SELECT name, bilateral FROM stages WHERE id = 11", emptyArray()).use { cursor ->
+                assertThat(cursor.moveToFirst()).isTrue()
+                assertThat(cursor.getString(0)).isEqualTo("Дракон")
+                assertThat(cursor.getInt(1)).isEqualTo(0)
+            }
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test.db"
+
+        /** Отсечка заполняется всем, но без цели не срабатывает: ей не от чего считать. */
+        const val DEFAULT_WRAP_UP_SEC = 600
     }
 }

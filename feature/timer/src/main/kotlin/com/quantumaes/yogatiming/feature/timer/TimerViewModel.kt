@@ -8,7 +8,7 @@ import com.quantumaes.yogatiming.domain.settings.AppSettings
 import com.quantumaes.yogatiming.domain.settings.SettingsStore
 import com.quantumaes.yogatiming.timer.engine.TimerCommand
 import com.quantumaes.yogatiming.timer.engine.TimerLimits
-import com.quantumaes.yogatiming.timer.engine.model.RunState
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.service.SessionController
 import com.quantumaes.yogatiming.timer.service.SessionLauncher
@@ -179,11 +179,20 @@ class TimerViewModel
             viewModelScope.launch { hintStore.dismiss(hint) }
         }
 
-        fun togglePause() {
-            val command =
-                if (snapshot.value?.runState == RunState.PAUSED) TimerCommand.Resume else TimerCommand.Pause
-            controller.submit(command)
-        }
+        /**
+         * «Пауза» / «Продолжить».
+         *
+         * Решение о режиме паузы принимает контроллер: ту же кнопку нажимают
+         * из шторки, и два места, выбирающие режим по отдельности, однажды
+         * выберут разный.
+         */
+        fun togglePause() = controller.togglePause()
+
+        /** Переключение режима идущей паузы: считать эти минуты занятием или нет. */
+        fun switchPauseMode(mode: PauseMode) = controller.submit(TimerCommand.SetPauseMode(mode))
+
+        /** «Ужать план»: привести остаток занятия к остатку целевого времени. */
+        fun fitToBudget() = controller.submit(TimerCommand.FitToBudget)
 
         fun next() = controller.submit(TimerCommand.Next)
 

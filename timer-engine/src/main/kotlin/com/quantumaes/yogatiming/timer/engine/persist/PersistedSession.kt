@@ -2,6 +2,7 @@ package com.quantumaes.yogatiming.timer.engine.persist
 
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.engine.TimerLimits
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionPlan
 import com.quantumaes.yogatiming.timer.engine.model.SessionState
@@ -27,6 +28,10 @@ import kotlin.math.abs
  * @param startedAtWallMs когда занятие началось по стенным часам. Отсчёту не
  *   нужно, нужно итогам: «18:05 → 19:03» на экране завершения переживает смерть
  *   процесса только так. `0` — снимок старой версии, начало неизвестно.
+ * @param pauseMode что именно остановлено паузой (v2). У снимков v1 поля нет —
+ *   там паузы были только одного рода, и значение по умолчанию описывает их
+ *   в точности.
+ * @param holdMs накопленное время пауз этапа (v2).
  */
 @Serializable
 data class PersistedSession(
@@ -42,9 +47,13 @@ data class PersistedSession(
     val adjustmentsMs: Map<Int, Long> = emptyMap(),
     val actualDurationsMs: Map<Int, Long> = emptyMap(),
     val firedAlertIds: Set<String> = emptySet(),
+    val pauseMode: PauseMode = PauseMode.DEFAULT,
+    val pausedAtMs: Long = 0L,
+    val holdMs: Long = 0L,
 ) {
     companion object {
-        const val SCHEMA_VERSION = 1
+        /** v2 — режим паузы и накопленное время удержания (Фаза 11). */
+        const val SCHEMA_VERSION = 2
     }
 }
 
@@ -80,6 +89,9 @@ fun SessionState.persist(time: TimeSource): PersistedSession =
         adjustmentsMs = adjustmentsMs,
         actualDurationsMs = actualDurationsMs,
         firedAlertIds = firedAlertIds,
+        pauseMode = pauseMode,
+        pausedAtMs = pausedAtMs,
+        holdMs = holdMs,
     )
 
 /**
@@ -104,6 +116,9 @@ fun PersistedSession.restoreInto(plan: SessionPlan): SessionState? {
         adjustmentsMs = adjustmentsMs,
         actualDurationsMs = actualDurationsMs,
         firedAlertIds = firedAlertIds,
+        pauseMode = pauseMode,
+        pausedAtMs = pausedAtMs,
+        holdMs = holdMs,
     )
 }
 

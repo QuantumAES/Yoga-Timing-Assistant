@@ -3,8 +3,10 @@ package com.quantumaes.yogatiming.timer.service.di
 import com.quantumaes.yogatiming.timer.engine.TimeSource
 import com.quantumaes.yogatiming.timer.service.ActiveSessionSource
 import com.quantumaes.yogatiming.timer.service.AndroidTimeSource
+import com.quantumaes.yogatiming.timer.service.ResourceSideLabels
 import com.quantumaes.yogatiming.timer.service.SessionController
 import com.quantumaes.yogatiming.timer.service.SessionSummarySource
+import com.quantumaes.yogatiming.timer.service.SideLabelsSource
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
 import com.quantumaes.yogatiming.timer.service.watchdog.WatchdogAlarm
 import dagger.Binds
@@ -38,6 +40,11 @@ abstract class TimerServiceModule {
     @Binds
     @Singleton
     abstract fun bindWatchdog(impl: WatchdogAlarm): Watchdog
+
+    /** Названия сторон двусторонней асаны — из ресурсов модуля. */
+    @Binds
+    @Singleton
+    abstract fun bindSideLabels(impl: ResourceSideLabels): SideLabelsSource
 
     /** Экранам, которые занятием не управляют, достаётся только чтение. */
     @Binds

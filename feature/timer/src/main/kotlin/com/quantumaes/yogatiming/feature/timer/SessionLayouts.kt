@@ -50,7 +50,9 @@ import com.quantumaes.yogatiming.feature.timer.component.ProgressPanel
 import com.quantumaes.yogatiming.feature.timer.component.ProgressRing
 import com.quantumaes.yogatiming.feature.timer.component.RestrictionNotice
 import com.quantumaes.yogatiming.feature.timer.component.SessionControls
+import com.quantumaes.yogatiming.feature.timer.component.SessionNotice
 import com.quantumaes.yogatiming.feature.timer.component.TimerDisplay
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.service.restrictions.TimerRestriction
@@ -149,11 +151,15 @@ internal fun PortraitContent(
     palette: TimerPalette,
     shape: TimerShape,
     settingsAvailable: Boolean,
+    wrapUpVisible: Boolean,
     onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
+    onSwitchPauseMode: (PauseMode) -> Unit,
+    onFitToBudget: () -> Unit,
+    onDismissWrapUp: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onAddTime: () -> Unit,
@@ -187,6 +193,16 @@ internal fun PortraitContent(
         }
 
         StageHeader(snapshot = snapshot, palette = palette, modifier = sides)
+
+        SessionNotice(
+            snapshot = snapshot,
+            palette = palette,
+            wrapUpVisible = wrapUpVisible,
+            onSwitchPauseMode = onSwitchPauseMode,
+            onFitToBudget = onFitToBudget,
+            onDismissWrapUp = onDismissWrapUp,
+            modifier = sides.padding(top = Spacing.xs),
+        )
 
         StageGauge(
             snapshot = snapshot,
@@ -227,11 +243,15 @@ internal fun LandscapeContent(
     palette: TimerPalette,
     shape: TimerShape,
     settingsAvailable: Boolean,
+    wrapUpVisible: Boolean,
     onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
+    onSwitchPauseMode: (PauseMode) -> Unit,
+    onFitToBudget: () -> Unit,
+    onDismissWrapUp: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onAddTime: () -> Unit,
@@ -278,6 +298,15 @@ internal fun LandscapeContent(
             // который в ландшафте и так упирается в высоту экрана.
             StageHeader(snapshot = snapshot, palette = palette)
 
+            SessionNotice(
+                snapshot = snapshot,
+                palette = palette,
+                wrapUpVisible = wrapUpVisible,
+                onSwitchPauseMode = onSwitchPauseMode,
+                onFitToBudget = onFitToBudget,
+                onDismissWrapUp = onDismissWrapUp,
+            )
+
             StageFooter(snapshot = snapshot, palette = palette)
 
             SessionControls(
@@ -316,15 +345,28 @@ private fun StageHeader(
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stagePositionText(snapshot),
-                style = MaterialTheme.typography.bodyLarge,
+                style = YtaTextStyles.sessionMeta,
                 color = palette.onBackgroundMuted,
                 maxLines = 1,
             )
             Spacer(Modifier.weight(1f))
+            // Расхождение плана с бюджетом стоит рядом с остатком, а не под
+            // ним: это поправка к соседнему числу, и читаться они должны
+            // одним движением взгляда. Появляется, только когда расхождение
+            // вышло за допуск профиля, — см. `budgetDeviationText`.
+            budgetDeviationText(snapshot)?.let { deviation ->
+                Text(
+                    text = deviation,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = palette.danger,
+                    maxLines = 1,
+                    modifier = Modifier.padding(end = Spacing.s),
+                )
+            }
             Text(
                 text = totalRemainingText(snapshot),
-                style = MaterialTheme.typography.bodyLarge,
-                color = palette.onBackgroundMuted,
+                style = YtaTextStyles.sessionMeta,
+                color = if (snapshot?.budgetOverrun == true) palette.danger else palette.onBackgroundMuted,
                 maxLines = 1,
             )
         }
@@ -411,12 +453,17 @@ private fun StageGauge(
 /**
  * Цифры и плашка поправки внутри фигуры.
  *
- * Место под плашку зарезервировано всегда, даже когда поправки нет. Иначе
- * появление «+0:30» удлиняло бы столбец, а он центрирован — и цифры прыгали бы
- * вверх при каждом нажатии «+30 с» и вниз при возврате поправки к нулю
- * (полевая проверка 2026-08-03, замечание 1). Цифрам это не стоит ничего:
- * их кегль почти всегда упирается в ширину фигуры, а не в высоту, — но
- * положение главного элемента экрана перестаёт зависеть от второстепенного.
+ * Цифры стоят **ровно по центру** фигуры, а плашка «+0:30» — под ними
+ * (замечание 13 полевой проверки 2026-08-04). Раньше и то и другое лежало в
+ * одном центрированном столбце: слот под плашку резервировался всегда, но сам
+ * входил в столбец — и центром круга оказывалась середина пары «цифры плюс
+ * слот», то есть цифры были подняты над центром на пол-слота. На кольце это
+ * читалось как перекос: дуга симметрична, а цифры внутри неё — нет.
+ *
+ * Теперь слот вычитается с обеих сторон, а не с одной: цифры получают меньше
+ * высоты, но остаются на оси фигуры, и появление поправки по-прежнему их не
+ * двигает. Кегль от этого почти не страдает — он и так упирается в ширину
+ * фигуры, а не в высоту.
  */
 @Composable
 private fun GaugeContent(
@@ -424,21 +471,30 @@ private fun GaugeContent(
     palette: TimerPalette,
     shape: TimerShape,
 ) {
-    Column(
+    // Строка плашки плюс её собственные поля сверху и снизу и отступ от цифр.
+    val slot = reservedHeight(MaterialTheme.typography.titleMedium, 1) + Spacing.xxs * ADJUSTMENT_SLOT_PADDINGS
+
+    Box(
         modifier = Modifier.fillMaxWidth().fillMaxHeight(shape.contentHeight),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        // `fill = false`: цифры берут из полосы столько, сколько им нужно
-        // по ширине, и не растягивают столбец.
         TimerDisplay(
             text = remainingText(snapshot),
             color = snapshot.accent(palette),
-            modifier = Modifier.fillMaxWidth(shape.digitsWidth).weight(1f, fill = false),
+            modifier =
+                Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(shape.digitsWidth)
+                    // Симметричное поле — то, что удерживает цифры на оси:
+                    // место под плашку вычитается и сверху, и снизу.
+                    .padding(vertical = slot),
         )
-        // Ручная поправка — плашкой под цифрами: «+0:30» относится к
-        // текущему этапу и читается одним взглядом вместе с ним.
-        StageAdjustment(snapshot = snapshot, palette = palette, widthFraction = shape.edgeWidth)
+        StageAdjustment(
+            snapshot = snapshot,
+            palette = palette,
+            widthFraction = shape.edgeWidth,
+            modifier = Modifier.align(Alignment.BottomCenter).height(slot),
+        )
     }
 }
 
@@ -447,22 +503,19 @@ private fun GaugeContent(
  *
  * Высота слота постоянна и посчитана из самого стиля, а не задана в dp: при
  * системном шрифте в 200% плашка обязана поместиться целиком, а не обрезаться.
- * Пустой слот — не потерянное место, а зафиксированное положение цифр над ним.
  */
 @Composable
 private fun StageAdjustment(
     snapshot: SessionSnapshot?,
     palette: TimerPalette,
     widthFraction: Float,
+    modifier: Modifier = Modifier,
 ) {
-    // Строка плашки плюс её собственные поля сверху и снизу и отступ от цифр.
-    val slot = reservedHeight(MaterialTheme.typography.titleMedium, 1) + Spacing.xxs * ADJUSTMENT_SLOT_PADDINGS
-
     // Плашка обёрнута в бокс шириной с хорду, а не растянута на неё: доля
     // диаметра здесь потолок, а не размер — залитый прямоугольник в две трети
     // круга спорил бы с цифрами, ради которых круг и нарисован.
     Box(
-        modifier = Modifier.fillMaxWidth(widthFraction).height(slot).padding(top = Spacing.xxs),
+        modifier = modifier.fillMaxWidth(widthFraction).padding(top = Spacing.xxs),
         contentAlignment = Alignment.TopCenter,
     ) {
         val adjustment = snapshot?.stageAdjustmentMs?.takeIf { it != 0L } ?: return@Box
@@ -503,7 +556,7 @@ private fun StageFooter(
 ) {
     val height =
         reservedHeight(YtaTextStyles.stageNext, 1) +
-            reservedHeight(MaterialTheme.typography.bodyMedium, STAGE_NOTE_LINES) +
+            reservedHeight(YtaTextStyles.stageNote, STAGE_NOTE_LINES) +
             Spacing.xs
 
     Column(
@@ -523,7 +576,7 @@ private fun StageFooter(
         snapshot.currentNote?.takeIf { it.isNotBlank() }?.let { note ->
             Text(
                 text = note,
-                style = MaterialTheme.typography.bodyMedium,
+                style = YtaTextStyles.stageNote,
                 color = palette.onBackgroundMuted,
                 textAlign = TextAlign.Center,
                 maxLines = STAGE_NOTE_LINES,
@@ -643,6 +696,22 @@ internal fun FocusContent(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = sides,
+            )
+        }
+        // Заметка инструктора есть и в фокусе (замечание 3 полевой проверки
+        // 2026-08-04): именно в фокусе на телефон смотрят издалека, и именно
+        // там «Вирабхадрасана I–II, триконасана» нужнее всего. Раньше её тут
+        // не было вовсе — режим считался «только цифры», но цифры сами по себе
+        // не напоминают, что показывать.
+        snapshot?.currentNote?.takeIf { it.isNotBlank() }?.let { note ->
+            Text(
+                text = note,
+                style = YtaTextStyles.stageNote,
+                color = palette.onBackgroundMuted,
+                textAlign = TextAlign.Center,
+                maxLines = STAGE_NOTE_LINES,
+                overflow = TextOverflow.Ellipsis,
+                modifier = sides.padding(top = Spacing.s),
             )
         }
         AnimatedVisibility(visible = hintVisible) {

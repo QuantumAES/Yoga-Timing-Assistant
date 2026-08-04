@@ -67,6 +67,7 @@ import com.quantumaes.yogatiming.feature.timer.component.RestrictionNotice
 import com.quantumaes.yogatiming.feature.timer.component.SessionControls
 import com.quantumaes.yogatiming.feature.timer.component.TimerDisplay
 import com.quantumaes.yogatiming.feature.timer.component.WindowBrightness
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.engine.model.StageKind
@@ -150,18 +151,31 @@ internal fun TimerScreen(
     var mode by rememberSaveable { mutableStateOf(SessionMode.NORMAL) }
     var stopRequested by rememberSaveable { mutableStateOf(false) }
 
+    // Плашка отсечки живёт до тех пор, пока её не закрыли или пока план не
+    // уложился в бюджет. Закрытие помнится экраном, а не движком: это решение
+    // «я видел и не буду ничего менять», а не часть состояния занятия.
+    var wrapUpDismissed by rememberSaveable { mutableStateOf(false) }
+    val wrapUpVisible = snapshot.let { it?.wrapUpPassed == true && it.budgetOverrun } && !wrapUpDismissed
+
     SessionScreen(
         snapshot = snapshot,
         notices = notices,
         autoDimEnabled = settings.autoDimEnabled,
         shape = settings.timerShape,
         settingsAvailable = settings.settingsFromSession,
+        wrapUpVisible = wrapUpVisible,
         onOpenSettings = onOpenSettings,
         mode = mode,
         onModeChange = { mode = it },
         onNoticeAction = viewModel::openSettings,
         onNoticeDismiss = viewModel::dismiss,
         onTogglePause = viewModel::togglePause,
+        onSwitchPauseMode = viewModel::switchPauseMode,
+        onFitToBudget = {
+            viewModel.fitToBudget()
+            wrapUpDismissed = true
+        },
+        onDismissWrapUp = { wrapUpDismissed = true },
         onNext = viewModel::next,
         onPrevious = viewModel::previous,
         onAddTime = viewModel::addTime,
@@ -208,12 +222,16 @@ private fun SessionScreen(
     autoDimEnabled: Boolean,
     shape: TimerShape,
     settingsAvailable: Boolean,
+    wrapUpVisible: Boolean,
     onOpenSettings: () -> Unit,
     mode: SessionMode,
     onModeChange: (SessionMode) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
+    onSwitchPauseMode: (PauseMode) -> Unit,
+    onFitToBudget: () -> Unit,
+    onDismissWrapUp: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onAddTime: () -> Unit,
@@ -264,6 +282,7 @@ private fun SessionScreen(
                             onExit = { onModeChange(SessionMode.NORMAL) },
                             onNext = onNext,
                             onPrevious = onPrevious,
+                            onTogglePause = onTogglePause,
                             onInteraction = { wakeUps++ },
                         ),
                 )
@@ -276,11 +295,15 @@ private fun SessionScreen(
                     palette = palette,
                     shape = shape,
                     settingsAvailable = settingsAvailable,
+                    wrapUpVisible = wrapUpVisible,
                     onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
                     onNoticeAction = onNoticeAction,
                     onNoticeDismiss = onNoticeDismiss,
                     onTogglePause = onTogglePause,
+                    onSwitchPauseMode = onSwitchPauseMode,
+                    onFitToBudget = onFitToBudget,
+                    onDismissWrapUp = onDismissWrapUp,
                     onNext = onNext,
                     onPrevious = onPrevious,
                     onAddTime = onAddTime,
@@ -297,11 +320,15 @@ private fun SessionScreen(
                     palette = palette,
                     shape = shape,
                     settingsAvailable = settingsAvailable,
+                    wrapUpVisible = wrapUpVisible,
                     onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
                     onNoticeAction = onNoticeAction,
                     onNoticeDismiss = onNoticeDismiss,
                     onTogglePause = onTogglePause,
+                    onSwitchPauseMode = onSwitchPauseMode,
+                    onFitToBudget = onFitToBudget,
+                    onDismissWrapUp = onDismissWrapUp,
                     onNext = onNext,
                     onPrevious = onPrevious,
                     onAddTime = onAddTime,
@@ -384,20 +411,27 @@ internal fun Modifier.tapTarget(
         }
 
 /**
- * Свайпы режима фокуса.
+ * Свайпы режима фокуса (docs/03-GESTURES.md §3).
  *
  * Направление определяется по преобладающей оси в конце жеста, а не в его
  * начале: палец на коврике идёт по дуге, и решение по первым пикселям
  * ошибается. Любое касание считается активностью и отменяет автозатемнение.
+ *
+ * Свайп вниз ставит на паузу, а не выходит из фокуса (замечание 1 полевой
+ * проверки 2026-08-04). Выход остался за тапом — и это единственный способ
+ * выйти, что делает его надёжным: тап по экрану промахнуться невозможно.
+ * Пауза же в фокусе была недостижима вовсе, а нужна она чаще всего именно
+ * там: телефон лежит на полу, кнопок нет, а в дверь позвонили.
  */
 private fun Modifier.focusGestures(
     onExit: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
+    onTogglePause: () -> Unit,
     onInteraction: () -> Unit,
 ): Modifier =
     this
-        .pointerInput(onExit, onNext, onPrevious) {
+        .pointerInput(onNext, onPrevious, onTogglePause) {
             var total = Offset.Zero
             detectDragGestures(
                 onDragStart = {
@@ -411,7 +445,7 @@ private fun Modifier.focusGestures(
                         }
 
                         total.y > SWIPE_THRESHOLD_PX -> {
-                            onExit()
+                            onTogglePause()
                         }
                     }
                 },
@@ -476,12 +510,16 @@ private fun SessionScreenPreview(shape: TimerShape) {
             autoDimEnabled = true,
             shape = shape,
             settingsAvailable = true,
+            wrapUpVisible = false,
             onOpenSettings = {},
             mode = SessionMode.NORMAL,
             onModeChange = {},
             onNoticeAction = {},
             onNoticeDismiss = {},
             onTogglePause = {},
+            onSwitchPauseMode = {},
+            onFitToBudget = {},
+            onDismissWrapUp = {},
             onNext = {},
             onPrevious = {},
             onAddTime = {},
@@ -496,11 +534,13 @@ private fun previewSnapshot() =
         profileId = 1,
         profileName = "Хатха 60 мин",
         runState = RunState.RUNNING,
+        pauseMode = PauseMode.SESSION,
         currentIndex = 2,
         stageCount = 6,
         currentStageName = "Асаны стоя",
         currentStageColor = "#FFB300",
         currentStageKind = StageKind.NORMAL,
+        currentStageSide = null,
         currentNote = "Держим позиции по 5 циклов дыхания",
         stageRemainingMs = 754_000,
         stageElapsedMs = 326_000,
@@ -511,6 +551,12 @@ private fun previewSnapshot() =
         totalRemainingMs = 2_500_000,
         totalRemainingIsLowerBound = false,
         totalProgress = 0.3f,
+        sessionElapsedMs = 1_100_000,
+        holdMs = 0,
+        budgetRemainingMs = 2_500_000,
+        budgetDeficitMs = 0,
+        budgetToleranceMs = 300_000,
+        wrapUpPassed = false,
         nextStageName = "Балансы",
         nextStageDurationMs = 720_000,
         isLastStage = false,

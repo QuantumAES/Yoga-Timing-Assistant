@@ -13,7 +13,12 @@
 
     <style name="Theme.Yta.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <!--
+          Тот же слой, что и у иконки запуска: заставка и иконка обязаны быть
+          одним знаком, иначе переход из лаунчера читается как запуск чужого
+          приложения. Слой собирается скриптом (scripts/generate-logo.sh).
+        -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.Yta</item>
     </style>
 

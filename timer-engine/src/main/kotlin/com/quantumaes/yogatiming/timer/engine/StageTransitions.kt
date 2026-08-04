@@ -2,38 +2,54 @@ package com.quantumaes.yogatiming.timer.engine
 
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionState
+import com.quantumaes.yogatiming.timer.engine.model.holdElapsedMs
 import com.quantumaes.yogatiming.timer.engine.schedule.endAlertId
+import com.quantumaes.yogatiming.timer.engine.schedule.keptAlertIds
+import com.quantumaes.yogatiming.timer.engine.schedule.passedEventIds
 
 /**
  * Вход в этап (docs/02-TIMER-CORE-DESIGN.md §4.2).
  *
  * Отметки о сработавших оповещениях сбрасываются: у нового этапа собственное
- * расписание, и защита от повторов начинается с чистого листа.
+ * расписание, и защита от повторов начинается с чистого листа. Уцелевают
+ * только события занятия — отсечка бюджета проходится один раз, а не по разу
+ * на этап (`keptAlertIds`).
+ *
  * START-оповещение отрабатывает немедленно — оно и есть сигнал «этап начался».
+ *
+ * @param elapsedMs с какого места этапа продолжать. Ненулевое значение бывает
+ *   ровно в одном случае — возврат кнопкой «Пред.» на этап, покинутый досрочно
+ *   (см. `previous`). Такой вход не объявляет этап заново: инструктор
+ *   исправляет промах, а не начинает новый отрезок занятия, — и не переигрывает
+ *   предупреждения, которые в этом этапе уже звучали.
  */
 internal fun enterStage(
     state: SessionState,
     index: Int,
     now: Long,
     reason: StageChangeReason,
+    elapsedMs: Long = 0L,
 ): Reduction {
     require(index in state.plan.stages.indices) { "Этап $index вне плана" }
 
     val entered =
         state.copy(
             currentIndex = index,
-            stageElapsedAtResumeMs = 0L,
+            stageElapsedAtResumeMs = elapsedMs,
             resumedAtMs = now,
-            firedAlertIds = emptySet(),
+            firedAlertIds = state.keptAlertIds(),
         )
+    val resumed = if (elapsedMs > 0L) entered.copy(firedAlertIds = entered.passedEventIds(now)) else entered
     val events =
         buildList {
             add(TimerEvent.StageChanged(from = state.currentIndex, to = index, reason = reason))
-            entered.currentStage.alerts.start?.let {
-                add(TimerEvent.PlayAlert(alert = it, stageIndex = index, scheduledAtMs = now))
+            if (elapsedMs == 0L) {
+                resumed.currentStage.alerts.start?.let {
+                    add(TimerEvent.PlayAlert(alert = it, stageIndex = index, scheduledAtMs = now))
+                }
             }
         }
-    return Reduction(entered, events)
+    return Reduction(resumed, events)
 }
 
 /**
@@ -76,7 +92,15 @@ internal fun finish(
             resumedAtMs = now,
             firedAlertIds = state.firedAlertIds + endAlertId(state.currentIndex),
         )
-    return Reduction(finished, preceding + TimerEvent.SessionFinished(finished.totalElapsedMs(now)))
+    return Reduction(
+        finished,
+        preceding +
+            TimerEvent.SessionFinished(
+                totalElapsedMs = finished.totalElapsedMs(now),
+                holdMs = finished.holdElapsedMs(now),
+                adjustmentsMs = finished.adjustmentsMs,
+            ),
+    )
 }
 
 /**

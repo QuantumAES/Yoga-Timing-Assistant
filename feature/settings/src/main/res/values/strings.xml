@@ -33,6 +33,12 @@
     <string name="settings_session_settings">Settings during a session</string>
     <string name="settings_session_settings_hint">A settings button on the session screen. Leaving for it does not interrupt the class: the countdown is held by the background service.</string>
 
+    <!-- Два режима паузы (замечание 6 полевой проверки 2026-08-04). -->
+    <string name="settings_pause_mode">What a pause stops</string>
+    <string name="settings_pause_mode_hint">During a class the mode switches by tapping the pause bar. Here you choose the one a pause starts with.</string>
+    <string name="settings_pause_mode_session">The whole class: time stands still</string>
+    <string name="settings_pause_mode_stage">The stage only: class time keeps running</string>
+
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_theme_system">Follow system</string>
     <string name="settings_theme_light">Light</string>
@@ -56,12 +62,14 @@
     -->
     <string name="settings_about_donate_url" translatable="false">https://boosty.to/quantumaes</string>
 
-    <string name="onboarding_profiles_title">Class profiles</string>
-    <string name="onboarding_profiles_text">Flexible setup of class stages, durations and cues. Set it up once — and teach it week after week.</string>
-    <string name="onboarding_session_title">Teach without watching the screen</string>
-    <string name="onboarding_session_text">Digits large enough to read from across the room, and a countdown that stops for nothing — neither a locked screen nor a backgrounded app.</string>
-    <string name="onboarding_alerts_title">Cues that fit each stage</string>
-    <string name="onboarding_alerts_text">Sound, vibration and voice — at the start of a stage, at its end and a minute before it. And savasana stays in silence.</string>
+    <string name="onboarding_profiles_title">Build the class once</string>
+    <string name="onboarding_profiles_text">Stages, durations and cues — your whole plan. After that you only press Start: the app runs it for you.</string>
+    <string name="onboarding_alerts_title">Listen instead of looking</string>
+    <string name="onboarding_alerts_text">A gong entering the pose, a voice a minute before the end, silence in savasana. You lead the room, not the timer.</string>
+    <string name="onboarding_budget_title">Finish on time</string>
+    <string name="onboarding_budget_text">Tell the app how much time you have. It counts the remainder by the clock, warns you when it is time to wrap up, and trims the plan if the group ran long.</string>
+    <string name="onboarding_session_title">The countdown will not stop</string>
+    <string name="onboarding_session_text">Screen off, app in the background, a call mid-practice — the timer keeps running. The digits read from across the room.</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_start">Get started</string>

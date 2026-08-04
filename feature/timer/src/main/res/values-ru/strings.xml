@@ -11,6 +11,28 @@
     <string name="timer_stage_position">Этап %1$d/%2$d</string>
     <string name="timer_total_remaining">Осталось %1$s</string>
     <string name="timer_total_at_least">≥ %1$s</string>
+
+    <!--
+      Занятие с целевым временем. «До конца» — это про часы, а не про сумму
+      этапов: число убывает равномерно и не прыгает от переключений
+      (замечание 12 полевой проверки 2026-08-04).
+    -->
+    <string name="timer_budget_remaining">До конца %1$s</string>
+    <string name="timer_budget_overrun">Перебор %1$s</string>
+    <string name="timer_plan_over">план +%1$s</string>
+    <string name="timer_plan_under">запас %1$s</string>
+
+    <!-- Два режима паузы (замечание 6). Плашка нажимается и переключает режим. -->
+    <string name="timer_pause_session_title">Пауза занятия</string>
+    <string name="timer_pause_session_text">Время занятия стоит. Нажмите, чтобы оно шло</string>
+    <string name="timer_pause_stage_title">Пауза этапа</string>
+    <string name="timer_pause_stage_text">Время занятия идёт: +%1$s. Нажмите, чтобы остановить</string>
+
+    <!-- Отсечка бюджета (замечание 11). -->
+    <string name="timer_wrap_up_title">Пора закругляться</string>
+    <string name="timer_wrap_up_text">До конца %1$s, в плане %2$s</string>
+    <string name="timer_wrap_up_fit">Ужать план</string>
+    <string name="timer_wrap_up_hide">Оставить как есть</string>
     <!--
       Ручная поправка ±30 с. На экране от неё видны только знак и время —
       плашка стоит под цифрами, и «к этапу» ясно из её места. Эта строка
@@ -33,6 +55,12 @@
     <string name="timer_summary_time">Время</string>
     <string name="timer_summary_time_value">%1$s → %2$s</string>
     <string name="timer_summary_not_logged">Короче минуты — в журнал статистики не попало.</string>
+
+    <!-- Сохранение занятия с правками новым профилем (замечание 7). -->
+    <string name="timer_summary_save_title">Во время занятия менялось время этапов</string>
+    <string name="timer_summary_save_action">Сохранить как новый профиль</string>
+    <string name="timer_summary_save_name">%1$s (с правками)</string>
+    <string name="timer_summary_saved">Профиль «%1$s» сохранён</string>
 
     <string name="timer_finished_quote_author">— %1$s</string>
 
@@ -126,7 +154,7 @@
     <string name="timer_lock">Заблокировать экран</string>
     <string name="timer_unlock_hint">Удерживайте, чтобы разблокировать</string>
     <string name="timer_focus_enter">Режим фокуса</string>
-    <string name="timer_focus_hint">‹ свайп для смены этапа · свайп вниз — выход ›</string>
+    <string name="timer_focus_hint">‹ свайп — этап · вниз — пауза · тап — выход ›</string>
     <string name="timer_previous_stage">‹ Пред. этап</string>
     <string name="timer_next_stage">Далее: %1$s</string>
     <string name="timer_last_stage">Последний этап</string>

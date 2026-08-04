@@ -128,7 +128,7 @@ class CatchUpTest {
             ReducerHarness(tenMinuteStages())
                 .submit(TimerCommand.Start)
                 .advance(MINUTE_MS)
-                .submit(TimerCommand.Pause)
+                .submit(TimerCommand.Pause())
         harness.drainEvents()
         val before = harness.state
 

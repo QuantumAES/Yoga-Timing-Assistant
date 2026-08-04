@@ -1,5 +1,4 @@
 package com.quantumaes.yogatiming.timer.service
-
 import com.quantumaes.yogatiming.domain.model.Profile
 import com.quantumaes.yogatiming.domain.model.ProfileSummary
 import com.quantumaes.yogatiming.domain.model.Stage
@@ -7,11 +6,16 @@ import com.quantumaes.yogatiming.domain.model.alert.AlertPresets
 import com.quantumaes.yogatiming.domain.repository.ProfileFilter
 import com.quantumaes.yogatiming.domain.repository.ProfileRepository
 import com.quantumaes.yogatiming.domain.repository.SessionLogRepository
+import com.quantumaes.yogatiming.domain.settings.AppSettings
+import com.quantumaes.yogatiming.domain.settings.SettingsStore
+import com.quantumaes.yogatiming.domain.settings.ThemeMode
+import com.quantumaes.yogatiming.domain.settings.TimerShape
 import com.quantumaes.yogatiming.domain.stats.ProfileTotals
 import com.quantumaes.yogatiming.domain.stats.SessionDay
 import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
 import com.quantumaes.yogatiming.domain.stats.SessionTotals
 import com.quantumaes.yogatiming.timer.engine.TimeSource
+import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.persist.PersistedSession
 import com.quantumaes.yogatiming.timer.engine.persist.SessionStore
 import com.quantumaes.yogatiming.timer.service.watchdog.Watchdog
@@ -150,3 +154,38 @@ private fun defaultStages(): List<Stage> =
         Stage(name = "Асаны", durationSec = TEN_MINUTES_SEC, sortOrder = 1),
         Stage(name = "Шавасана", durationSec = TEN_MINUTES_SEC, sortOrder = 2),
     )
+
+/**
+ * Настройки для тестов контроллера: он читает из них ровно одно — режим
+ * паузы по умолчанию. Остальные сеттеры существуют, чтобы удовлетворить
+ * контракт, и ничего не делают: проверять здесь нечего.
+ */
+class FakeSettingsStore(
+    private val value: AppSettings = AppSettings(),
+) : SettingsStore {
+    override val settings: Flow<AppSettings> = flowOf(value)
+
+    override suspend fun setThemeMode(mode: ThemeMode) = Unit
+
+    override suspend fun setDynamicColor(enabled: Boolean) = Unit
+
+    override suspend fun setVoiceEnabled(enabled: Boolean) = Unit
+
+    override suspend fun setAlertVolume(percent: Int) = Unit
+
+    override suspend fun setDuckMusicOnAlert(enabled: Boolean) = Unit
+
+    override suspend fun setSpeechRate(percent: Int) = Unit
+
+    override suspend fun setKeepScreenOn(enabled: Boolean) = Unit
+
+    override suspend fun setAutoDim(enabled: Boolean) = Unit
+
+    override suspend fun setTimerShape(shape: TimerShape) = Unit
+
+    override suspend fun setSettingsFromSession(enabled: Boolean) = Unit
+
+    override suspend fun setPauseMode(mode: PauseMode) = Unit
+
+    override suspend fun setOnboardingCompleted(completed: Boolean) = Unit
+}

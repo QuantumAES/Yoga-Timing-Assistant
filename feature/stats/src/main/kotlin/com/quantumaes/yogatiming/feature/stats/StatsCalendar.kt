@@ -23,6 +23,7 @@ import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
 import com.quantumaes.yogatiming.domain.stats.weekdaysFrom
 import com.quantumaes.yogatiming.feature.stats.component.CalendarDayUi
+import com.quantumaes.yogatiming.feature.stats.component.ExpandableSection
 import com.quantumaes.yogatiming.feature.stats.component.MonthCalendar
 import java.time.LocalDate
 
@@ -39,23 +40,34 @@ internal fun CalendarSection(
     cells: List<CalendarCell>,
     selectedDay: LocalDate?,
     daySessions: List<SessionLogEntry>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     onSelectDay: (LocalDate) -> Unit,
 ) {
+    val practised = cells.count { it.inPeriod && it.sessionCount > 0 }
+
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(Spacing.m)) {
-            SectionTitle(stringResource(R.string.stats_calendar_title))
-            MonthCalendar(
-                cells = cells.map { it.toUi(selected = it.date == selectedDay) },
-                labels = weekdaysFrom().map { weekdayLabel(it) },
-                onSelect = { day -> onSelectDay(day.date) },
-                modifier = Modifier.padding(top = Spacing.s),
-            )
-            if (selectedDay != null && daySessions.isNotEmpty()) {
-                DayCard(
-                    date = selectedDay,
-                    sessions = daySessions,
-                    modifier = Modifier.padding(top = Spacing.s),
-                )
+            ExpandableSection(
+                title = stringResource(R.string.stats_calendar_title),
+                subtitle = pluralStringResource(R.plurals.stats_days_practiced, practised, practised),
+                expanded = expanded,
+                onToggle = onToggle,
+            ) {
+                Column {
+                    MonthCalendar(
+                        cells = cells.map { it.toUi(selected = it.date == selectedDay) },
+                        labels = weekdaysFrom().map { weekdayLabel(it) },
+                        onSelect = { day -> onSelectDay(day.date) },
+                    )
+                    if (selectedDay != null && daySessions.isNotEmpty()) {
+                        DayCard(
+                            date = selectedDay,
+                            sessions = daySessions,
+                            modifier = Modifier.padding(top = Spacing.s),
+                        )
+                    }
+                }
             }
         }
     }

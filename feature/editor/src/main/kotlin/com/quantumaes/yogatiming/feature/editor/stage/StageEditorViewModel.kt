@@ -50,6 +50,7 @@ data class StageForm(
     val durationSec: Int = DEFAULT_DURATION_SEC,
     val note: String = "",
     val voiceName: String = "",
+    val bilateral: Boolean = false,
     val alertConfig: AlertConfig? = null,
 )
 
@@ -70,6 +71,13 @@ data class StageEditorUiState(
     val voiceName: String = "",
     /** Разрешён ли голос вообще (Экран 6): иначе произношение проверить нечем. */
     val voiceEnabled: Boolean = false,
+    /**
+     * Асана выполняется зеркально на обе стороны (Фаза 11).
+     *
+     * [durationSec] в этом случае — длительность одной стороны: инструктор
+     * говорит «держим минуту», а не «держим две минуты на обе».
+     */
+    val bilateral: Boolean = false,
     /** `null` — этап наследует оповещения профиля (ADR-002). */
     val alertConfig: AlertConfig? = null,
     val nameErrorShown: Boolean = false,
@@ -84,7 +92,17 @@ data class StageEditorUiState(
     val savedForm: StageForm = StageForm(),
 ) {
     val form: StageForm
-        get() = StageForm(name.trim(), type, colorTag, durationSec, note.trim(), voiceName.trim(), alertConfig)
+        get() =
+            StageForm(
+                name = name.trim(),
+                type = type,
+                colorTag = colorTag,
+                durationSec = durationSec,
+                note = note.trim(),
+                voiceName = voiceName.trim(),
+                bilateral = bilateral && hasDuration,
+                alertConfig = alertConfig,
+            )
 
     val hasUnsavedChanges: Boolean get() = form != savedForm
 
@@ -92,6 +110,9 @@ data class StageEditorUiState(
 
     /** FREE-этап длится до ручного перехода, длительность у него не спрашивают. */
     val hasDuration: Boolean get() = type != StageType.FREE
+
+    /** Сколько этап займёт в занятии целиком: двусторонний — вдвое больше. */
+    val totalDurationSec: Int get() = if (bilateral && hasDuration) durationSec * Stage.SIDES else durationSec
 
     val isDurationValid: Boolean
         get() = !hasDuration || durationSec in Stage.MIN_DURATION_SEC..Stage.MAX_DURATION_SEC
@@ -183,6 +204,7 @@ class StageEditorViewModel
                         durationSec = stage.durationSec,
                         note = stage.note.orEmpty(),
                         voiceName = stage.voiceName.orEmpty(),
+                        bilateral = stage.bilateral,
                         alertConfig = stage.alertConfig,
                     )
                 loaded.copy(savedForm = loaded.form)
@@ -251,6 +273,26 @@ class StageEditorViewModel
             _uiState.update { it.copy(durationSec = durationSec, durationErrorShown = false) }
 
         fun setNote(note: String) = _uiState.update { it.copy(note = note) }
+
+        fun setBilateral(bilateral: Boolean) = _uiState.update { it.copy(bilateral = bilateral) }
+
+        /**
+         * Выбор асаны из справочника (замечание 2 полевой проверки 2026-08-04).
+         *
+         * Заполняет и произношение — но только если пользователь его ещё не
+         * трогал: переписывать вручную поставленное ударение справочником
+         * значит терять работу, которую человек уже сделал.
+         */
+        fun pickAsana(
+            name: String,
+            voiceName: String,
+        ) = _uiState.update { state ->
+            state.copy(
+                name = name,
+                nameErrorShown = false,
+                voiceName = state.voiceName.ifBlank { voiceName },
+            )
+        }
 
         /**
          * Переключатель «свои оповещения».
@@ -327,5 +369,8 @@ class StageEditorViewModel
                 note = note.trim().takeIf { it.isNotEmpty() },
                 alertConfig = alertConfig,
                 voiceName = voiceName.trim().takeIf { it.isNotEmpty() },
+                // У FREE-этапа сторон нет: он длится до ручного перехода, и
+                // делить пополам нечего.
+                bilateral = bilateral && hasDuration,
             )
     }

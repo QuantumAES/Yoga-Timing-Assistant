@@ -8,5 +8,5 @@
     -->
     <color name="splash_background">#FBFDF7</color>
     <!-- Фон адаптивной иконки от темы не зависит: система рисует её на своём фоне. -->
-    <color name="ic_launcher_background">#0F1511</color>
+    <color name="ic_launcher_background">#EDE1D3</color>
 </resources>

@@ -90,16 +90,30 @@ internal fun SessionFinishedScreen(
     viewModel: SessionFinishedViewModel = hiltViewModel(),
 ) {
     val lastSummary by viewModel.summary.collectAsStateWithLifecycle()
+    val savedProfileName by viewModel.savedProfileName.collectAsStateWithLifecycle()
     // Итоги чужого занятия — не итоги этого: экран мог открыться по «Назад»
     // после того, как в другом профиле уже началось следующее.
     val summary = lastSummary?.takeIf { it.profileId == profileId }
 
-    SessionFinishedContent(summary = summary, onRepeat = onRepeat, onExit = onExit)
+    // Имя нового профиля собирается здесь: строка локализованная, а ресурсы —
+    // не дело модели.
+    val newProfileName =
+        stringResource(R.string.timer_summary_save_name, summary?.profileName.orEmpty())
+
+    SessionFinishedContent(
+        summary = summary,
+        savedProfileName = savedProfileName,
+        onSaveProfile = { viewModel.saveAdjustedProfile(newProfileName) },
+        onRepeat = onRepeat,
+        onExit = onExit,
+    )
 }
 
 @Composable
 private fun SessionFinishedContent(
     summary: SessionSummary?,
+    savedProfileName: String?,
+    onSaveProfile: () -> Unit,
     onRepeat: () -> Unit,
     onExit: () -> Unit,
 ) {
@@ -146,6 +160,18 @@ private fun SessionFinishedContent(
                 SessionTotals(
                     summary = summary,
                     palette = palette,
+                    modifier = Modifier.padding(top = Spacing.m),
+                )
+            }
+
+            // Предложение сохранить правки появляется только если они были:
+            // у занятия, прошедшего по плану, сохранять нечего — профиль уже
+            // такой (замечание 7 полевой проверки 2026-08-04).
+            if (summary?.wasAdjusted == true) {
+                AdjustedProfileOffer(
+                    savedProfileName = savedProfileName,
+                    palette = palette,
+                    onSave = onSaveProfile,
                     modifier = Modifier.padding(top = Spacing.m),
                 )
             }
@@ -286,6 +312,51 @@ private fun SessionTotals(
     }
 }
 
+/**
+ * «Во время занятия менялось время этапов» — и кнопка сохранить это профилем.
+ *
+ * Предложение, а не автоматическое действие: правка могла быть разовой
+ * поправкой под конкретную группу, а могла — обнаружением того, что план
+ * составлен неверно. Отличить их приложение не может, а инструктор — за одно
+ * нажатие. После сохранения кнопка сменяется подтверждением с именем: имя
+ * пригодится, чтобы найти профиль в списке.
+ */
+@Composable
+private fun AdjustedProfileOffer(
+    savedProfileName: String?,
+    palette: TimerPalette,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().widthIn(max = ACTION_MAX_WIDTH),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (savedProfileName != null) {
+            Text(
+                text = stringResource(R.string.timer_summary_saved, savedProfileName),
+                style = MaterialTheme.typography.bodyMedium,
+                color = palette.running,
+                textAlign = TextAlign.Center,
+            )
+            return@Column
+        }
+        Text(
+            text = stringResource(R.string.timer_summary_save_title),
+            style = MaterialTheme.typography.bodyMedium,
+            color = palette.onBackgroundMuted,
+            textAlign = TextAlign.Center,
+        )
+        OutlinedButton(
+            onClick = onSave,
+            modifier = Modifier.padding(top = Spacing.xs),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = palette.onBackground),
+        ) {
+            Text(stringResource(R.string.timer_summary_save_action))
+        }
+    }
+}
+
 @Composable
 private fun TotalsRow(
     label: String,
@@ -380,6 +451,8 @@ private fun SessionFinishedPreview() {
                     stagesCompleted = 6,
                     stageCount = 6,
                 ),
+            savedProfileName = null,
+            onSaveProfile = {},
             onRepeat = {},
             onExit = {},
         )
