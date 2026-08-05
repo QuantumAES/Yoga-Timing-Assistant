@@ -169,6 +169,24 @@ class TimerReducerTest {
         assertThat(harness.drainPlayedTags()).containsExactly("start2")
     }
 
+    // Соседи текущего этапа в снапшоте: по ним рабочий экран пишет, что
+    // приедет по свайпу, — и «некуда» обязано быть отличимо от «дальше пусто».
+    @Test
+    fun `снапшот называет соседние этапы, а на краях плана молчит`() {
+        val harness = ReducerHarness(sixStagePlan()).submit(TimerCommand.Start)
+
+        assertThat(harness.snapshot.previousStageName).isNull()
+        assertThat(harness.snapshot.nextStageName).isEqualTo("Этап 2")
+
+        harness.submit(TimerCommand.Next)
+        assertThat(harness.snapshot.previousStageName).isEqualTo("Этап 1")
+
+        repeat(4) { harness.submit(TimerCommand.Next) }
+        assertThat(harness.snapshot.previousStageName).isEqualTo("Этап 5")
+        assertThat(harness.snapshot.nextStageName).isNull()
+        assertThat(harness.snapshot.isLastStage).isTrue()
+    }
+
     @Test
     fun `E-07 возврат с первого этапа ничего не меняет`() {
         val harness = ReducerHarness(sixStagePlan()).submit(TimerCommand.Start).advance(MINUTE_MS)

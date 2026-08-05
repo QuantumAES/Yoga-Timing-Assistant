@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.TimerPalette
+import com.quantumaes.yogatiming.core.designsystem.theme.YtaTextStyles
 import com.quantumaes.yogatiming.feature.timer.R
 import kotlinx.coroutines.delay
 
@@ -65,7 +65,14 @@ private const val LOCK_TINT_ALPHA = 0.10f
 private val PILL_HEIGHT = 64.dp
 private val PILL_MAX_WIDTH = 420.dp
 private val PILL_CORNER = 32.dp
-private val ICON_SIZE = 24.dp
+
+/**
+ * Замок в плашке.
+ *
+ * Растёт вместе с подписью (замечание 4 полевой проверки 2026-08-05): значок
+ * в 24 dp рядом с текстом в 22 пункта читается как случайно уменьшенный.
+ */
+private val ICON_SIZE = 32.dp
 
 /** Насколько плашка перекрывает то, что под ней. Не до конца: экран продолжает жить. */
 private const val PILL_BACKGROUND_ALPHA = 0.92f
@@ -204,7 +211,7 @@ private fun UnlockPill(
                 .background(palette.running.copy(alpha = PILL_FILL_ALPHA)),
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.l, vertical = Spacing.s),
             horizontalArrangement = Arrangement.spacedBy(Spacing.s, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -216,7 +223,12 @@ private fun UnlockPill(
             )
             Text(
                 text = hint,
-                style = MaterialTheme.typography.titleMedium,
+                // Тот же кегль, что и у «Далее: Шавасана», — мера «читается с
+                // коврика» (замечание 4 полевой проверки 2026-08-05). Плашка
+                // всплывает на заблокированном экране, до которого человек
+                // тянется от стены зала, а `titleMedium` в шестнадцать пунктов
+                // с этого расстояния приходилось разбирать.
+                style = YtaTextStyles.stageNext,
                 color = palette.onBackground,
                 // Две строки, а не одна: при системном шрифте 200% подсказка
                 // в одну строку обрывалась многоточием ровно на слове «чтобы».

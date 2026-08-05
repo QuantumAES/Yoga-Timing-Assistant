@@ -514,6 +514,16 @@ private const val PREVIEW_HOUR_MS = 3_600_000L
 /** Занятий по дням сетки превью: есть и одиночные точки, и точка с цифрой. */
 private val PREVIEW_COUNTS = listOf(0, 1, 0, 2, 0, 4, 1)
 
+/**
+ * Недельный график превью: число занятий и минуты по дням недели.
+ *
+ * Ряды намеренно расходятся — три коротких занятия в среду против одного
+ * длинного в субботу. Пропорциональные ряды рисовали бы две одинаковые
+ * гребёнки, то есть ровно то, ради чего второй ряд не заводят.
+ */
+private val PREVIEW_WEEKDAY_COUNTS = listOf(1, 0, 3, 1, 2, 1, 0)
+private val PREVIEW_WEEKDAY_MINUTES = listOf(60L, 0L, 90L, 75L, 120L, 130L, 0L)
+
 @Preview
 @Composable
 private fun StatsScreenPreview() {
@@ -532,8 +542,8 @@ private fun StatsScreenPreview() {
                         weekdaysFrom().mapIndexed { index, day ->
                             WeekdayTotal(
                                 dayOfWeek = day,
-                                sessionCount = index % 3,
-                                durationMs = (index % 3) * 3_600_000L,
+                                sessionCount = PREVIEW_WEEKDAY_COUNTS[index],
+                                durationMs = PREVIEW_WEEKDAY_MINUTES[index] * 60_000L,
                             )
                         },
                     byProfile =

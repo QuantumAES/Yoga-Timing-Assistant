@@ -31,6 +31,10 @@ private const val FULL_PROGRESS = 1f
  * @param budgetToleranceMs допустимый перерасход: до него расхождение
  *   показывается спокойно, после — тревожно.
  * @param wrapUpPassed отсечка уже прозвучала.
+ * @param previousStageName куда вернёт «Пред.»; `null` на первом этапе — там
+ *   команда ничего не делает. Длительности у него нет намеренно: возврат на
+ *   брошенный досрочно этап продолжает его с того места, где он остановился
+ *   (см. `previous` в редьюсере), и плановое число соврало бы.
  *
  * У полей бюджета и паузы есть значения по умолчанию — «цели нет, пауза
  * обычная». Не ради краткости: снапшот собирается ровно в одном месте
@@ -68,6 +72,7 @@ data class SessionSnapshot(
     val wrapUpPassed: Boolean = false,
     val nextStageName: String?,
     val nextStageDurationMs: Long?,
+    val previousStageName: String? = null,
     val isLastStage: Boolean,
 ) {
     /** Есть ли у занятия целевое время вообще. */
@@ -120,6 +125,7 @@ fun SessionState.snapshot(now: Long): SessionSnapshot {
         wrapUpPassed = WRAP_UP_ID in firedAlertIds,
         nextStageName = nextStage?.name,
         nextStageDurationMs = nextStageDurationMs(),
+        previousStageName = previousStage?.name,
         isLastStage = isLastStage,
     )
 }

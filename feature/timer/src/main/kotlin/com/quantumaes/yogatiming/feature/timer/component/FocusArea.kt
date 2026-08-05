@@ -10,8 +10,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -20,6 +23,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -35,6 +39,16 @@ import kotlin.math.hypot
 private val SWIPE_THRESHOLD = 48.dp
 
 /**
+ * С какого смещения жест считается направленным.
+ *
+ * До него направление ещё не выбрано: у почти нулевого сдвига «больше по x или
+ * по y» решает дрожание пальца, и страница-подсказка металась бы между
+ * «следующий этап» и «выход». Четверть порога — уже движение, но ещё далеко от
+ * срабатывания.
+ */
+private val PEEK_THRESHOLD = SWIPE_THRESHOLD / 4
+
+/**
  * Насколько содержимое идёт за пальцем.
  *
  * Не единица: экран должен отзываться на жест, но не уезжать целиком от
@@ -48,6 +62,16 @@ private val COMMIT_SHIFT = 96.dp
 
 /** Насколько бледнеет уезжающее содержимое. Ноль был бы морганием. */
 private const val MIN_ALPHA = 0.2f
+
+/**
+ * На каком **сдвиге** жест уже сработал бы.
+ *
+ * Порог задан ходом пальца, а содержимое идёт за ним вполсилы, поэтому
+ * сдвига вдвое меньше. Пересчёт нужен затуханию: обе страницы меняют
+ * прозрачность не «куда-нибудь за 96 dp», а ровно к моменту срабатывания —
+ * полностью проявившаяся подсказка и означает «отпускай, приедет она».
+ */
+private fun triggerShift(thresholdPx: Float): Float = thresholdPx * DRAG_FOLLOW
 
 private const val COMMIT_MS = 130
 private const val RETURN_MS = 220
@@ -68,6 +92,14 @@ private const val RETURN_MS = 220
  * - **тап** — выход из фокуса;
  * - **двойной тап** — пауза и продолжение.
  *
+ * **За уезжающим содержимым видно то, что приедет** (замечание 3 полевой
+ * проверки 2026-08-05). Раньше под ним была пустота: страница листалась, но
+ * листалась в никуда, и до отпускания пальца жест ничего не обещал — а свайп в
+ * фокусе делают вслепую, с коврика, и «что будет, если отпустить» это и есть
+ * главный вопрос. Теперь с противоположной стороны въезжает страница
+ * [FocusPeek] — следующий этап, предыдущий или обычный экран, — и жест можно
+ * передумать, не отпуская.
+ *
  * Пауза переехала на двойной тап со свайпа вниз (замечание 3): свайп вниз для
  * паузы противоречил тому, чего от него ждут — «убрать, свернуть, выйти», — и
  * половина попыток выйти из фокуса вместо этого останавливала занятие. Двойной
@@ -78,6 +110,7 @@ private const val RETURN_MS = 220
  * это другая история.
  *
  * @param onInteraction любое касание: сбрасывает отсчёт до автозатемнения.
+ * @param peek страница, которая приедет: рисуется под уезжающим содержимым.
  */
 @Composable
 internal fun FocusArea(
@@ -87,15 +120,22 @@ internal fun FocusArea(
     onTogglePause: () -> Unit,
     onInteraction: () -> Unit,
     modifier: Modifier = Modifier,
+    peek: @Composable (FocusPeek) -> Unit,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val thresholdPx = with(density) { SWIPE_THRESHOLD.toPx() }
+    val peekThresholdPx = with(density) { PEEK_THRESHOLD.toPx() }
     val shiftPx = with(density) { COMMIT_SHIFT.toPx() }
 
     val shiftX = remember { Animatable(0f) }
     val shiftY = remember { Animatable(0f) }
+
+    // Что приедет, если отпустить сейчас. `null` — жест ещё ни о чём не
+    // говорит либо уже отработал; вернувшаяся пружиной подсказка гаснет сама,
+    // потому что её прозрачность считается из смещения.
+    var target by remember { mutableStateOf<FocusPeek?>(null) }
 
     val exitLabel = stringResource(R.string.timer_focus_exit)
     val nextLabel = stringResource(R.string.timer_action_next_stage)
@@ -118,6 +158,7 @@ internal fun FocusArea(
                         },
                         onDrag = { _, delta ->
                             total += delta
+                            target = peekFor(total, peekThresholdPx)
                             scope.launch {
                                 shiftX.snapTo(total.x * DRAG_FOLLOW)
                                 shiftY.snapTo(total.y * DRAG_FOLLOW)
@@ -131,6 +172,10 @@ internal fun FocusArea(
                                 abs(total.x) > abs(total.y) && abs(total.x) > thresholdPx -> {
                                     scope.commitSideways(shiftX, shiftY, shiftPx, forward = total.x < 0) {
                                         if (total.x < 0) onNext() else onPrevious()
+                                        // Страница-подсказка уходит вместе с
+                                        // тем, что она обещала: дальше на её
+                                        // месте уже новый этап.
+                                        target = null
                                     }
                                 }
 
@@ -184,6 +229,30 @@ internal fun FocusArea(
                         )
                 },
     ) {
+        // Приезжающая страница — под уезжающей и ровно на шаг в стороне, с
+        // которой она придёт. Проявляется настолько, насколько бледнеет
+        // текущая: обе доли считаются из одного смещения, поэтому разойтись
+        // им негде.
+        target?.let { peekTarget ->
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val step = if (peekTarget.horizontal) shiftX.value else shiftY.value
+                            val offset = step + shiftPx * if (step < 0f) 1f else -1f
+                            translationX = if (peekTarget.horizontal) offset else 0f
+                            translationY = if (peekTarget.horizontal) 0f else offset
+                            alpha = (abs(step) / triggerShift(thresholdPx)).coerceIn(0f, 1f)
+                        }
+                        // Для TalkBack этой страницы нет: свайпов там не
+                        // существует, а те же действия объявлены словами.
+                        .clearAndSetSemantics {},
+            ) {
+                peek(peekTarget)
+            }
+        }
+
         Box(
             modifier =
                 Modifier.fillMaxSize().graphicsLayer {
@@ -192,7 +261,7 @@ internal fun FocusArea(
                     // Прозрачность считается из смещения, а не анимируется
                     // отдельно: одно движение — один источник, и рассинхрону
                     // взяться неоткуда.
-                    alpha = fadeFor(hypot(shiftX.value, shiftY.value), shiftPx)
+                    alpha = fadeFor(hypot(shiftX.value, shiftY.value), triggerShift(thresholdPx))
                 },
         ) {
             content()
@@ -200,10 +269,26 @@ internal fun FocusArea(
     }
 }
 
+/**
+ * Что приедет, если отпустить палец при таком смещении.
+ *
+ * Ось выбирается по большей составляющей — тем же правилом, что и на конце
+ * жеста: иначе подсказка обещала бы одно, а срабатывало бы другое.
+ */
+private fun peekFor(
+    total: Offset,
+    thresholdPx: Float,
+): FocusPeek? =
+    when {
+        hypot(total.x, total.y) < thresholdPx -> null
+        abs(total.x) > abs(total.y) -> if (total.x < 0) FocusPeek.NEXT else FocusPeek.PREVIOUS
+        else -> FocusPeek.EXIT
+    }
+
 private fun fadeFor(
     distancePx: Float,
-    shiftPx: Float,
-): Float = (1f - (1f - MIN_ALPHA) * (distancePx / shiftPx)).coerceIn(MIN_ALPHA, 1f)
+    spanPx: Float,
+): Float = (1f - (1f - MIN_ALPHA) * (distancePx / spanPx)).coerceIn(MIN_ALPHA, 1f)
 
 /**
  * Смена этапа: содержимое уезжает в сторону свайпа и въезжает с противоположной.
@@ -242,7 +327,14 @@ private fun CoroutineScope.commitAway(
     }
 }
 
-/** Жест не дотянул до порога: содержимое возвращается пружиной — «не сработало». */
+/**
+ * Жест не дотянул до порога: содержимое возвращается пружиной — «не сработало».
+ *
+ * Страницу-подсказку гасить не нужно: её прозрачность считается из того же
+ * смещения, и пружина уводит её вместе с содержимым. Отдельный сигнал «убрать»
+ * пришлось бы гасить в конце анимации — то есть в коде, который переживает
+ * начало следующего жеста и однажды погасил бы уже его подсказку.
+ */
 private fun CoroutineScope.springBack(
     shiftX: Animatable<Float, AnimationVector1D>,
     shiftY: Animatable<Float, AnimationVector1D>,
@@ -250,4 +342,25 @@ private fun CoroutineScope.springBack(
     val spec = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
     launch { shiftX.animateTo(0f, spec) }
     launch { shiftY.animateTo(0f, spec) }
+}
+
+/**
+ * Страница, которая приедет на место текущей.
+ *
+ * Знает только о направлении — что на ней написать, решает рабочий экран:
+ * область жестов не должна знать ни про этапы, ни про кнопки.
+ */
+internal enum class FocusPeek {
+    /** Свайп влево: следующий этап, а на последнем — конец занятия. */
+    NEXT,
+
+    /** Свайп вправо: предыдущий этап. */
+    PREVIOUS,
+
+    /** Свайп вверх или вниз: обычный экран с кнопками. */
+    EXIT,
+    ;
+
+    /** По какой оси эта страница приезжает. */
+    val horizontal: Boolean get() = this != EXIT
 }

@@ -1,5 +1,6 @@
 package com.quantumaes.yogatiming.feature.stats
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -111,21 +112,37 @@ private fun Tile(
     }
 }
 
-/** Недельный график: минуты практики по дням недели. */
+/**
+ * Недельный график: время практики и число занятий по дням недели.
+ *
+ * Свёрнутый раздел сообщает главное — в какой день недели практики больше
+ * всего: ради этого ответа график чаще всего и открывают. Дней при этом два, и
+ * они не обязаны совпадать: «чаще» считается по числу занятий, «дольше» — по
+ * времени (замечание 1 полевой проверки 2026-08-05). До того подпись говорила
+ * «чаще всего», а называла день с наибольшим **временем** — то есть отвечала
+ * не на тот вопрос, который задавала.
+ */
 @Composable
 internal fun WeekdaySection(
     weekdays: List<WeekdayTotal>,
     expanded: Boolean,
     onToggle: () -> Unit,
 ) {
-    // Свёрнутый раздел сообщает главное — в какой день недели практики больше
-    // всего: ради этого ответа график чаще всего и открывают.
-    val busiest = weekdays.filter { it.sessionCount > 0 }.maxByOrNull { it.durationMs }
+    val practised = weekdays.filter { it.sessionCount > 0 }
+    val mostOften = practised.maxByOrNull { it.sessionCount }
+    val longest = practised.maxByOrNull { it.durationMs }
     val subtitle =
-        if (busiest == null) {
-            stringResource(R.string.stats_weekdays_subtitle_empty)
-        } else {
-            stringResource(R.string.stats_weekdays_subtitle, weekdayFullName(busiest.dayOfWeek))
+        when {
+            mostOften == null || longest == null -> stringResource(R.string.stats_weekdays_subtitle_empty)
+            mostOften.dayOfWeek == longest.dayOfWeek ->
+                stringResource(R.string.stats_weekdays_subtitle_same, weekdayFullName(mostOften.dayOfWeek))
+
+            else ->
+                stringResource(
+                    R.string.stats_weekdays_subtitle,
+                    weekdayFullName(mostOften.dayOfWeek),
+                    weekdayFullName(longest.dayOfWeek),
+                )
         }
 
     Card(Modifier.fillMaxWidth()) {
@@ -136,10 +153,41 @@ internal fun WeekdaySection(
                 expanded = expanded,
                 onToggle = onToggle,
             ) {
-                WeekdayChart(bars = weekdays.map { it.toBar() })
+                WeekdayChart(
+                    bars = weekdays.map { it.toBar() },
+                    timeLegend =
+                        legendText(
+                            labelRes = R.string.stats_weekdays_legend_time,
+                            scale = longest?.durationMs?.takeIf { it > 0L }?.let { durationText(it) },
+                        ),
+                    countLegend =
+                        legendText(
+                            labelRes = R.string.stats_weekdays_legend_count,
+                            scale = mostOften?.sessionCount?.takeIf { it > 0 }?.toString(),
+                        ),
+                )
             }
         }
     }
+}
+
+/**
+ * «Время · до 2 ч 10 мин» — подпись ряда с его шкалой.
+ *
+ * Шкала в легенде, а не осью слева: ось пришлось бы рисовать дважды, по одной
+ * на ряд, и она съела бы четверть ширины поля ради семи столбиков. Максимум
+ * ряда отвечает на тот же вопрос одним числом: столбик в полную высоту — это
+ * вот столько.
+ */
+@Composable
+private fun legendText(
+    @StringRes labelRes: Int,
+    scale: String?,
+): String {
+    val label = stringResource(labelRes)
+    // Пустой период шкалы не имеет: полная высота столбика там ничему не равна.
+    if (scale == null) return label
+    return stringResource(R.string.stats_weekdays_legend_scale, label, scale)
 }
 
 @Composable
@@ -156,7 +204,12 @@ private fun WeekdayTotal.toBar(): WeekdayBar {
                 durationText(durationMs),
             )
         }
-    return WeekdayBar(label = weekdayLabel(dayOfWeek), value = durationMs, description = description)
+    return WeekdayBar(
+        label = weekdayLabel(dayOfWeek),
+        durationMs = durationMs,
+        sessionCount = sessionCount,
+        description = description,
+    )
 }
 
 /**

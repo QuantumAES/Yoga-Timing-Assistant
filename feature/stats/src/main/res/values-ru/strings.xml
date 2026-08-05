@@ -47,10 +47,14 @@
         <item quantity="many">%1$d профилей</item>
         <item quantity="other">%1$d профиля</item>
     </plurals>
-    <string name="stats_weekdays_subtitle">чаще всего — %1$s</string>
+    <string name="stats_weekdays_subtitle">чаще — %1$s · дольше — %2$s</string>
+    <string name="stats_weekdays_subtitle_same">чаще и дольше всего — %1$s</string>
     <string name="stats_weekdays_subtitle_empty">занятий за период нет</string>
 
     <string name="stats_weekdays_title">По дням недели</string>
+    <string name="stats_weekdays_legend_time">Время</string>
+    <string name="stats_weekdays_legend_count">Занятия</string>
+    <string name="stats_weekdays_legend_scale">%1$s · до %2$s</string>
     <string name="stats_weekday_description">%1$s: %2$s, %3$s</string>
     <string name="stats_weekday_empty_description">%1$s: занятий нет</string>
 

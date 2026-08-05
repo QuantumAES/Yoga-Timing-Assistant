@@ -53,6 +53,9 @@ data class SessionState(
 
     val nextStage: PlannedStage? get() = plan.stages.getOrNull(currentIndex + 1)
 
+    /** Куда вернёт «Пред.»; `null` на первом этапе — возвращаться некуда. */
+    val previousStage: PlannedStage? get() = plan.stages.getOrNull(currentIndex - 1)
+
     val isLastStage: Boolean get() = currentIndex == plan.lastIndex
 
     /**

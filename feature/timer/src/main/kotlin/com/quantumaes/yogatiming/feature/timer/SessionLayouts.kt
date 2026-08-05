@@ -1,12 +1,5 @@
 package com.quantumaes.yogatiming.feature.timer
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,11 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,7 +35,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.quantumaes.yogatiming.core.common.time.TimeFormatter
 import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.TimerPalette
@@ -63,14 +50,6 @@ import com.quantumaes.yogatiming.timer.engine.model.PauseMode
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.service.restrictions.TimerRestriction
-import kotlinx.coroutines.delay
-
-/** Сколько висит подсказка о свайпах при входе в фокус. */
-private const val FOCUS_HINT_MS = 3_000L
-
-/** Мигание строки паузы в фокусе: период полуволны и нижняя прозрачность. */
-private const val PAUSE_BLINK_MS = 900
-private const val PAUSE_BLINK_MIN_ALPHA = 0.35f
 
 private val LANDSCAPE_RING_PADDING = 8.dp
 
@@ -84,11 +63,11 @@ private val LANDSCAPE_RING_PADDING = 8.dp
  */
 private val RING_SIDE_PADDING = 4.dp
 
-/** Сколько строк резервируется под название этапа. */
-private const val STAGE_TITLE_LINES = 2
+/** Сколько строк резервируется под название этапа. Общее с режимом фокуса. */
+internal const val STAGE_TITLE_LINES = 2
 
-/** Сколько строк резервируется под заметку инструктора. */
-private const val STAGE_NOTE_LINES = 2
+/** Сколько строк резервируется под заметку инструктора. Общее с режимом фокуса. */
+internal const val STAGE_NOTE_LINES = 2
 
 // ─── Геометрия содержимого индикатора ────────────────────────────────────────
 //
@@ -142,9 +121,9 @@ private const val ADJUSTMENT_BACKGROUND_ALPHA = 0.18f
  */
 private const val ADJUSTMENT_SLOT_PADDINGS = 3
 
-// Раскладки рабочего экрана: портрет, ландшафт и режим фокуса. Отделены от
-// TimerScreen намеренно — тот отвечает за состояние и жесты, эти функции
-// только раскладывают уже готовые данные.
+// Раскладки обычного режима: портрет и ландшафт. Отделены от TimerScreen
+// намеренно — тот отвечает за состояние и жесты, эти функции только
+// раскладывают уже готовые данные. Режим фокуса живёт в `FocusLayout.kt`.
 
 /**
  * Портрет: шапка — кольцо — полоса «что дальше» — кнопки.
@@ -165,6 +144,7 @@ internal fun PortraitContent(
     wrapUpVisible: Boolean,
     onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
+    onLock: () -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
@@ -188,7 +168,7 @@ internal fun PortraitContent(
             palette = palette,
             settingsAvailable = settingsAvailable,
             onOpenSettings = onOpenSettings,
-            onLock = { onModeChange(SessionMode.LOCK) },
+            onLock = onLock,
             onStop = onStopRequest,
             modifier = sides,
         )
@@ -257,6 +237,7 @@ internal fun LandscapeContent(
     wrapUpVisible: Boolean,
     onOpenSettings: () -> Unit,
     onModeChange: (SessionMode) -> Unit,
+    onLock: () -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
@@ -289,7 +270,7 @@ internal fun LandscapeContent(
                 palette = palette,
                 settingsAvailable = settingsAvailable,
                 onOpenSettings = onOpenSettings,
-                onLock = { onModeChange(SessionMode.LOCK) },
+                onLock = onLock,
                 onStop = onStopRequest,
             )
 
@@ -656,137 +637,4 @@ private fun SessionTopBar(
             )
         }
     }
-}
-
-/**
- * Режим фокуса (docs/03-GESTURES.md §5): только цифры.
- *
- * Кнопок нет — и именно поэтому свайп здесь однозначен: спорить ему не с чем.
- */
-@Composable
-internal fun FocusContent(
-    snapshot: SessionSnapshot?,
-    palette: TimerPalette,
-    modifier: Modifier = Modifier,
-) {
-    var hintVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
-        delay(FOCUS_HINT_MS)
-        hintVisible = false
-    }
-    val paused = snapshot?.takeIf { it.runState == RunState.PAUSED }
-
-    // Цифры идут во всю ширину экрана, текст — с полем: в фокусе кроме цифр
-    // смотреть не на что, и каждый отданный им dp виден с другого конца зала.
-    val sides = Modifier.padding(horizontal = Spacing.m)
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = snapshot?.currentStageName ?: stringResource(R.string.timer_idle),
-            style = YtaTextStyles.stageTitle,
-            color = palette.onBackground,
-            textAlign = TextAlign.Center,
-            maxLines = STAGE_TITLE_LINES,
-            overflow = TextOverflow.Ellipsis,
-            modifier = sides,
-        )
-        // Пауза в фокусе видна словом и растущими часами (замечание 3 полевой
-        // проверки 2026-08-05). Цвета цифр для этого мало: он меняется и в
-        // последнюю минуту этапа, а замершие цифры сами по себе неотличимы от
-        // подвисшего приложения. Плашки рабочего экрана здесь нет — в фокусе
-        // нет ничего, кроме этой строки, поэтому она и мигает.
-        paused?.let { FocusPauseNotice(snapshot = it, palette = palette, modifier = sides) }
-        TimerDisplay(
-            text = remainingText(snapshot),
-            color = snapshot.accent(palette),
-            modifier = Modifier.fillMaxWidth().weight(1f),
-        )
-        snapshot?.let {
-            Text(
-                text = nextStageText(it),
-                style = YtaTextStyles.stageNext,
-                color = palette.onBackgroundMuted,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = sides,
-            )
-        }
-        // Заметка инструктора есть и в фокусе (замечание 3 полевой проверки
-        // 2026-08-04): именно в фокусе на телефон смотрят издалека, и именно
-        // там «Вирабхадрасана I–II, триконасана» нужнее всего. Раньше её тут
-        // не было вовсе — режим считался «только цифры», но цифры сами по себе
-        // не напоминают, что показывать.
-        snapshot?.currentNote?.takeIf { it.isNotBlank() }?.let { note ->
-            Text(
-                text = note,
-                style = YtaTextStyles.stageNote,
-                color = palette.onBackgroundMuted,
-                textAlign = TextAlign.Center,
-                maxLines = STAGE_NOTE_LINES,
-                overflow = TextOverflow.Ellipsis,
-                modifier = sides.padding(top = Spacing.s),
-            )
-        }
-        AnimatedVisibility(visible = hintVisible) {
-            Text(
-                text = stringResource(R.string.timer_focus_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = palette.onBackgroundMuted,
-                textAlign = TextAlign.Center,
-                modifier = sides.padding(top = Spacing.m),
-            )
-        }
-    }
-}
-
-/**
- * «Пауза 1:20» в режиме фокуса — единственное, что там движется на паузе.
- *
- * Мигает, а не просто окрашено: на паузу смотрят с другого конца зала, а
- * различить оттенок цифр с трёх метров нельзя — движение различимо всегда.
- * Период неспешный: тревожная мигалка на йоге неуместна, задача — быть
- * замеченной, а не подгонять.
- *
- * У паузы этапа своя строка: там продолжают идти часы занятия, и молчать об
- * этом нельзя — именно из этой разницы состоит смысл двух режимов.
- */
-@Composable
-private fun FocusPauseNotice(
-    snapshot: SessionSnapshot,
-    palette: TimerPalette,
-    modifier: Modifier = Modifier,
-) {
-    val blink = rememberInfiniteTransition(label = "focus-pause")
-    val alpha by blink.animateFloat(
-        initialValue = PAUSE_BLINK_MIN_ALPHA,
-        targetValue = 1f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(PAUSE_BLINK_MS, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "focus-pause-alpha",
-    )
-    val clock = TimeFormatter.clock(snapshot.pauseElapsedMs)
-    val text =
-        if (snapshot.pauseMode == PauseMode.STAGE) {
-            stringResource(R.string.timer_focus_paused_stage, clock)
-        } else {
-            stringResource(R.string.timer_focus_paused, clock)
-        }
-
-    Text(
-        text = text,
-        style = YtaTextStyles.stageNext,
-        color = palette.paused.copy(alpha = alpha),
-        textAlign = TextAlign.Center,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        modifier = modifier.padding(top = Spacing.xs),
-    )
 }

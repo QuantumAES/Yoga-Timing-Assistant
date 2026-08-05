@@ -100,10 +100,10 @@ private const val DIM_FADE_MS = 700
 /**
  * Экран 4 «Занятие» (Фаза 6 дорожной карты).
  *
- * Три режима из карты жестов (docs/03-GESTURES.md): обычный с кнопками, фокус
- * без них и блокировка. Управление ранжировано по частоте использования на
- * реальном занятии, а не по порядку макета: «Пауза» доминирует, «Пред. этап»
- * уходит в текстовую кнопку (§5.1 анализа).
+ * Два вида экрана из карты жестов (docs/03-GESTURES.md): обычный с кнопками и
+ * фокус без них, — плюс блокировка поверх любого из них. Управление ранжировано
+ * по частоте использования на реальном занятии, а не по порядку макета: «Пауза»
+ * доминирует, «Пред. этап» уходит в текстовую кнопку (§5.1 анализа).
  *
  * Цвета берутся из [TimerPalette], а не из схемы Material: экран обязан
  * читаться с 2–3 метров, и динамическим цветам здесь места нет
@@ -144,6 +144,9 @@ internal fun TimerScreen(
     }
 
     var mode by rememberSaveable { mutableStateOf(SessionMode.NORMAL) }
+    // Блокировка — слой поверх режима, а не режим: запертый фокус остаётся
+    // фокусом и после разблокировки (замечание 5 полевой проверки 2026-08-05).
+    var locked by rememberSaveable { mutableStateOf(false) }
     var stopRequested by rememberSaveable { mutableStateOf(false) }
 
     // Плашка отсечки живёт до тех пор, пока её не закрыли или пока план не
@@ -162,6 +165,8 @@ internal fun TimerScreen(
         onOpenSettings = onOpenSettings,
         mode = mode,
         onModeChange = { mode = it },
+        locked = locked,
+        onLockChange = { locked = it },
         onNoticeAction = viewModel::openSettings,
         onNoticeDismiss = viewModel::dismiss,
         onTogglePause = viewModel::togglePause,
@@ -180,12 +185,13 @@ internal fun TimerScreen(
 
     // Системная «Назад» в обычном режиме спрашивает — занятие идёт, и выйти
     // из него случайным свайпом от края нельзя. В фокусе она выходит из фокуса,
-    // под блокировкой игнорируется (docs/03-GESTURES.md §3).
+    // под блокировкой игнорируется (docs/03-GESTURES.md §3). Блокировка
+    // проверяется первой: она забирает всё управление, каким бы ни был режим.
     BackHandler(enabled = true) {
-        when (mode) {
-            SessionMode.NORMAL -> stopRequested = true
-            SessionMode.FOCUS -> mode = SessionMode.NORMAL
-            SessionMode.LOCK -> Unit
+        when {
+            locked -> Unit
+            mode.isFocus -> mode = SessionMode.NORMAL
+            else -> stopRequested = true
         }
     }
 
@@ -221,6 +227,8 @@ private fun SessionScreen(
     onOpenSettings: () -> Unit,
     mode: SessionMode,
     onModeChange: (SessionMode) -> Unit,
+    locked: Boolean,
+    onLockChange: (Boolean) -> Unit,
     onNoticeAction: (TimerRestriction) -> Unit,
     onNoticeDismiss: (TimerRestriction) -> Unit,
     onTogglePause: () -> Unit,
@@ -276,10 +284,25 @@ private fun SessionScreen(
                     onTogglePause = onTogglePause,
                     onInteraction = { wakeUps++ },
                     modifier = content,
+                    // Страница, которая приедет на место текущей: пока палец
+                    // не отпущен, она въезжает с противоположной стороны и
+                    // говорит, чего ждать (замечание 3 полевой проверки
+                    // 2026-08-05).
+                    peek = { target ->
+                        FocusPeekPage(
+                            target = target,
+                            snapshot = snapshot,
+                            palette = palette,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    },
                 ) {
                     FocusContent(
                         snapshot = snapshot,
                         palette = palette,
+                        settingsAvailable = settingsAvailable,
+                        onOpenSettings = onOpenSettings,
+                        onLock = { onLockChange(true) },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -295,6 +318,7 @@ private fun SessionScreen(
                     wrapUpVisible = wrapUpVisible,
                     onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
+                    onLock = { onLockChange(true) },
                     onNoticeAction = onNoticeAction,
                     onNoticeDismiss = onNoticeDismiss,
                     onTogglePause = onTogglePause,
@@ -320,6 +344,7 @@ private fun SessionScreen(
                     wrapUpVisible = wrapUpVisible,
                     onOpenSettings = onOpenSettings,
                     onModeChange = onModeChange,
+                    onLock = { onLockChange(true) },
                     onNoticeAction = onNoticeAction,
                     onNoticeDismiss = onNoticeDismiss,
                     onTogglePause = onTogglePause,
@@ -347,8 +372,10 @@ private fun SessionScreen(
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim)))
         }
 
-        if (mode.isLocked) {
-            LockOverlay(palette = palette, onUnlock = { onModeChange(SessionMode.NORMAL) })
+        // Разблокировка возвращает тот экран, который заперли: тот, кто запер
+        // фокус, ждёт увидеть под пеленой те же цифры во весь экран.
+        if (locked) {
+            LockOverlay(palette = palette, onUnlock = { onLockChange(false) })
         }
     }
 }
@@ -463,6 +490,8 @@ private fun SessionScreenPreview(shape: TimerShape) {
             onOpenSettings = {},
             mode = SessionMode.NORMAL,
             onModeChange = {},
+            locked = false,
+            onLockChange = {},
             onNoticeAction = {},
             onNoticeDismiss = {},
             onTogglePause = {},

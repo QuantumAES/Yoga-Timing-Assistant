@@ -168,6 +168,18 @@
     <string name="timer_focus_enter">Focus mode</string>
     <!-- Жесты в порядке частоты (замечание 3 полевой проверки 2026-08-05). -->
     <string name="timer_focus_hint">‹ swipe — stage · double tap — pause · tap or swipe up/down — exit ›</string>
+    <!--
+      Страница, которая приедет на место текущей во время свайпа (замечание 3
+      полевой проверки 2026-08-05).
+    -->
+    <string name="timer_peek_next">Next stage</string>
+    <string name="timer_peek_previous">Previous stage</string>
+    <string name="timer_peek_finish">End of the class</string>
+    <string name="timer_peek_first">This is the first stage</string>
+    <string name="timer_peek_exit">Leaving focus</string>
+    <string name="timer_peek_normal">The usual screen</string>
+    <string name="timer_peek_normal_detail">pause and stage buttons</string>
+
     <!-- Те же действия словами: для TalkBack свайпы не существуют (docs/03-GESTURES.md §7). -->
     <string name="timer_focus_exit">Leave focus mode</string>
     <string name="timer_action_next_stage">Next stage</string>

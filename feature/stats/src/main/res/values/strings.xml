@@ -49,10 +49,24 @@
         <item quantity="one">%1$d profile</item>
         <item quantity="other">%1$d profiles</item>
     </plurals>
-    <string name="stats_weekdays_subtitle">most often — %1$s</string>
+    <!--
+      Два дня, а не один: «чаще» считается по числу занятий, «дольше» — по
+      времени, и совпадать они не обязаны (замечание 1 полевой проверки
+      2026-08-05).
+    -->
+    <string name="stats_weekdays_subtitle">most often — %1$s · longest — %2$s</string>
+    <string name="stats_weekdays_subtitle_same">most often and longest — %1$s</string>
     <string name="stats_weekdays_subtitle_empty">no classes in this period</string>
 
     <string name="stats_weekdays_title">By day of the week</string>
+    <!--
+      Легенда двух рядов. У каждого ряда своя шкала — минуты и штуки между
+      собой не сравниваются, — поэтому подпись называет максимум ряда: столбик
+      в полную высоту это вот столько.
+    -->
+    <string name="stats_weekdays_legend_time">Time</string>
+    <string name="stats_weekdays_legend_count">Classes</string>
+    <string name="stats_weekdays_legend_scale">%1$s · up to %2$s</string>
     <!-- Столбик графика для TalkBack: картинка для незрячего пользователя пуста. -->
     <string name="stats_weekday_description">%1$s: %2$s, %3$s</string>
     <string name="stats_weekday_empty_description">%1$s: no classes</string>

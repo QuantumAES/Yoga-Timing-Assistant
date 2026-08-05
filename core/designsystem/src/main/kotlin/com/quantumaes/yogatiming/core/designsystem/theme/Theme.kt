@@ -32,6 +32,17 @@ val timerPalette: TimerPalette
     get() = if (LocalYtaDarkTheme.current) TimerPalette.Dark else TimerPalette.Light
 
 /**
+ * Палитра рядов графика, соответствующая текущей теме.
+ *
+ * Динамические цвета сюда не попадают: ряды графика обязаны различаться между
+ * собой, а палитра из обоев этого не гарантирует (см. [ChartPalette]).
+ */
+val chartPalette: ChartPalette
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalYtaDarkTheme.current) ChartPalette.Dark else ChartPalette.Light
+
+/**
  * Тема приложения.
  *
  * Разрешение выбора пользователя (светлая / тёмная / системная) остаётся выше,
