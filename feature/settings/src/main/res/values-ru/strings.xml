@@ -62,7 +62,7 @@
     <string name="onboarding_alerts_title">Не смотрите на экран — слушайте</string>
     <string name="onboarding_alerts_text">Гонг на входе в позу, голос за минуту до конца, тишина в шавасане. Вы ведёте зал, а не таймер.</string>
     <string name="onboarding_budget_title">Закончить вовремя</string>
-    <string name="onboarding_budget_text">Скажите, сколько у вас есть времени. Приложение считает остаток по часам, предупредит, когда пора закругляться, и ужмёт план, если группа задержалась.</string>
+    <string name="onboarding_budget_text">Скажите, сколько у вас есть времени. Приложение считает остаток по часам, заранее предупредит о завершении и ужмёт план, если группа задержалась.</string>
     <string name="onboarding_session_title">Отсчёт не прервётся</string>
     <string name="onboarding_session_text">Экран погас, приложение свернулось, звонок посреди практики — таймер идёт. Цифры читаются с другого конца зала.</string>
     <string name="onboarding_next">Далее</string>

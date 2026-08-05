@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -196,7 +198,16 @@ internal fun ProfilesScreen(
             )
         },
     ) { innerPadding ->
-        Column(Modifier.padding(innerPadding).fillMaxSize()) {
+        // Поле под клавиатуру: поиск стоит вверху и сам ею не закрывается, но
+        // список под ним закрывался целиком — а ищут как раз для того, чтобы
+        // увидеть найденное (замечание 5 полевой проверки 2026-08-05).
+        Column(
+            Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
+                .fillMaxSize(),
+        ) {
             uiState.activeSession?.let { session ->
                 ActiveSessionBar(session = session, onOpen = { onOpenSession(session.profileId) })
             }

@@ -3,7 +3,6 @@ package com.quantumaes.yogatiming.feature.stats
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -37,52 +36,72 @@ internal fun TotalsGrid(
     totals: SessionTotals,
     periodLengthDays: Int?,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            Tile(
+    val tiles =
+        listOf(
+            TileData(
                 value = totals.sessionCount.toString(),
                 label = pluralStringResource(R.plurals.stats_tile_sessions, totals.sessionCount),
-            )
-            Tile(
+            ),
+            TileData(
                 value = durationText(totals.totalDurationMs),
                 label = stringResource(R.string.stats_tile_total),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            Tile(
+            ),
+            TileData(
                 value = durationText(totals.averageDurationMs),
                 label = stringResource(R.string.stats_tile_average),
-            )
-            Tile(
+            ),
+            TileData(
                 value =
                     periodLengthDays
                         ?.let { stringResource(R.string.stats_days_of, totals.daysPracticed, it) }
                         ?: totals.daysPracticed.toString(),
                 label = stringResource(R.string.stats_tile_days),
-            )
+            ),
+        )
+
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
+        if (isLargeFont()) {
+            // Крупный шрифт — плитка на строку. «14 ч 20 мин» в половине
+            // ширины при 200% не помещается, а многоточие вместо числа
+            // означает, что сводки нет (проверка A-2).
+            tiles.forEach { tile -> Tile(tile = tile, modifier = Modifier.fillMaxWidth()) }
+        } else {
+            tiles.chunked(TILES_PER_ROW).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+                    row.forEach { tile -> Tile(tile = tile, modifier = Modifier.weight(1f)) }
+                }
+            }
         }
     }
 }
 
+/** Плиток в ряду при обычном шрифте: сеткой два на два числа сравниваются взглядом. */
+private const val TILES_PER_ROW = 2
+
 /** Плитка сводки: число крупно, подпись под ним. */
+private data class TileData(
+    val value: String,
+    val label: String,
+)
+
 @Composable
-private fun RowScope.Tile(
-    value: String,
-    label: String,
+private fun Tile(
+    tile: TileData,
+    modifier: Modifier = Modifier,
 ) {
     // Плитка озвучивается целиком: «12» и «занятий» по отдельности не значат
     // ничего, а два соседних узла TalkBack читает порознь.
-    val description = "$value $label"
-    Card(modifier = Modifier.weight(1f).clearAndSetSemantics { contentDescription = description }) {
+    val description = "${tile.value} ${tile.label}"
+    Card(modifier = modifier.clearAndSetSemantics { contentDescription = description }) {
         Column(Modifier.padding(Spacing.m)) {
             Text(
-                text = value,
+                text = tile.value,
                 style = MaterialTheme.typography.headlineSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = label,
+                text = tile.label,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,

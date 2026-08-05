@@ -25,6 +25,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.text.style.TextOverflow
 import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
@@ -42,6 +46,11 @@ import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
  * запись о прошлом, и случайный жест на телефоне, лежащем в сумке, не имеет
  * права стирать историю. Карточка при этом возвращается на место немедленно —
  * из списка её уберёт поток данных, когда удаление дойдёт до базы.
+ *
+ * Для TalkBack строка — один узел с полной фразой и действием «Удалить строку»
+ * в меню действий (фаза S6, проверка A-1): свайп по экрану там перехвачен
+ * самим TalkBack, и удаление, доступное только жестом, для незрячего
+ * пользователя не существует вовсе.
  */
 @Composable
 internal fun JournalRow(
@@ -49,6 +58,8 @@ internal fun JournalRow(
     onRequestDelete: () -> Unit,
 ) {
     val state = rememberSwipeToDismissBoxState()
+    val description = entryDescription(entry)
+    val deleteLabel = stringResource(R.string.stats_journal_delete)
 
     LaunchedEffect(state.currentValue) {
         if (state.currentValue == SwipeToDismissBoxValue.Settled) return@LaunchedEffect
@@ -78,7 +89,18 @@ internal fun JournalRow(
             }
         },
     ) {
-        Card(Modifier.fillMaxWidth()) {
+        Card(
+            Modifier.fillMaxWidth().clearAndSetSemantics {
+                contentDescription = description
+                customActions =
+                    listOf(
+                        CustomAccessibilityAction(deleteLabel) {
+                            onRequestDelete()
+                            true
+                        },
+                    )
+            },
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.m, vertical = Spacing.s),
                 verticalAlignment = Alignment.CenterVertically,

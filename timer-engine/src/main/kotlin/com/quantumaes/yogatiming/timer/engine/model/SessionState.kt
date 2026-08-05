@@ -23,8 +23,14 @@ import com.quantumaes.yogatiming.timer.engine.TimerLimits
  *   см. [SessionState.keptAlertIds].
  * @param pauseMode что именно остановлено, пока [runState] равен
  *   [RunState.PAUSED].
- * @param pausedAtMs монотонная метка входа в паузу. Значима только в
- *   [RunState.PAUSED] и только при [PauseMode.STAGE]: по ней растёт [holdMs].
+ * @param pausedAtMs монотонная метка входа в **эту** паузу. Значима только в
+ *   [RunState.PAUSED] и не зависит от режима: по ней считается, сколько пауза
+ *   длится, — число, которое видно на экране и в фокусе.
+ * @param holdSinceMs монотонная метка, с которой копится [holdMs]. Значима
+ *   только в [RunState.PAUSED] при [PauseMode.STAGE]. Отдельно от
+ *   [pausedAtMs] потому, что режим паузы можно переключить на её середине:
+ *   удержание начинает копиться заново, а сама пауза при этом не начинается
+ *   заново — она та же.
  * @param holdMs суммарное время, проведённое в паузе этапа. Практикой не
  *   считается (в [totalElapsedMs] не входит), но часами занятия — считается:
  *   зал занят, аренда идёт.
@@ -40,6 +46,7 @@ data class SessionState(
     val firedAlertIds: Set<String> = emptySet(),
     val pauseMode: PauseMode = PauseMode.DEFAULT,
     val pausedAtMs: Long = 0L,
+    val holdSinceMs: Long = 0L,
     val holdMs: Long = 0L,
 ) {
     val currentStage: PlannedStage get() = plan.stages[currentIndex]

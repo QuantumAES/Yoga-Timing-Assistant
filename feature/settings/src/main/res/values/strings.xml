@@ -67,7 +67,7 @@
     <string name="onboarding_alerts_title">Listen instead of looking</string>
     <string name="onboarding_alerts_text">A gong entering the pose, a voice a minute before the end, silence in savasana. You lead the room, not the timer.</string>
     <string name="onboarding_budget_title">Finish on time</string>
-    <string name="onboarding_budget_text">Tell the app how much time you have. It counts the remainder by the clock, warns you when it is time to wrap up, and trims the plan if the group ran long.</string>
+    <string name="onboarding_budget_text">Tell the app how much time you have. It counts the remainder by the clock, warns you before the class ends, and trims the plan if the group ran long.</string>
     <string name="onboarding_session_title">The countdown will not stop</string>
     <string name="onboarding_session_text">Screen off, app in the background, a call mid-practice — the timer keeps running. The digits read from across the room.</string>
     <string name="onboarding_next">Next</string>

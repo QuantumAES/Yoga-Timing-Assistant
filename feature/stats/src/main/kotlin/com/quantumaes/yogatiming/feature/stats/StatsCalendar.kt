@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
@@ -126,7 +128,10 @@ private fun DayCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         sessions.forEach { session ->
-            Column(Modifier.fillMaxWidth()) {
+            // Занятие — один узел для TalkBack, как и строка журнала: имя,
+            // время и факт по отдельности не значат ничего (A-1).
+            val description = entryDescription(session)
+            Column(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = description }) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,

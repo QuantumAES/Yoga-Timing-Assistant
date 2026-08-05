@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -88,7 +90,32 @@ fun EditorScaffold(
         },
         snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
     ) { innerPadding ->
-        content(Modifier.padding(innerPadding))
+        // Поле под клавиатуру — здесь, на общем каркасе, а не в каждом
+        // редакторе по отдельности (замечание 5 полевой проверки 2026-08-05).
+        //
+        // `android:windowSoftInputMode="adjustResize"` в манифесте ничего не
+        // решает: приложение рисуется от края до края
+        // (`enableEdgeToEdge`), а такому окну система размер под клавиатуру
+        // не меняет — она просто ложится поверх. Нижние поля — «Заметка» в
+        // редакторе этапа, произношение — оказывались под ней, и набранного
+        // текста было не видно.
+        //
+        // Отступ накладывается **до** прокрутки: содержимое каждого редактора
+        // прокручивается, и уменьшенная область просмотра — это то, что
+        // позволяет `BasicTextField` подвести поле в фокусе под клавиатуру
+        // своим `bringIntoView`. Наложи мы отступ после прокрутки, область
+        // осталась бы прежней и подводить было бы некуда.
+        //
+        // `consumeWindowInsets` обязателен: `innerPadding` уже содержит поле
+        // под панель навигации, и то же поле входит в высоту клавиатуры. Без
+        // отметки «эти отступы уже учтены» они сложились бы, и над открытой
+        // клавиатурой висела бы пустая полоса высотой с панель навигации.
+        content(
+            Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding(),
+        )
     }
 
     if (confirmExit) {

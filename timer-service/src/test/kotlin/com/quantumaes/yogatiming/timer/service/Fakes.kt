@@ -134,6 +134,9 @@ class FakeSessionLogRepository(
         from: LocalDate,
         to: LocalDate,
     ): Flow<List<ProfileTotals>> = flowOf(emptyList())
+
+    /** Разрезы журнала занятию не нужны: здесь проверяется только запись. */
+    override fun observeLastSessionDate(): Flow<LocalDate?> = flowOf(recorded.maxOfOrNull { it.localDate })
 }
 
 fun demoProfile(

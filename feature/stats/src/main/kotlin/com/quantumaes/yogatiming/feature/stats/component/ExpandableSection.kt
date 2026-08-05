@@ -19,6 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
@@ -58,6 +61,11 @@ internal fun ExpandableSection(
     )
     val action =
         stringResource(if (expanded) R.string.stats_section_collapse else R.string.stats_section_expand)
+    // Состояние — отдельно от действия: «свернуть» говорит, что случится по
+    // нажатию, но не говорит, как сейчас. Незрячему пользователю нужно и то и
+    // другое, и первым — текущее состояние (фаза S6, проверка A-1).
+    val state =
+        stringResource(if (expanded) R.string.stats_section_expanded else R.string.stats_section_collapsed)
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -66,8 +74,15 @@ internal fun ExpandableSection(
                     .fillMaxWidth()
                     .heightIn(min = Dimens.minTouchTarget)
                     // Подпись действия на всю строку: TalkBack прочитает
-                    // «Журнал, 12 занятий, развернуть» одной фразой.
-                    .clickable(onClickLabel = action, onClick = onToggle),
+                    // «Журнал, 12 занятий, свёрнуто, развернуть» одной фразой.
+                    .clickable(onClickLabel = action, onClick = onToggle)
+                    // Заголовок раздела: по заголовкам TalkBack умеет прыгать,
+                    // и на экране из пяти разделов это единственный способ
+                    // добраться до журнала, не прослушав всё, что над ним.
+                    .semantics {
+                        heading()
+                        stateDescription = state
+                    },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {

@@ -10,6 +10,7 @@
     <string name="stats_period_all_title">За всё время</string>
     <string name="stats_period_previous">Предыдущий период</string>
     <string name="stats_period_next">Следующий период</string>
+    <string name="stats_period_selector">Период: %1$s</string>
 
     <string name="stats_duration_hm">%1$d ч %2$d мин</string>
     <string name="stats_duration_m">%1$d мин</string>
@@ -32,6 +33,8 @@
     -->
     <string name="stats_section_expand">развернуть</string>
     <string name="stats_section_collapse">свернуть</string>
+    <string name="stats_section_expanded">развёрнуто</string>
+    <string name="stats_section_collapsed">свёрнуто</string>
     <plurals name="stats_days_practiced">
         <item quantity="one">%1$d день с практикой</item>
         <item quantity="few">%1$d дня с практикой</item>
@@ -67,13 +70,32 @@
 
     <string name="stats_journal_title">Журнал</string>
     <string name="stats_journal_row_title">%1$s · %2$s</string>
+    <string name="stats_entry_description">%1$s, %2$s, с %3$s до %4$s, %5$s</string>
+    <string name="stats_entry_description_stopped">%1$s, %2$s, с %3$s до %4$s, %5$s, остановлено вручную</string>
     <string name="stats_journal_delete">Удалить строку</string>
     <string name="stats_journal_delete_title">Удалить занятие?</string>
     <string name="stats_journal_delete_message">%1$s, %2$s — строка исчезнет из журнала, а сводка за период пересчитается.</string>
     <string name="stats_journal_delete_confirm">Удалить</string>
     <string name="stats_journal_delete_cancel">Оставить</string>
 
+    <string name="stats_empty_first_title">Занятий пока нет</string>
     <string name="stats_empty_title">За этот период занятий нет</string>
     <string name="stats_empty_hint">Занятие длиннее минуты попадает сюда само, сразу по окончании.</string>
     <string name="stats_empty_action">К списку профилей</string>
+    <string name="stats_empty_last">Последнее было %1$s.</string>
+    <string name="stats_empty_last_action">Показать его</string>
+
+    <string name="stats_export">Экспорт в CSV</string>
+    <string name="stats_export_done">Журнал сохранён</string>
+    <string name="stats_export_failed">Не удалось сохранить файл</string>
+    <string name="stats_csv_date">Дата</string>
+    <string name="stats_csv_start">Начало</string>
+    <string name="stats_csv_finish">Завершение</string>
+    <string name="stats_csv_duration">Минут</string>
+    <string name="stats_csv_planned">План, мин</string>
+    <string name="stats_csv_profile">Профиль</string>
+    <string name="stats_csv_stages">Этапы</string>
+    <string name="stats_csv_outcome">Исход</string>
+    <string name="stats_csv_completed">проведено</string>
+    <string name="stats_csv_stopped">остановлено</string>
 </resources>

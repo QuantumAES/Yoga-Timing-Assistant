@@ -37,7 +37,7 @@ sealed interface VoiceText {
         val seconds: Int,
     ) : VoiceText
 
-    /** Отсечка занятия: «пора закругляться, до конца N минут». */
+    /** Отсечка занятия: «до завершения занятия осталось N минут». */
     data class WrapUp(
         val minutes: Int,
     ) : VoiceText

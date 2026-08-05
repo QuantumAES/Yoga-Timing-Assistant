@@ -22,15 +22,29 @@
     <string name="timer_plan_over">план +%1$s</string>
     <string name="timer_plan_under">запас %1$s</string>
 
-    <!-- Два режима паузы (замечание 6). Плашка нажимается и переключает режим. -->
-    <string name="timer_pause_session_title">Пауза занятия</string>
+    <!--
+      Два режима паузы (замечание 6). Плашка нажимается и переключает режим.
+      В заголовке — часы самой паузы: на паузе это единственное растущее число,
+      и без него непонятно, стоишь ты десять секунд или четыре минуты
+      (замечание 3 полевой проверки 2026-08-05).
+    -->
+    <string name="timer_pause_session_title">Пауза занятия · %1$s</string>
     <string name="timer_pause_session_text">Время занятия стоит. Нажмите, чтобы оно шло</string>
-    <string name="timer_pause_stage_title">Пауза этапа</string>
+    <string name="timer_pause_stage_title">Пауза этапа · %1$s</string>
     <string name="timer_pause_stage_text">Время занятия идёт: +%1$s. Нажмите, чтобы остановить</string>
 
-    <!-- Отсечка бюджета (замечание 11). -->
-    <string name="timer_wrap_up_title">Пора закругляться</string>
-    <string name="timer_wrap_up_text">До конца %1$s, в плане %2$s</string>
+    <!-- Пауза в режиме фокуса: кнопок нет, плашки нет — только это. -->
+    <string name="timer_focus_paused">Пауза %1$s</string>
+    <string name="timer_focus_paused_stage">Пауза этапа %1$s · время занятия идёт</string>
+
+    <!--
+      Отсечка бюджета (замечание 11). Заголовок называет остаток по часам
+      прямо: «пора закругляться» — жаргон, который у половины инструкторов
+      звучит как команда группе, а не как сообщение приложения (замечание 4
+      полевой проверки 2026-08-05).
+    -->
+    <string name="timer_wrap_up_title">До завершения занятия %1$s</string>
+    <string name="timer_wrap_up_text">В плане ещё %1$s</string>
     <string name="timer_wrap_up_fit">Ужать план</string>
     <string name="timer_wrap_up_hide">Оставить как есть</string>
     <!--
@@ -154,7 +168,16 @@
     <string name="timer_lock">Заблокировать экран</string>
     <string name="timer_unlock_hint">Удерживайте, чтобы разблокировать</string>
     <string name="timer_focus_enter">Режим фокуса</string>
-    <string name="timer_focus_hint">‹ свайп — этап · вниз — пауза · тап — выход ›</string>
+    <!--
+      Подсказка перечисляет жесты в порядке частоты, а не в порядке карты:
+      этапы листают каждые несколько минут, паузу ставят реже, выходят один раз
+      (замечание 3 полевой проверки 2026-08-05).
+    -->
+    <string name="timer_focus_hint">‹ свайп — этап · двойной тап — пауза · тап или свайп вверх-вниз — выход ›</string>
+    <!-- Те же действия словами: для TalkBack свайпы не существуют (docs/03-GESTURES.md §7). -->
+    <string name="timer_focus_exit">Выйти из режима фокуса</string>
+    <string name="timer_action_next_stage">Следующий этап</string>
+    <string name="timer_action_previous_stage">Предыдущий этап</string>
     <string name="timer_previous_stage">‹ Пред. этап</string>
     <string name="timer_next_stage">Далее: %1$s</string>
     <string name="timer_last_stage">Последний этап</string>

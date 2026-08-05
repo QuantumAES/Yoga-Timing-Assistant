@@ -23,15 +23,22 @@
     <string name="timer_plan_over">plan +%1$s</string>
     <string name="timer_plan_under">%1$s spare</string>
 
-    <!-- Два режима паузы (замечание 6). Плашка нажимается и переключает режим. -->
-    <string name="timer_pause_session_title">Class paused</string>
+    <!--
+      Два режима паузы (замечание 6). Плашка нажимается и переключает режим.
+      В заголовке — часы самой паузы (замечание 3 полевой проверки 2026-08-05).
+    -->
+    <string name="timer_pause_session_title">Class paused · %1$s</string>
     <string name="timer_pause_session_text">Class time is on hold. Tap to let it run</string>
-    <string name="timer_pause_stage_title">Stage paused</string>
+    <string name="timer_pause_stage_title">Stage paused · %1$s</string>
     <string name="timer_pause_stage_text">Class time keeps running: +%1$s. Tap to hold it</string>
 
-    <!-- Отсечка бюджета (замечание 11). -->
-    <string name="timer_wrap_up_title">Time to wrap up</string>
-    <string name="timer_wrap_up_text">%1$s left, %2$s planned</string>
+    <!-- Пауза в режиме фокуса: кнопок нет, плашки нет — только это. -->
+    <string name="timer_focus_paused">Paused %1$s</string>
+    <string name="timer_focus_paused_stage">Stage paused %1$s · class time runs on</string>
+
+    <!-- Отсечка бюджета (замечание 11), нейтральной формулировкой (замечание 4). -->
+    <string name="timer_wrap_up_title">%1$s until the class ends</string>
+    <string name="timer_wrap_up_text">%1$s still planned</string>
     <string name="timer_wrap_up_fit">Fit the plan</string>
     <string name="timer_wrap_up_hide">Leave as is</string>
     <!--
@@ -159,7 +166,12 @@
     <string name="timer_lock">Lock the screen</string>
     <string name="timer_unlock_hint">Press and hold to unlock</string>
     <string name="timer_focus_enter">Focus mode</string>
-    <string name="timer_focus_hint">‹ swipe — stage · down — pause · tap — exit ›</string>
+    <!-- Жесты в порядке частоты (замечание 3 полевой проверки 2026-08-05). -->
+    <string name="timer_focus_hint">‹ swipe — stage · double tap — pause · tap or swipe up/down — exit ›</string>
+    <!-- Те же действия словами: для TalkBack свайпы не существуют (docs/03-GESTURES.md §7). -->
+    <string name="timer_focus_exit">Leave focus mode</string>
+    <string name="timer_action_next_stage">Next stage</string>
+    <string name="timer_action_previous_stage">Previous stage</string>
     <string name="timer_previous_stage">‹ Previous stage</string>
     <string name="timer_next_stage">Next: %1$s</string>
     <string name="timer_last_stage">Last stage</string>

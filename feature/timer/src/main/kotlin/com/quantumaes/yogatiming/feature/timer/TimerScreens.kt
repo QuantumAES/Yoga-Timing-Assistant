@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +34,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -61,6 +59,7 @@ import com.quantumaes.yogatiming.core.designsystem.theme.YtaTextStyles
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.core.designsystem.theme.timerPalette
 import com.quantumaes.yogatiming.domain.settings.TimerShape
+import com.quantumaes.yogatiming.feature.timer.component.FocusArea
 import com.quantumaes.yogatiming.feature.timer.component.LockOverlay
 import com.quantumaes.yogatiming.feature.timer.component.ProgressRing
 import com.quantumaes.yogatiming.feature.timer.component.RestrictionNotice
@@ -73,7 +72,6 @@ import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.engine.model.StageKind
 import com.quantumaes.yogatiming.timer.service.restrictions.TimerRestriction
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 
 /** Через сколько бездействия гаснет экран в режиме фокуса (ТЗ, Экран 4). */
 private const val IDLE_DIM_MS = 15_000L
@@ -98,9 +96,6 @@ private const val DIM_SCRIM_ALPHA = 0.66f
 
 /** Насколько плавно гаснет и возвращается экран. Резкая смена бьёт по глазам. */
 private const val DIM_FADE_MS = 700
-
-/** Порог свайпа в фокусе, px. Ниже — случайное смещение пальца при тапе. */
-private const val SWIPE_THRESHOLD_PX = 120f
 
 /**
  * Экран 4 «Занятие» (Фаза 6 дорожной карты).
@@ -274,18 +269,20 @@ private fun SessionScreen(
 
         when {
             mode.isFocus -> {
-                FocusContent(
-                    snapshot = snapshot,
-                    palette = palette,
-                    modifier =
-                        content.focusGestures(
-                            onExit = { onModeChange(SessionMode.NORMAL) },
-                            onNext = onNext,
-                            onPrevious = onPrevious,
-                            onTogglePause = onTogglePause,
-                            onInteraction = { wakeUps++ },
-                        ),
-                )
+                FocusArea(
+                    onExit = { onModeChange(SessionMode.NORMAL) },
+                    onNext = onNext,
+                    onPrevious = onPrevious,
+                    onTogglePause = onTogglePause,
+                    onInteraction = { wakeUps++ },
+                    modifier = content,
+                ) {
+                    FocusContent(
+                        snapshot = snapshot,
+                        palette = palette,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
 
             landscape -> {
@@ -407,54 +404,6 @@ internal fun Modifier.tapTarget(
             onClick(label = label) {
                 onTap()
                 true
-            }
-        }
-
-/**
- * Свайпы режима фокуса (docs/03-GESTURES.md §3).
- *
- * Направление определяется по преобладающей оси в конце жеста, а не в его
- * начале: палец на коврике идёт по дуге, и решение по первым пикселям
- * ошибается. Любое касание считается активностью и отменяет автозатемнение.
- *
- * Свайп вниз ставит на паузу, а не выходит из фокуса (замечание 1 полевой
- * проверки 2026-08-04). Выход остался за тапом — и это единственный способ
- * выйти, что делает его надёжным: тап по экрану промахнуться невозможно.
- * Пауза же в фокусе была недостижима вовсе, а нужна она чаще всего именно
- * там: телефон лежит на полу, кнопок нет, а в дверь позвонили.
- */
-private fun Modifier.focusGestures(
-    onExit: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onTogglePause: () -> Unit,
-    onInteraction: () -> Unit,
-): Modifier =
-    this
-        .pointerInput(onNext, onPrevious, onTogglePause) {
-            var total = Offset.Zero
-            detectDragGestures(
-                onDragStart = {
-                    total = Offset.Zero
-                    onInteraction()
-                },
-                onDragEnd = {
-                    when {
-                        abs(total.x) > abs(total.y) && abs(total.x) > SWIPE_THRESHOLD_PX -> {
-                            if (total.x < 0) onNext() else onPrevious()
-                        }
-
-                        total.y > SWIPE_THRESHOLD_PX -> {
-                            onTogglePause()
-                        }
-                    }
-                },
-                onDrag = { _, delta -> total += delta },
-            )
-        }.pointerInput(onExit) {
-            detectTapGestures {
-                onInteraction()
-                onExit()
             }
         }
 

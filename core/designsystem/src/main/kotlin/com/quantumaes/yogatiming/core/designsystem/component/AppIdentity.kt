@@ -16,11 +16,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.quantumaes.yogatiming.core.designsystem.R
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 
 private val LOGO_SIZE = 28.dp
+
+/**
+ * С какого размера мелкий растр перестаёт годиться.
+ *
+ * `ic_yta_logo` собран под 24 dp, и на xhdpi это 48 точек: растянуть их до
+ * 120 dp значит показать муть вместо знака — ровно то, что было видно на
+ * последнем слайде онбординга (замечание 1 полевой проверки 2026-08-05).
+ * Порог с запасом вдвое: до 48 dp увеличение незаметно, дальше — заметно.
+ */
+private val LARGE_LOGO_FROM = 48.dp
 
 /**
  * Название приложения — из манифеста, а не из строкового ресурса модуля.
@@ -68,15 +79,29 @@ private fun Context.versionName(): String =
  * одноцветным вектором и тинтовался под тему; растровый логотип из
  * `scripts/generate-logo.sh` живёт в обеих темах как есть — он на прозрачном
  * фоне и достаточно контрастен и на светлом, и на тёмном.
+ *
+ * Размер — параметр, а не дело вызывающего: от него зависит, какой из двух
+ * растров брать, и `Modifier.size` снаружи об этом выборе ничего не сообщил бы.
+ * Крупный знак живёт отдельным файлом (480 точек), мелкий — ладдером плотностей
+ * под 24 dp; держать один растр на оба случая значит либо мутить онбординг,
+ * либо носить полмегабайта ради значка в шапке списка.
+ *
+ * @param size сторона квадрата, в который вписан знак.
  */
 @Composable
-fun YtaLogo(modifier: Modifier = Modifier) {
+fun YtaLogo(
+    modifier: Modifier = Modifier,
+    size: Dp = LOGO_SIZE,
+) {
     Image(
-        painter = painterResource(R.drawable.ic_yta_logo),
+        painter =
+            painterResource(
+                if (size < LARGE_LOGO_FROM) R.drawable.ic_yta_logo else R.drawable.ic_yta_logo_large,
+            ),
         // Логотип рядом с названием — украшение: TalkBack прочитает название
         // текстом, а «логотип приложения» вслух не нужен никому.
         contentDescription = null,
-        modifier = modifier.size(LOGO_SIZE),
+        modifier = modifier.size(size),
     )
 }
 

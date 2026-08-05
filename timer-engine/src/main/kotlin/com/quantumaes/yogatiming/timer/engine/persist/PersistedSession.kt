@@ -32,6 +32,7 @@ import kotlin.math.abs
  *   там паузы были только одного рода, и значение по умолчанию описывает их
  *   в точности.
  * @param holdMs накопленное время пауз этапа (v2).
+ * @param holdSinceMs с какого момента копится удержание (v3).
  */
 @Serializable
 data class PersistedSession(
@@ -49,11 +50,21 @@ data class PersistedSession(
     val firedAlertIds: Set<String> = emptySet(),
     val pauseMode: PauseMode = PauseMode.DEFAULT,
     val pausedAtMs: Long = 0L,
+    val holdSinceMs: Long = 0L,
     val holdMs: Long = 0L,
 ) {
     companion object {
-        /** v2 — режим паузы и накопленное время удержания (Фаза 11). */
-        const val SCHEMA_VERSION = 2
+        /**
+         * v3 — начало паузы и начало удержания разошлись по разным меткам.
+         *
+         * Снимок v2 хранит в `pausedAtMs` начало удержания, а не начало паузы,
+         * и восстановленное занятие показало бы часы паузы от нуля либо, что
+         * хуже, удержание от нуля. Хранилище отбрасывает снимки чужой версии
+         * целиком (`DataStoreSessionStore`), поэтому переносить нечего: окно
+         * восстановления — пять минут, и цена расхождения версий здесь равна
+         * цене перезапуска приложения посреди паузы.
+         */
+        const val SCHEMA_VERSION = 3
     }
 }
 
@@ -91,6 +102,7 @@ fun SessionState.persist(time: TimeSource): PersistedSession =
         firedAlertIds = firedAlertIds,
         pauseMode = pauseMode,
         pausedAtMs = pausedAtMs,
+        holdSinceMs = holdSinceMs,
         holdMs = holdMs,
     )
 
@@ -118,6 +130,7 @@ fun PersistedSession.restoreInto(plan: SessionPlan): SessionState? {
         firedAlertIds = firedAlertIds,
         pauseMode = pauseMode,
         pausedAtMs = pausedAtMs,
+        holdSinceMs = holdSinceMs,
         holdMs = holdMs,
     )
 }

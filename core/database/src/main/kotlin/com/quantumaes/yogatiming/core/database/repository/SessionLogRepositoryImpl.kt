@@ -56,6 +56,9 @@ class SessionLogRepositoryImpl
             to: LocalDate,
         ): Flow<List<ProfileTotals>> =
             dao.observeByProfile(from.iso(), to.iso()).map { rows -> rows.map(ProfileTotalsProjection::toDomain) }
+
+        override fun observeLastSessionDate(): Flow<LocalDate?> =
+            dao.observeLastSessionDate().map { iso -> iso?.let(LocalDate::parse) }
     }
 
 private fun LocalDate.iso(): String = toString()

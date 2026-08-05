@@ -3,6 +3,7 @@ package com.quantumaes.yogatiming.timer.engine
 import com.quantumaes.yogatiming.timer.engine.model.RunState
 import com.quantumaes.yogatiming.timer.engine.model.SessionSnapshot
 import com.quantumaes.yogatiming.timer.engine.model.SessionState
+import com.quantumaes.yogatiming.timer.engine.model.pauseElapsedMs
 import com.quantumaes.yogatiming.timer.engine.model.snapshot
 import com.quantumaes.yogatiming.timer.engine.schedule.nextDeadline
 import kotlinx.coroutines.CoroutineScope
@@ -168,18 +169,18 @@ class TimerEngine(
     /**
      * UI-тикер.
      *
-     * В RUNNING просыпается по границе секунды: тик фиксированной длины от
-     * произвольного момента заставляет цифру меняться через неравные интервалы,
-     * и это видно глазом. В остальных состояниях спит до следующего изменения
-     * состояния — показывать нечего.
+     * Просыпается по границе секунды тех часов, которые сейчас идут: тик
+     * фиксированной длины от произвольного момента заставляет цифру меняться
+     * через неравные интервалы, и это видно глазом. Когда не идут никакие —
+     * спит до следующего изменения состояния, показывать нечего.
      */
     private suspend fun uiTicker() {
         var seen = revision.value
         while (currentCoroutineContext().isActive) {
             publish()
-            val current = state
-            if (current != null && current.runState.isTicking) {
-                delay(msUntilSecondBoundary(current.stageElapsedMs(time.elapsed())))
+            val ticking = state?.tickingClockMs(time.elapsed())
+            if (ticking != null) {
+                delay(msUntilSecondBoundary(ticking))
             } else {
                 seen = revision.first { it != seen }
             }
@@ -207,3 +208,24 @@ private fun msUntilSecondBoundary(elapsedMs: Long): Long {
     val remainder = elapsedMs % MS_IN_SECOND
     return if (remainder == 0L) MS_IN_SECOND else MS_IN_SECOND - remainder
 }
+
+/**
+ * Часы, у которых сейчас есть что показать; `null` — стоят все.
+ *
+ * В RUNNING это отсчёт этапа. В PAUSED — часы самой паузы: этап замер, но
+ * пауза идёт, а в режиме паузы этапа вместе с ней идут и часы занятия,
+ * съедая бюджет. Раньше тикер в паузе засыпал до следующей команды, и экран
+ * честно показывал застывшие цифры — включая те, которые на самом деле росли:
+ * удержание, остаток бюджета, длительность паузы. Со стороны это выглядело
+ * так, будто пауза остановила вообще всё (замечание 3 полевой проверки
+ * 2026-08-05).
+ *
+ * Лишний тик раз в секунду на паузе стоит недорого: пауза — минуты, а не часы,
+ * и всё это время экран занятия и так включён.
+ */
+private fun SessionState.tickingClockMs(now: Long): Long? =
+    when {
+        runState.isTicking -> stageElapsedMs(now)
+        runState == RunState.PAUSED -> pauseElapsedMs(now)
+        else -> null
+    }

@@ -199,6 +199,34 @@ class SessionLogDaoTest {
             }
         }
 
+    /**
+     * Пустой журнал отвечает `NULL`, а не падает и не отдаёт пустую строку:
+     * на этом ответе экран различает нового пользователя и пустой ноябрь
+     * у человека с историей (фаза S6).
+     */
+    @Test
+    fun пустой_журнал_не_имеет_последнего_дня() =
+        runTest {
+            assertThat(dao.observeLastSessionDate().first()).isNull()
+        }
+
+    @Test
+    fun последний_день_считается_по_всему_журналу_и_обновляется_на_лету() =
+        runTest {
+            dao.observeLastSessionDate().test {
+                assertThat(awaitItem()).isNull()
+
+                dao.insert(entry(localDate = "2026-10-30"))
+                assertThat(awaitItem()).isEqualTo("2026-10-30")
+
+                // Занятие в прошлом последний день не двигает: `MAX`, а не
+                // «последняя вставка».
+                dao.insert(entry(localDate = "2026-09-01"))
+                dao.insert(entry(localDate = "2026-11-03"))
+                assertThat(expectMostRecentItem()).isEqualTo("2026-11-03")
+            }
+        }
+
     private fun entry(
         localDate: String,
         profileId: Long? = null,

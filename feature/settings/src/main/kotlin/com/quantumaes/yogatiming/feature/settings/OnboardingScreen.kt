@@ -177,7 +177,7 @@ private fun OnboardingContent(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     val illustration = current.illustration
                     if (illustration == null) {
-                        YtaLogo(modifier = Modifier.size(ILLUSTRATION_SIZE))
+                        YtaLogo(size = ILLUSTRATION_SIZE)
                     } else {
                         Icon(
                             imageVector = illustration,

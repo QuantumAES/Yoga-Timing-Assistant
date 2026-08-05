@@ -10,6 +10,8 @@
     <string name="stats_period_all_title">All time</string>
     <string name="stats_period_previous">Previous period</string>
     <string name="stats_period_next">Next period</string>
+    <!-- Кнопка-меню периода при крупном шрифте: «Месяц» само по себе не говорит, что это выбор. -->
+    <string name="stats_period_selector">Period: %1$s</string>
 
     <!-- Длительности сводки: часы с минутами и просто минуты. -->
     <string name="stats_duration_hm">%1$dh %2$dmin</string>
@@ -36,6 +38,9 @@
     -->
     <string name="stats_section_expand">expand</string>
     <string name="stats_section_collapse">collapse</string>
+    <!-- Состояние раздела для TalkBack: действие говорит, что будет, состояние — что есть. -->
+    <string name="stats_section_expanded">expanded</string>
+    <string name="stats_section_collapsed">collapsed</string>
     <plurals name="stats_days_practiced">
         <item quantity="one">%1$d day practised</item>
         <item quantity="other">%1$d days practised</item>
@@ -71,13 +76,42 @@
     <string name="stats_journal_title">Journal</string>
     <!-- Строка журнала: «3 Nov · Hatha 60». -->
     <string name="stats_journal_row_title">%1$s · %2$s</string>
+    <!--
+      Занятие одной фразой для TalkBack: четыре текста строки по отдельности
+      не значат ничего. Порядок: день, профиль, начало, конец, факт.
+    -->
+    <string name="stats_entry_description">%1$s, %2$s, from %3$s to %4$s, %5$s</string>
+    <string name="stats_entry_description_stopped">%1$s, %2$s, from %3$s to %4$s, %5$s, stopped manually</string>
     <string name="stats_journal_delete">Delete the entry</string>
     <string name="stats_journal_delete_title">Delete this class?</string>
     <string name="stats_journal_delete_message">%1$s, %2$s will be removed from the journal. Totals for the period will be recalculated.</string>
     <string name="stats_journal_delete_confirm">Delete</string>
     <string name="stats_journal_delete_cancel">Keep</string>
 
+    <!--
+      Два пустых состояния, и они разные: пустой журнал — обещание,
+      пустой период при непустом журнале — вопрос «где мои занятия».
+    -->
+    <string name="stats_empty_first_title">No classes yet</string>
     <string name="stats_empty_title">No classes in this period</string>
     <string name="stats_empty_hint">A class longer than a minute lands here on its own, the moment it ends.</string>
     <string name="stats_empty_action">Back to profiles</string>
+    <string name="stats_empty_last">The last one was on %1$s.</string>
+    <string name="stats_empty_last_action">Show it</string>
+
+    <!-- Выгрузка журнала в CSV (фаза S7). -->
+    <string name="stats_export">Export to CSV</string>
+    <string name="stats_export_done">The journal has been saved</string>
+    <string name="stats_export_failed">Could not save the file</string>
+    <!-- Заголовки колонок файла: язык файла равен языку интерфейса. -->
+    <string name="stats_csv_date">Date</string>
+    <string name="stats_csv_start">Start</string>
+    <string name="stats_csv_finish">Finish</string>
+    <string name="stats_csv_duration">Minutes</string>
+    <string name="stats_csv_planned">Planned, min</string>
+    <string name="stats_csv_profile">Profile</string>
+    <string name="stats_csv_stages">Stages</string>
+    <string name="stats_csv_outcome">Outcome</string>
+    <string name="stats_csv_completed">completed</string>
+    <string name="stats_csv_stopped">stopped</string>
 </resources>

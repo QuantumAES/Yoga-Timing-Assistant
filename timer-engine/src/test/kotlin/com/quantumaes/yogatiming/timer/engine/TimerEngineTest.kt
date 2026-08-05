@@ -70,7 +70,7 @@ class TimerEngineTest {
         }
 
     @Test
-    fun `пауза останавливает тикер, возобновление его будит`() =
+    fun `на паузе этап стоит, а часы паузы идут`() =
         runTest {
             val engine = startedEngine(sixStagePlan(), mutableListOf())
             tick(MINUTE_MS)
@@ -80,7 +80,12 @@ class TimerEngineTest {
             val atPause = engine.snapshot.value!!
             tick(10 * MINUTE_MS)
 
+            // Этап держится на месте — ради этого паузу и нажимают.
             assertThat(engine.snapshot.value!!.stageElapsedMs).isEqualTo(atPause.stageElapsedMs)
+            // А тикер продолжает работать: на паузе идут её собственные часы, и
+            // без них экран неотличим от подвисшего (замечание 3 полевой
+            // проверки 2026-08-05).
+            assertThat(engine.snapshot.value!!.pauseElapsedMs).isEqualTo(10 * MINUTE_MS)
 
             engine.submit(TimerCommand.Resume)
             testScheduler.runCurrent()

@@ -87,4 +87,14 @@ interface SessionLogDao {
         from: String,
         to: String,
     ): Flow<List<ProfileTotalsProjection>>
+
+    /**
+     * День последнего занятия во всём журнале — `NULL`, пока журнал пуст.
+     *
+     * `MAX` по индексированной колонке: пустому периоду нужно знать, есть ли
+     * история вообще, а не какая она (фаза S6). Читать ради этого журнал
+     * целиком значило бы держать в памяти тысячи строк ради одного `if`.
+     */
+    @Query("SELECT MAX(local_date) FROM session_log")
+    fun observeLastSessionDate(): Flow<String?>
 }

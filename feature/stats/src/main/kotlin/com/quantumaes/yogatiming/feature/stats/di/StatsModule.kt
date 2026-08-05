@@ -1,8 +1,12 @@
 package com.quantumaes.yogatiming.feature.stats.di
 
+import android.content.Context
+import com.quantumaes.yogatiming.feature.stats.export.ContentResolverCsvExporter
+import com.quantumaes.yogatiming.feature.stats.export.CsvExporter
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.time.Clock
 
@@ -23,4 +27,14 @@ import java.time.Clock
 object StatsModule {
     @Provides
     fun provideClock(): Clock = Clock.systemDefaultZone()
+
+    /**
+     * Запись выгрузки (фаза S7). Берётся `ContentResolver` приложения, а не
+     * активности: файл пишется в фоне, и переживать поворот экрана запись
+     * обязана.
+     */
+    @Provides
+    fun provideCsvExporter(
+        @ApplicationContext context: Context,
+    ): CsvExporter = ContentResolverCsvExporter(context.contentResolver)
 }

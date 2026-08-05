@@ -101,6 +101,59 @@ class SessionBudgetTest {
         assertThat(harness.snapshot.sessionElapsedMs).isEqualTo(4 * MINUTE_MS)
     }
 
+    // ─── Замечание 3 (2026-08-05): часы самой паузы ──────────────────────────
+
+    @Test
+    fun `часы паузы идут в обоих режимах`() {
+        val session =
+            budgetHarness()
+                .submit(TimerCommand.Start)
+                .submit(TimerCommand.Pause(PauseMode.SESSION))
+                .advance(2 * MINUTE_MS)
+
+        // Время занятия стоит, а пауза — длится: это разные вопросы, и второй
+        // задают, глядя на замерший экран.
+        assertThat(session.snapshot.holdMs).isEqualTo(0)
+        assertThat(session.snapshot.pauseElapsedMs).isEqualTo(2 * MINUTE_MS)
+
+        val stage =
+            budgetHarness()
+                .submit(TimerCommand.Start)
+                .submit(TimerCommand.Pause(PauseMode.STAGE))
+                .advance(2 * MINUTE_MS)
+
+        assertThat(stage.snapshot.pauseElapsedMs).isEqualTo(2 * MINUTE_MS)
+    }
+
+    @Test
+    fun `переключение режима не начинает паузу заново`() {
+        val harness =
+            budgetHarness()
+                .submit(TimerCommand.Start)
+                .submit(TimerCommand.Pause(PauseMode.STAGE))
+                .advance(3 * MINUTE_MS)
+                .submit(TimerCommand.SetPauseMode(PauseMode.SESSION))
+                .advance(MINUTE_MS)
+
+        // Пауза одна и та же — четыре минуты. Удержание при этом остановилось
+        // на трёх: часы занятия переключением как раз и остановлены.
+        assertThat(harness.snapshot.pauseElapsedMs).isEqualTo(4 * MINUTE_MS)
+        assertThat(harness.snapshot.holdMs).isEqualTo(3 * MINUTE_MS)
+    }
+
+    @Test
+    fun `вне паузы часов паузы нет`() {
+        val harness =
+            budgetHarness()
+                .submit(TimerCommand.Start)
+                .submit(TimerCommand.Pause(PauseMode.STAGE))
+                .advance(2 * MINUTE_MS)
+                .submit(TimerCommand.Resume)
+                .advance(MINUTE_MS)
+
+        assertThat(harness.snapshot.pauseElapsedMs).isEqualTo(0)
+    }
+
     @Test
     fun `после снятия паузы этапа удержание больше не растёт`() {
         val harness =

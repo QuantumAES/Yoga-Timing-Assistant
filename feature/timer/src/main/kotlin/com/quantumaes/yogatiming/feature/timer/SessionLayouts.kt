@@ -1,6 +1,12 @@
 package com.quantumaes.yogatiming.feature.timer
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.quantumaes.yogatiming.core.common.time.TimeFormatter
 import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.TimerPalette
@@ -60,6 +67,10 @@ import kotlinx.coroutines.delay
 
 /** Сколько висит подсказка о свайпах при входе в фокус. */
 private const val FOCUS_HINT_MS = 3_000L
+
+/** Мигание строки паузы в фокусе: период полуволны и нижняя прозрачность. */
+private const val PAUSE_BLINK_MS = 900
+private const val PAUSE_BLINK_MIN_ALPHA = 0.35f
 
 private val LANDSCAPE_RING_PADDING = 8.dp
 
@@ -663,6 +674,7 @@ internal fun FocusContent(
         delay(FOCUS_HINT_MS)
         hintVisible = false
     }
+    val paused = snapshot?.takeIf { it.runState == RunState.PAUSED }
 
     // Цифры идут во всю ширину экрана, текст — с полем: в фокусе кроме цифр
     // смотреть не на что, и каждый отданный им dp виден с другого конца зала.
@@ -682,6 +694,12 @@ internal fun FocusContent(
             overflow = TextOverflow.Ellipsis,
             modifier = sides,
         )
+        // Пауза в фокусе видна словом и растущими часами (замечание 3 полевой
+        // проверки 2026-08-05). Цвета цифр для этого мало: он меняется и в
+        // последнюю минуту этапа, а замершие цифры сами по себе неотличимы от
+        // подвисшего приложения. Плашки рабочего экрана здесь нет — в фокусе
+        // нет ничего, кроме этой строки, поэтому она и мигает.
+        paused?.let { FocusPauseNotice(snapshot = it, palette = palette, modifier = sides) }
         TimerDisplay(
             text = remainingText(snapshot),
             color = snapshot.accent(palette),
@@ -724,4 +742,51 @@ internal fun FocusContent(
             )
         }
     }
+}
+
+/**
+ * «Пауза 1:20» в режиме фокуса — единственное, что там движется на паузе.
+ *
+ * Мигает, а не просто окрашено: на паузу смотрят с другого конца зала, а
+ * различить оттенок цифр с трёх метров нельзя — движение различимо всегда.
+ * Период неспешный: тревожная мигалка на йоге неуместна, задача — быть
+ * замеченной, а не подгонять.
+ *
+ * У паузы этапа своя строка: там продолжают идти часы занятия, и молчать об
+ * этом нельзя — именно из этой разницы состоит смысл двух режимов.
+ */
+@Composable
+private fun FocusPauseNotice(
+    snapshot: SessionSnapshot,
+    palette: TimerPalette,
+    modifier: Modifier = Modifier,
+) {
+    val blink = rememberInfiniteTransition(label = "focus-pause")
+    val alpha by blink.animateFloat(
+        initialValue = PAUSE_BLINK_MIN_ALPHA,
+        targetValue = 1f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(PAUSE_BLINK_MS, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "focus-pause-alpha",
+    )
+    val clock = TimeFormatter.clock(snapshot.pauseElapsedMs)
+    val text =
+        if (snapshot.pauseMode == PauseMode.STAGE) {
+            stringResource(R.string.timer_focus_paused_stage, clock)
+        } else {
+            stringResource(R.string.timer_focus_paused, clock)
+        }
+
+    Text(
+        text = text,
+        style = YtaTextStyles.stageNext,
+        color = palette.paused.copy(alpha = alpha),
+        textAlign = TextAlign.Center,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier.padding(top = Spacing.xs),
+    )
 }

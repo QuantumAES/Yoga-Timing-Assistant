@@ -21,6 +21,9 @@ private const val FULL_PROGRESS = 1f
  *   этапа. Именно это число сравнивается с бюджетом.
  * @param holdMs сколько занятие простояло на паузе этапа — «дополнительное
  *   время» в терминах замечания 6.
+ * @param pauseElapsedMs сколько длится **идущая** пауза; вне паузы ноль. На
+ *   паузе это единственное растущее число на экране: остаток этапа замер, а
+ *   без часов паузы непонятно, стоишь ты десять секунд или четыре минуты.
  * @param budgetRemainingMs остаток до целевого конца занятия; `null` — цели
  *   нет. Отрицательное значение — перерасход, и его надо показывать.
  * @param budgetDeficitMs на сколько остаток плана не помещается в остаток
@@ -58,6 +61,7 @@ data class SessionSnapshot(
     val totalProgress: Float,
     val sessionElapsedMs: Long = 0L,
     val holdMs: Long = 0L,
+    val pauseElapsedMs: Long = 0L,
     val budgetRemainingMs: Long? = null,
     val budgetDeficitMs: Long? = null,
     val budgetToleranceMs: Long = 0L,
@@ -109,6 +113,7 @@ fun SessionState.snapshot(now: Long): SessionSnapshot {
         totalProgress = ratio(totalElapsed, totalElapsed + totalRemaining),
         sessionElapsedMs = sessionElapsedMs(now),
         holdMs = holdElapsedMs(now),
+        pauseElapsedMs = pauseElapsedMs(now),
         budgetRemainingMs = budgetRemainingMs(now),
         budgetDeficitMs = budgetDeficitMs(now),
         budgetToleranceMs = plan.budget?.toleranceMs ?: 0L,

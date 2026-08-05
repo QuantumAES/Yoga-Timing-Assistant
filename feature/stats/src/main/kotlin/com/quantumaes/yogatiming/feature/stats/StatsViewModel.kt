@@ -1,9 +1,12 @@
 package com.quantumaes.yogatiming.feature.stats
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quantumaes.yogatiming.domain.repository.SessionLogRepository
 import com.quantumaes.yogatiming.domain.stats.ProfileTotals
+import com.quantumaes.yogatiming.domain.stats.SessionCsv
+import com.quantumaes.yogatiming.domain.stats.SessionCsvLabels
 import com.quantumaes.yogatiming.domain.stats.SessionDay
 import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
 import com.quantumaes.yogatiming.domain.stats.SessionTotals
@@ -12,8 +15,11 @@ import com.quantumaes.yogatiming.domain.stats.StatsPeriodType
 import com.quantumaes.yogatiming.domain.stats.WeekdayTotal
 import com.quantumaes.yogatiming.domain.stats.monthGrid
 import com.quantumaes.yogatiming.domain.stats.weekdayTotals
+import com.quantumaes.yogatiming.feature.stats.export.CsvExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +28,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -55,6 +62,9 @@ private val DEFAULT_PERIOD = StatsPeriodType.MONTH
  *   `null` для «за всё время»: делить там не на что, границы условны.
  * @param canGoForward есть ли куда листать вперёд. Будущих занятий не бывает,
  *   и стрелка, ведущая в пустой декабрь, обещает данные, которых нет.
+ * @param lastSessionDate день последнего занятия во всём журнале. `null` —
+ *   журнал пуст: пустой ноябрь у человека с историей и пустая статистика у
+ *   нового пользователя это разные состояния (фаза S6).
  */
 data class StatsUiState(
     val period: StatsPeriod,
@@ -68,10 +78,35 @@ data class StatsUiState(
     val journal: List<SessionLogEntry> = emptyList(),
     val periodLengthDays: Int? = null,
     val canGoForward: Boolean = false,
+    val lastSessionDate: LocalDate? = null,
     val isLoading: Boolean = true,
 ) {
     /** Занятий за период нет. Для первого запуска — норма, а не ошибка. */
     val isEmpty: Boolean get() = !isLoading && totals.sessionCount == 0
+
+    /**
+     * Есть ли куда уйти из пустого периода.
+     *
+     * Последнее занятие внутри самого периода означало бы, что период не пуст,
+     * поэтому проверять его положение отдельно не нужно.
+     */
+    val hasHistory: Boolean get() = lastSessionDate != null
+
+    /** Есть ли что выгружать: пустой период экспортировать не во что (фаза S7). */
+    val canExport: Boolean get() = journal.isNotEmpty()
+}
+
+/**
+ * Разовое сообщение экрана — то, что говорится один раз и не является
+ * состоянием: повторить его при повороте экрана было бы враньём о втором
+ * сохранении.
+ */
+sealed interface StatsEvent {
+    /** Журнал выгружен в выбранный файл. */
+    data object Exported : StatsEvent
+
+    /** Файл не записался: отказано в доступе, нет места, каталог удалён. */
+    data object ExportFailed : StatsEvent
 }
 
 /**
@@ -87,8 +122,12 @@ class StatsViewModel
     @Inject
     constructor(
         private val repository: SessionLogRepository,
+        private val exporter: CsvExporter,
         private val clock: Clock,
     ) : ViewModel() {
+        private val events = Channel<StatsEvent>(Channel.BUFFERED, BufferOverflow.DROP_OLDEST)
+        val uiEvents: Flow<StatsEvent> = events.receiveAsFlow()
+
         /**
          * «Сегодня» читается один раз на жизнь модели.
          *
@@ -144,7 +183,11 @@ class StatsViewModel
             }
 
         val uiState: StateFlow<StatsUiState> =
-            combine(periodData, daySessions) { data, day ->
+            combine(
+                periodData,
+                daySessions,
+                repository.observeLastSessionDate(),
+            ) { data, day, lastSessionDate ->
                 StatsUiState(
                     period = data.period,
                     today = today,
@@ -157,6 +200,7 @@ class StatsViewModel
                     journal = data.journal,
                     periodLengthDays = data.period.lengthInDays(),
                     canGoForward = data.period.to.isBefore(today),
+                    lastSessionDate = lastSessionDate,
                     isLoading = false,
                 )
             }.stateIn(
@@ -189,6 +233,20 @@ class StatsViewModel
         }
 
         /**
+         * Переход из пустого периода к последнему занятию (фаза S6).
+         *
+         * Тип периода сохраняется: месяц остаётся месяцем — дробность выбрал
+         * пользователь, и подменять её, отвечая на «где мои занятия», незачем.
+         * Листать вручную от пустого ноября к сентябрю — единственная
+         * альтернатива, и она тем длиннее, чем дольше был перерыв.
+         */
+        fun showLastSession() {
+            val date = uiState.value.lastSessionDate ?: return
+            selectedDay.value = null
+            period.update { current -> StatsPeriod.of(current.type, date) }
+        }
+
+        /**
          * Тап по клетке календаря.
          *
          * Повторный тап по тому же дню снимает выбор: карточка дня открывается
@@ -209,6 +267,28 @@ class StatsViewModel
          */
         fun deleteEntry(id: Long) {
             viewModelScope.launch { repository.delete(id) }
+        }
+
+        /**
+         * Выгрузка журнала за период в выбранный файл (фаза S7).
+         *
+         * Выгружается ровно то, что показано: тот же период, те же строки, тот
+         * же порядок расчёта. Отчёт, не сходящийся с экраном, с которого его
+         * запросили, хуже отсутствующего — по нему считают оплату.
+         *
+         * Подписи колонок приходят с экрана: язык файла равен языку интерфейса,
+         * а о ресурсах модель не знает.
+         */
+        fun export(
+            target: Uri,
+            labels: SessionCsvLabels,
+        ) {
+            val entries = uiState.value.journal
+            viewModelScope.launch {
+                val csv = SessionCsv.render(entries, labels, clock.zone)
+                val written = exporter.write(target, csv)
+                events.trySend(if (written) StatsEvent.Exported else StatsEvent.ExportFailed)
+            }
         }
 
         private fun StatsPeriod.anchor(): LocalDate = if (type == StatsPeriodType.ALL || today in this) today else from

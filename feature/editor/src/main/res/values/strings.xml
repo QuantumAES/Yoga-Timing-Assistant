@@ -27,11 +27,11 @@
     <!-- Целевое время занятия (замечание 8 полевой проверки 2026-08-04). -->
     <string name="editor_profile_target">Target class length</string>
     <string name="editor_profile_target_switch">The class is limited in time</string>
-    <string name="editor_profile_target_hint">Studio rental, a paid hour, the gap between groups. The app counts the remainder by the clock and warns you when it is time to wrap up.</string>
+    <string name="editor_profile_target_hint">Studio rental, a paid hour, the gap between groups. The app counts the remainder by the clock and warns you before the class ends.</string>
     <string name="editor_profile_tolerance">Acceptable overrun</string>
     <string name="editor_profile_tolerance_strict">Exactly</string>
     <string name="editor_profile_tolerance_value">+%1$d min</string>
-    <string name="editor_profile_wrap_up">“Time to wrap up” cue</string>
+    <string name="editor_profile_wrap_up">End-of-class warning</string>
     <string name="editor_profile_wrap_up_off">No cue</string>
     <string name="editor_profile_wrap_up_value">%1$d min before</string>
     <string name="editor_profile_wrap_up_hint">The cue sounds once, and the screen shows how much time is left and how much is still planned.</string>
@@ -151,7 +151,7 @@
     <string name="editor_voice_session_finished">Class complete</string>
     <string name="editor_voice_custom">Custom text</string>
     <!-- В списках выбора не появляется: фраза относится к занятию, а не к этапу. -->
-    <string name="editor_voice_wrap_up">Time to wrap up</string>
+    <string name="editor_voice_wrap_up">Time until the class ends</string>
 
     <string name="editor_duration_minutes">Minutes</string>
     <string name="editor_duration_seconds">Seconds</string>

@@ -6,6 +6,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.quantumaes.yogatiming.core.common.time.TimeFormatter
+import com.quantumaes.yogatiming.domain.session.SessionOutcome
+import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
 import com.quantumaes.yogatiming.domain.stats.StatsPeriod
 import com.quantumaes.yogatiming.domain.stats.StatsPeriodType
 import java.time.DayOfWeek
@@ -30,7 +32,7 @@ private const val MINUTES_IN_HOUR = 60L
  * конфигурация не обновляется при смене языка.
  */
 @Composable
-private fun currentLocale(): Locale {
+internal fun currentLocale(): Locale {
     val tag = ComposeLocale.current.toLanguageTag()
     return remember(tag) { Locale.forLanguageTag(tag) }
 }
@@ -53,53 +55,7 @@ internal fun durationText(millis: Long): String {
     }
 }
 
-/**
- * Подпись выбранного периода: «ноябрь», «3–9 ноября», «2026», «за всё время».
- *
- * Год показывается только тогда, когда он не текущий: «ноябрь» в ноябре 2026-го
- * не нуждается в уточнении, а «ноябрь 2024» — нуждается.
- */
-@Composable
-internal fun periodTitle(
-    period: StatsPeriod,
-    today: LocalDate,
-): String {
-    val locale = currentLocale()
-    return when (period.type) {
-        StatsPeriodType.WEEK -> weekTitle(period, today, locale)
-        StatsPeriodType.MONTH -> monthTitle(period, today, locale)
-        StatsPeriodType.YEAR -> period.from.year.toString()
-        StatsPeriodType.ALL -> stringResource(R.string.stats_period_all_title)
-    }
-}
-
-/** «3–9 ноября» внутри одного месяца и «28 окт. — 3 нояб.» на его границе. */
-private fun weekTitle(
-    period: StatsPeriod,
-    today: LocalDate,
-    locale: Locale,
-): String {
-    val sameYear = period.to.year == today.year
-    return if (period.from.month == period.to.month) {
-        val pattern = if (sameYear) "d MMMM" else "d MMMM yyyy"
-        "${period.from.dayOfMonth}–${period.to.format(pattern, locale)}"
-    } else {
-        val pattern = if (sameYear) "d MMM" else "d MMM yyyy"
-        "${period.from.format("d MMM", locale)} — ${period.to.format(pattern, locale)}"
-    }
-}
-
-/** «ноябрь» или «ноябрь 2024». Именительный падеж (`LLLL`) — это заголовок, а не дата. */
-private fun monthTitle(
-    period: StatsPeriod,
-    today: LocalDate,
-    locale: Locale,
-): String {
-    val pattern = if (period.from.year == today.year) "LLLL" else "LLLL yyyy"
-    return period.from.format(pattern, locale).replaceFirstChar { it.titlecase(locale) }
-}
-
-private fun LocalDate.format(
+internal fun LocalDate.format(
     pattern: String,
     locale: Locale,
 ): String = format(DateTimeFormatter.ofPattern(pattern, locale))
@@ -114,6 +70,21 @@ private fun LocalDate.format(
 internal fun dayTitle(date: LocalDate): String {
     val locale = currentLocale()
     return remember(date, locale) { date.format("d MMMM", locale) }
+}
+
+/**
+ * «30 октября» или «30 октября 2025» — день с уточнением года, когда он не
+ * текущий. Пустому периоду год важен: перерыв в практике бывает и годовым.
+ */
+@Composable
+internal fun dayTitle(
+    date: LocalDate,
+    today: LocalDate,
+): String {
+    val locale = currentLocale()
+    return remember(date, today, locale) {
+        date.format(if (date.year == today.year) "d MMMM" else "d MMMM yyyy", locale)
+    }
 }
 
 /** «3 ноя» — дата в строке журнала: она повторяется у каждой строки. */
@@ -148,4 +119,31 @@ internal fun weekdayLabel(dayOfWeek: DayOfWeek): String {
 internal fun weekdayFullName(dayOfWeek: DayOfWeek): String {
     val locale = currentLocale()
     return dayOfWeek.getDisplayName(TextStyle.FULL_STANDALONE, locale)
+}
+
+/**
+ * Занятие одной фразой: «3 ноября, Хатха 60, с 18:05 до 19:03, 58 мин»
+ * (фаза S6, проверка A-1).
+ *
+ * Строка журнала состоит из четырёх текстов, и глазом они читаются вместе, а
+ * TalkBack по умолчанию произносит их четырьмя отдельными узлами: «3 ноя»,
+ * «Хатха 60», «18:05 → 19:03», «58 мин» — каждый без связи с соседними.
+ * Дата здесь полная, а не «3 ноя»: сокращение синтезатор читает по буквам.
+ */
+@Composable
+internal fun entryDescription(entry: SessionLogEntry): String {
+    val template =
+        if (entry.outcome == SessionOutcome.STOPPED) {
+            R.string.stats_entry_description_stopped
+        } else {
+            R.string.stats_entry_description
+        }
+    return stringResource(
+        template,
+        dayTitle(entry.localDate),
+        entry.profileName,
+        wallClock(entry.startedAtMs),
+        wallClock(entry.finishedAtMs),
+        durationText(entry.durationMs),
+    )
 }

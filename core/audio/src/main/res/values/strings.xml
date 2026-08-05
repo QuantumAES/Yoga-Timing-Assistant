@@ -23,7 +23,7 @@
         звучать иначе, чем «осталась минута», иначе инструктор их перепутает.
     -->
     <plurals name="alert_voice_wrap_up">
-        <item quantity="one">Time to wrap up: %1$d minute of class left</item>
-        <item quantity="other">Time to wrap up: %1$d minutes of class left</item>
+        <item quantity="one">%1$d minute until the class ends</item>
+        <item quantity="other">%1$d minutes until the class ends</item>
     </plurals>
 </resources>

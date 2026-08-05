@@ -17,10 +17,22 @@ package com.quantumaes.yogatiming.timer.engine.model
 fun SessionState.holdElapsedMs(now: Long): Long =
     holdMs +
         if (runState == RunState.PAUSED && pauseMode == PauseMode.STAGE) {
-            (now - pausedAtMs).coerceAtLeast(0L)
+            (now - holdSinceMs).coerceAtLeast(0L)
         } else {
             0L
         }
+
+/**
+ * Сколько длится идущая пауза; вне паузы — ноль.
+ *
+ * Не то же, что [holdElapsedMs]: та считает съеденное у занятия время и растёт
+ * только в [PauseMode.STAGE], а эта — сколько человек стоит на паузе, и растёт
+ * в обоих режимах. Именно её показывает экран: «пауза 1:20» — единственный
+ * ответ на вопрос «я давно стою?», когда все остальные цифры замерли
+ * (замечание 3 полевой проверки 2026-08-05).
+ */
+fun SessionState.pauseElapsedMs(now: Long): Long =
+    if (runState == RunState.PAUSED) (now - pausedAtMs).coerceAtLeast(0L) else 0L
 
 /**
  * Сколько занятие идёт по часам.

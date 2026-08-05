@@ -1,19 +1,24 @@
 package com.quantumaes.yogatiming.feature.stats
 
+import android.net.Uri
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.quantumaes.yogatiming.domain.repository.SessionLogRepository
 import com.quantumaes.yogatiming.domain.stats.ProfileTotals
+import com.quantumaes.yogatiming.domain.stats.SessionCsvLabels
 import com.quantumaes.yogatiming.domain.stats.SessionDay
 import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
 import com.quantumaes.yogatiming.domain.stats.SessionTotals
 import com.quantumaes.yogatiming.domain.stats.StatsPeriodType
+import com.quantumaes.yogatiming.feature.stats.export.CsvExporter
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -99,6 +104,10 @@ private class FakeSessionLogRepository(
             }
         }
 
+    /** По всему журналу, а не по периоду: пустому ноябрю нужен сентябрь. */
+    override fun observeLastSessionDate(): Flow<LocalDate?> =
+        state.map { entries -> entries.maxOfOrNull { it.localDate } }
+
     private fun List<SessionLogEntry>.inRange(
         from: LocalDate,
         to: LocalDate,
@@ -107,6 +116,39 @@ private class FakeSessionLogRepository(
         return filter { !it.localDate.isBefore(from) && !it.localDate.isAfter(to) }
     }
 }
+
+/**
+ * Запись выгрузки в никуда: важно не то, куда она пошла, а что именно ушло и
+ * чем ответила модель.
+ */
+private class RecordingCsvExporter(
+    private val succeeds: Boolean = true,
+) : CsvExporter {
+    var written: String? = null
+        private set
+
+    override suspend fun write(
+        target: Uri,
+        content: String,
+    ): Boolean {
+        if (succeeds) written = content
+        return succeeds
+    }
+}
+
+private val CSV_LABELS =
+    SessionCsvLabels(
+        date = "Дата",
+        start = "Начало",
+        finish = "Завершение",
+        duration = "Минут",
+        planned = "План, мин",
+        profile = "Профиль",
+        stages = "Этапы",
+        outcome = "Исход",
+        completed = "проведено",
+        stopped = "остановлено",
+    )
 
 private fun entry(
     date: LocalDate,
@@ -146,7 +188,8 @@ class StatsViewModelTest {
     private fun viewModel(
         repository: SessionLogRepository,
         clock: Clock = FIXED_CLOCK,
-    ) = StatsViewModel(repository, clock)
+        exporter: CsvExporter = RecordingCsvExporter(),
+    ) = StatsViewModel(repository, exporter, clock)
 
     @Test
     fun `экран открывается на текущем месяце`() =
@@ -438,7 +481,11 @@ class StatsViewModelTest {
 
                 viewModel.deleteEntry(extra.id)
 
-                val state = awaitItem()
+                // Разрезы приходят из журнала пятью независимыми запросами, и
+                // после удаления состояние сходится не первым же кадром:
+                // проверяется то, на чём оно остановилось, а не промежуточное.
+                advanceUntilIdle()
+                val state = expectMostRecentItem()
                 assertThat(state.journal.map { it.id }).doesNotContain(extra.id)
                 assertThat(state.totals.sessionCount).isEqualTo(1)
                 cancelAndIgnoreRemainingEvents()
@@ -455,6 +502,110 @@ class StatsViewModelTest {
                 val state = awaitItem()
                 assertThat(state.isLoading).isFalse()
                 assertThat(state.isEmpty).isTrue()
+            }
+        }
+
+    @Test
+    fun `пустой журнал не обещает перехода к занятиям`() =
+        runTest(dispatcher) {
+            // Новому пользователю идти некуда, и предлагать ему это — врать.
+            viewModel(FakeSessionLogRepository()).uiState.test {
+                skipItems(1)
+                val state = awaitItem()
+                assertThat(state.isEmpty).isTrue()
+                assertThat(state.hasHistory).isFalse()
+                assertThat(state.canExport).isFalse()
+            }
+        }
+
+    @Test
+    fun `пустой период при непустом журнале называет последнее занятие`() =
+        runTest(dispatcher) {
+            // Занятия были в сентябре, экран открылся на пустом ноябре.
+            val last = LocalDate.of(2026, 9, 14)
+            val repository = FakeSessionLogRepository(listOf(entry(LocalDate.of(2026, 9, 1)), entry(last)))
+
+            viewModel(repository).uiState.test {
+                skipItems(1)
+                val state = awaitItem()
+                assertThat(state.isEmpty).isTrue()
+                assertThat(state.lastSessionDate).isEqualTo(last)
+            }
+        }
+
+    @Test
+    fun `переход к последнему занятию открывает его период не меняя дробности`() =
+        runTest(dispatcher) {
+            val last = LocalDate.of(2026, 9, 14)
+            val repository = FakeSessionLogRepository(listOf(entry(last)))
+            val viewModel = viewModel(repository)
+
+            viewModel.uiState.test {
+                skipItems(2)
+
+                viewModel.showLastSession()
+
+                val state = awaitItem()
+                // Месяц остался месяцем — дробность выбрал пользователь.
+                assertThat(state.period.type).isEqualTo(StatsPeriodType.MONTH)
+                assertThat(state.period.from).isEqualTo(LocalDate.of(2026, 9, 1))
+                assertThat(state.totals.sessionCount).isEqualTo(1)
+                assertThat(state.isEmpty).isFalse()
+            }
+        }
+
+    @Test
+    fun `выгружается тот же период что и на экране`() =
+        runTest(dispatcher) {
+            // Отчёт, не сходящийся с экраном, с которого его запросили, хуже
+            // отсутствующего: по нему считают оплату.
+            val exporter = RecordingCsvExporter()
+            val repository =
+                FakeSessionLogRepository(
+                    listOf(
+                        entry(LocalDate.of(2026, 11, 2)),
+                        entry(LocalDate.of(2026, 11, 9)),
+                        // Октябрьское занятие в ноябрьскую выгрузку не идёт.
+                        entry(LocalDate.of(2026, 10, 30)),
+                    ),
+                )
+            val viewModel = viewModel(repository, exporter = exporter)
+
+            viewModel.uiState.test {
+                skipItems(2)
+
+                viewModel.uiEvents.test {
+                    viewModel.export(mockk(), CSV_LABELS)
+                    assertThat(awaitItem()).isEqualTo(StatsEvent.Exported)
+                }
+            }
+
+            val rows =
+                exporter.written
+                    .orEmpty()
+                    .trim()
+                    .lines()
+            // Заголовок колонок и две ноябрьские строки.
+            assertThat(rows).hasSize(3)
+            assertThat(rows[1]).startsWith("2026-11-02")
+            assertThat(rows[2]).startsWith("2026-11-09")
+        }
+
+    @Test
+    fun `отказ записи не выдаётся за сохранение`() =
+        runTest(dispatcher) {
+            // Каталог удалён, места нет, доступ отозван — экран обязан сказать
+            // об этом: «сохранено» о несуществующем файле хуже молчания.
+            val repository = FakeSessionLogRepository(listOf(entry(LocalDate.of(2026, 11, 2))))
+            val viewModel = viewModel(repository, exporter = RecordingCsvExporter(succeeds = false))
+
+            viewModel.uiState.test {
+                skipItems(2)
+
+                viewModel.uiEvents.test {
+                    viewModel.export(mockk(), CSV_LABELS)
+                    assertThat(awaitItem()).isEqualTo(StatsEvent.ExportFailed)
+                }
             }
         }
 }

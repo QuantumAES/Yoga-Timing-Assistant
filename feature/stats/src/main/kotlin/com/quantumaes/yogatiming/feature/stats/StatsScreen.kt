@@ -1,11 +1,12 @@
 package com.quantumaes.yogatiming.feature.stats
 
-import androidx.compose.foundation.background
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,15 +16,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -35,21 +43,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.quantumaes.yogatiming.core.designsystem.theme.Dimens
 import com.quantumaes.yogatiming.core.designsystem.theme.Spacing
 import com.quantumaes.yogatiming.core.designsystem.theme.YtaTheme
 import com.quantumaes.yogatiming.domain.session.SessionOutcome
 import com.quantumaes.yogatiming.domain.stats.ProfileTotals
+import com.quantumaes.yogatiming.domain.stats.SessionCsv
 import com.quantumaes.yogatiming.domain.stats.SessionLogEntry
 import com.quantumaes.yogatiming.domain.stats.SessionTotals
 import com.quantumaes.yogatiming.domain.stats.StatsPeriod
@@ -57,11 +68,7 @@ import com.quantumaes.yogatiming.domain.stats.StatsPeriodType
 import com.quantumaes.yogatiming.domain.stats.WeekdayTotal
 import com.quantumaes.yogatiming.domain.stats.monthGrid
 import com.quantumaes.yogatiming.domain.stats.weekdaysFrom
-import com.quantumaes.yogatiming.feature.stats.component.CalendarDayUi
 import com.quantumaes.yogatiming.feature.stats.component.ExpandableSection
-import com.quantumaes.yogatiming.feature.stats.component.MonthCalendar
-import com.quantumaes.yogatiming.feature.stats.component.WeekdayBar
-import com.quantumaes.yogatiming.feature.stats.component.WeekdayChart
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -81,14 +88,29 @@ internal fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    StatsSnackbars(events = viewModel.uiEvents, snackbarHostState = snackbarHostState)
+
+    // Куда выгружать, выбирает системный диалог: приложение не знает ни о
+    // каталогах, ни о правах на них, а файл появляется там, где пользователь
+    // его потом и будет искать (фаза S7).
+    val labels = csvLabels()
+    val exportLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(SessionCsv.MIME_TYPE)) { uri ->
+            uri?.let { viewModel.export(it, labels) }
+        }
 
     StatsScreen(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onPeriodTypeChange = viewModel::setPeriodType,
         onPrevious = viewModel::showPrevious,
         onNext = viewModel::showNext,
         onSelectDay = viewModel::selectDay,
         onDeleteEntry = viewModel::deleteEntry,
+        onShowLastSession = viewModel::showLastSession,
+        onExport = { exportLauncher.launch(SessionCsv.fileName(uiState.period)) },
         onBack = onBack,
     )
 }
@@ -97,11 +119,14 @@ internal fun StatsScreen(
 @Composable
 internal fun StatsScreen(
     uiState: StatsUiState,
+    snackbarHostState: SnackbarHostState,
     onPeriodTypeChange: (StatsPeriodType) -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onSelectDay: (LocalDate) -> Unit,
     onDeleteEntry: (Long) -> Unit,
+    onShowLastSession: () -> Unit,
+    onExport: () -> Unit,
     onBack: () -> Unit,
 ) {
     // Строка, которую свайпнули: удаление спрашивает, а не делает молча.
@@ -130,8 +155,21 @@ internal fun StatsScreen(
                         )
                     }
                 },
+                actions = {
+                    // Выгружать пустой период не во что, и кнопка, которая
+                    // отдаёт файл из одних заголовков, обещает лишнее.
+                    if (uiState.canExport) {
+                        IconButton(onClick = onExport) {
+                            Icon(
+                                imageVector = Icons.Filled.Share,
+                                contentDescription = stringResource(R.string.stats_export),
+                            )
+                        }
+                    }
+                },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         // `LazyColumn`, а не прокручиваемый `Column`: журнал за «всё время» это
         // тысячи строк, и обычный столбец собирал бы их все на каждый кадр
@@ -164,7 +202,14 @@ internal fun StatsScreen(
             // секунды мигает чаще, чем сообщает.
             when {
                 uiState.isEmpty -> {
-                    item(key = "empty") { EmptyState(onBack = onBack) }
+                    item(key = "empty") {
+                        EmptyState(
+                            lastSessionDate = uiState.lastSessionDate,
+                            today = uiState.today,
+                            onShowLastSession = onShowLastSession,
+                            onBack = onBack,
+                        )
+                    }
                 }
 
                 !uiState.isLoading -> {
@@ -249,10 +294,27 @@ internal fun StatsScreen(
  * одно касание на три. Галочка выбранного отключена ради ширины: на экране
  * 360 dp четыре подписи с иконками уже не помещаются, а выбранный сегмент
  * различим заливкой и объявляется TalkBack как выбранный.
+ *
+ * При крупном системном шрифте четыре подписи в ряд перестают помещаться и
+ * обрезаются многоточием — «Н…», «М…», — то есть переключатель теряет смысл.
+ * Тогда он становится меню: одно касание превращается в два, но подписи
+ * читаются целиком (фаза S6, проверка A-2).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PeriodSelector(
+    selected: StatsPeriodType,
+    onSelect: (StatsPeriodType) -> Unit,
+) {
+    if (isLargeFont()) {
+        PeriodMenu(selected = selected, onSelect = onSelect)
+    } else {
+        PeriodSegments(selected = selected, onSelect = onSelect)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PeriodSegments(
     selected: StatsPeriodType,
     onSelect: (StatsPeriodType) -> Unit,
 ) {
@@ -269,6 +331,46 @@ private fun PeriodSelector(
                     text = stringResource(type.labelRes),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** То же самое меню при крупном шрифте: выбранный период стоит на кнопке. */
+@Composable
+private fun PeriodMenu(
+    selected: StatsPeriodType,
+    onSelect: (StatsPeriodType) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = stringResource(selected.labelRes)
+    // Кнопка называет и то, что выбрано, и чем она является: «Месяц» без
+    // уточнения TalkBack прочитает как непонятную кнопку посреди экрана.
+    val description = stringResource(R.string.stats_period_selector, selectedLabel)
+
+    Box(Modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = description },
+        ) {
+            Text(text = selectedLabel, modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+            Icon(imageVector = Icons.Filled.KeyboardArrowDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            StatsPeriodType.entries.forEach { type ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(type.labelRes)) },
+                    trailingIcon = {
+                        if (type == selected) {
+                            Icon(imageVector = Icons.Filled.Check, contentDescription = null)
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(type)
+                    },
+                    modifier = Modifier.semantics { this.selected = type == selected },
                 )
             }
         }
@@ -306,9 +408,18 @@ private fun PeriodNavigator(
             text = title,
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            // Две строки, а не одна: «28 окт. — 3 нояб.» при системном шрифте
+            // 200% в одну строку не помещается, а многоточие в подписи периода
+            // означает, что непонятно, что показано (A-2).
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    // Стрелки меняют содержимое всего экрана, и подпись периода
+                    // — единственное, что об этом говорит. Без объявления
+                    // нажатие «‹» для незрячего пользователя беззвучно (A-1).
+                    .semantics { liveRegion = LiveRegionMode.Polite },
         )
         if (navigable) {
             IconButton(onClick = onNext, enabled = canGoForward) {
@@ -326,30 +437,67 @@ private fun PeriodNavigator(
  *
  * Первый запуск статистики у нового пользователя пуст всегда, и картинка с
  * грустью тут была бы упрёком за то, чего он ещё не мог сделать.
+ *
+ * Состояний два, и это разные состояния (фаза S6). Пустой журнал — обещание:
+ * занятие попадёт сюда само. Пустой период при непустом журнале — вопрос «а
+ * где мои занятия», и ответ на него у экрана есть: день последнего занятия и
+ * переход к нему. Одинаковая надпись на оба случая отправляла бы человека с
+ * трёхлетней историей листать месяцы вручную.
  */
 @Composable
-private fun EmptyState(onBack: () -> Unit) {
+private fun EmptyState(
+    lastSessionDate: LocalDate?,
+    today: LocalDate,
+    onShowLastSession: () -> Unit,
+    onBack: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.stats_empty_title),
+            text =
+                stringResource(
+                    if (lastSessionDate == null) R.string.stats_empty_first_title else R.string.stats_empty_title,
+                ),
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = stringResource(R.string.stats_empty_hint),
+            text =
+                if (lastSessionDate == null) {
+                    stringResource(R.string.stats_empty_hint)
+                } else {
+                    stringResource(R.string.stats_empty_last, dayTitle(lastSessionDate, today))
+                },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = Spacing.s),
         )
-        TextButton(onClick = onBack, modifier = Modifier.padding(top = Spacing.s)) {
-            Text(stringResource(R.string.stats_empty_action))
+        if (lastSessionDate == null) {
+            TextButton(onClick = onBack, modifier = Modifier.padding(top = Spacing.s)) {
+                Text(stringResource(R.string.stats_empty_action))
+            }
+        } else {
+            TextButton(onClick = onShowLastSession, modifier = Modifier.padding(top = Spacing.s)) {
+                Text(stringResource(R.string.stats_empty_last_action))
+            }
         }
     }
 }
+
+/**
+ * Порог, за которым раскладка меняется, а не растягивается.
+ *
+ * Полторы нормы кегля — та точка, где подписи в четырёх сегментах и числа в
+ * плитках 2×2 перестают помещаться по ширине. Ниже неё раскладка привычная,
+ * выше — та, что читается целиком (проверка A-2 из `08-STABILIZATION.md` §4).
+ */
+private const val COMPACT_FONT_SCALE = 1.3f
+
+@Composable
+internal fun isLargeFont(): Boolean = LocalDensity.current.fontScale > COMPACT_FONT_SCALE
 
 private val StatsPeriodType.labelRes: Int
     get() =
@@ -399,13 +547,17 @@ private fun StatsScreenPreview() {
                     journal = listOf(previewSession(selected), previewSession(selected.minusDays(2))),
                     periodLengthDays = 30,
                     canGoForward = false,
+                    lastSessionDate = today,
                     isLoading = false,
                 ),
+            snackbarHostState = remember { SnackbarHostState() },
             onPeriodTypeChange = {},
             onPrevious = {},
             onNext = {},
             onSelectDay = {},
             onDeleteEntry = {},
+            onShowLastSession = {},
+            onExport = {},
             onBack = {},
         )
     }

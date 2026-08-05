@@ -32,6 +32,20 @@ ADAPTIVE_SAFE_DP = 66
 # Знак в интерфейсе: базовый размер 24 dp, как у значков Material.
 LOGO_DP = 24
 
+# Крупный знак: последний слайд онбординга, 120 dp.
+#
+# Отдельный файл, а не тот же ic_yta_logo покрупнее: в шапке списка профилей
+# знак стоит в 28 dp, и держать ради него в памяти растр под 120 dp незачем.
+# Обратное — растянуть 24-точечный знак до 120 dp — и давало ту самую муть
+# (замечание 1 полевой проверки 2026-08-05).
+LARGE_LOGO_DP = 120
+
+# Единственный файл логотипа не в PNG: 480×480 PNG весит 177 КБ, WebP того же
+# качества — 43 КБ. Разница между ними на глаз не видна (среднеквадратичное
+# отклонение 1,4 из 255 при пиковом 15), а четверть веса — видна в APK.
+# minSdk 26 берёт WebP с прозрачностью без оговорок.
+LARGE_LOGO_QUALITY = 90
+
 # Картинка для Play Console: строго 512×512, без прозрачности.
 STORE_SIZE = 512
 
@@ -99,6 +113,12 @@ def write(image: Image.Image, path: Path) -> None:
     print(f"  {path.relative_to(ROOT)}  {image.width}×{image.height}")
 
 
+def write_webp(image: Image.Image, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path, "WEBP", quality=LARGE_LOGO_QUALITY)
+    print(f"  {path.relative_to(ROOT)}  {image.width}×{image.height}")
+
+
 def adaptive_layer(art: Image.Image, scale: float) -> Image.Image:
     """Слой адаптивной иконки: знак в безопасной зоне на прозрачном холсте."""
     canvas_px = round(ADAPTIVE_CANVAS_DP * scale)
@@ -139,6 +159,18 @@ def main() -> None:
         size = round(LOGO_DP * scale)
         write(art.resize((size, size), Image.LANCZOS), DESIGN_RES / f"drawable-{density}" / "ic_yta_logo.png")
 
+    # Полная лесенка плотностей, а не один файл под xxxhdpi: система умеет
+    # уменьшать сама, но тогда телефон mdpi держит в памяти вчетверо больший
+    # растр, чем ему нужно. Lint того же мнения и считает неполный набор
+    # ошибкой (IconDensities).
+    print("Крупный знак (онбординг):")
+    for density, scale in DENSITIES.items():
+        size = round(LARGE_LOGO_DP * scale)
+        write_webp(
+            art.resize((size, size), Image.LANCZOS),
+            DESIGN_RES / f"drawable-{density}" / "ic_yta_logo_large.webp",
+        )
+
     print("Play Console:")
     store = Image.new("RGB", (STORE_SIZE, STORE_SIZE), background)
     # Поле в 12% — рекомендация Play: иконка не должна упираться в края.
@@ -153,12 +185,15 @@ def main() -> None:
     hex_color = f"#{background[0]:02X}{background[1]:02X}{background[2]:02X}"
     import re
 
-    updated = re.sub(
+    # Считается совпадение, а не изменение текста: при повторном прогоне цвет
+    # уже верный, замена ничего не меняет — и сравнение «стало ≠ было» ругалось
+    # на пустом месте.
+    updated, replaced = re.subn(
         r'(<color name="ic_launcher_background">)[^<]*(</color>)',
         rf"\g<1>{hex_color}\g<2>",
         text,
     )
-    if updated == text:
+    if replaced == 0:
         print(f"  ! ic_launcher_background не найден в {colors.relative_to(ROOT)}", file=sys.stderr)
     else:
         colors.write_text(updated, encoding="utf-8")

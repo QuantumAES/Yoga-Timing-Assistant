@@ -74,12 +74,17 @@ internal fun SessionNotice(
 }
 
 /**
- * Что именно остановлено — и как это поменять.
+ * Что именно остановлено, сколько это длится — и как это поменять.
  *
  * Режим паузы виден словами, а не догадкой: разница между «время идёт» и
  * «время стоит» на экране никак не проявляется, а стоит она десяти минут
  * аренды. Плашка сама и есть переключатель — отдельная кнопка рядом с текстом,
  * который её объясняет, была бы вторым элементом там, где хватает одного.
+ *
+ * Часы паузы стоят в заголовке и идут (замечание 3 полевой проверки
+ * 2026-08-05). На паузе всё остальное на экране замирает — остаток этапа, круг,
+ * цифры, — и без растущего числа экран неотличим от зависшего. Оно же отвечает
+ * на единственный вопрос, который на паузе задают: «я давно стою?»
  */
 @Composable
 private fun PauseNotice(
@@ -92,6 +97,7 @@ private fun PauseNotice(
     val title =
         stringResource(
             if (stageHeld) R.string.timer_pause_stage_title else R.string.timer_pause_session_title,
+            TimeFormatter.clock(snapshot.pauseElapsedMs),
         )
     val text =
         if (stageHeld) {
@@ -117,6 +123,11 @@ private fun PauseNotice(
  * Разница между этими двумя числами и есть ответ на вопрос «успеваю ли я»,
  * а считать её в уме посреди занятия — ровно то, от чего приложение обязано
  * избавить. Действие одно: ужать оставшиеся этапы под остаток времени.
+ *
+ * Остаток по часам стоит в заголовке, а план — под ним (замечание 4 полевой
+ * проверки 2026-08-05). Раньше заголовком был оборот «пора закругляться», а
+ * оба числа делили строку под ним: жаргон в первой строке ничего не сообщал,
+ * а главное число терялось рядом со вторым.
  */
 @Composable
 private fun WrapUpNotice(
@@ -131,8 +142,8 @@ private fun WrapUpNotice(
 
     NoticeSurface(accent = palette.danger, modifier = modifier) {
         NoticeText(
-            title = stringResource(R.string.timer_wrap_up_title),
-            text = stringResource(R.string.timer_wrap_up_text, remaining, planned),
+            title = stringResource(R.string.timer_wrap_up_title, remaining),
+            text = stringResource(R.string.timer_wrap_up_text, planned),
             accent = palette.danger,
             palette = palette,
         )
